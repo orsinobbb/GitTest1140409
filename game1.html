@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>點擊小方塊遊戲</title>
+    <!-- 載入 Google 字型 -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* CSS Reset */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      body {
+        font-family: 'Noto Sans TC', sans-serif;
+        background: linear-gradient(135deg, #74ebd5, #acb6e5);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      
+      .container {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 12px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        max-width: 600px;
+        width: 100%;
+        padding: 30px;
+        text-align: center;
+      }
+      
+      h1 {
+        margin-bottom: 10px;
+        color: #333;
+        font-weight: 700;
+      }
+      
+      p {
+        margin-bottom: 20px;
+        color: #555;
+      }
+      
+      /* 遊戲區域 */
+      #gameArea {
+        position: relative;
+        width: 100%;
+        height: 300px;
+        border: 2px dashed #ccc;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        background-color: #f9f9f9;
+      }
+      
+      /* 紅色小方塊 */
+      #box {
+        width: 50px;
+        height: 50px;
+        background-color: tomato;
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        cursor: pointer;
+        border-radius: 4px;
+      }
+      
+      /* 按鈕區塊 */
+      .btn-container {
+        margin-top: 30px;
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+      }
+      
+      .btn {
+        display: inline-block;
+        padding: 10px 20px;
+        border-radius: 6px;
+        text-decoration: none;
+        background: #007BFF;
+        color: #fff;
+        font-size: 16px;
+        transition: background 0.3s, transform 0.3s;
+      }
+      
+      .btn:hover {
+        background: #0056b3;
+        transform: translateY(-2px);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>點擊紅色小方塊！</h1>
+      <p>試試看你能點到幾次～</p>
+      <div id="gameArea">
+        <div id="box"></div>
+      </div>
+      <p>得分：<span id="score">0</span></p>
+      <div class="btn-container">
+        <a class="btn" href="javascript:history.back()">上一頁</a>
+        <a class="btn" href="index.html">回首頁</a>
+      </div>
+    </div>
+    <script>
+      const box = document.getElementById('box');
+      const scoreDisplay = document.getElementById('score');
+      const gameArea = document.getElementById('gameArea');
+      let score = 0;
+      
+      box.addEventListener('click', dealbox);
+      
+      function dealbox(){
+        score++;
+        scoreDisplay.textContent = score;
+        const maxTop = gameArea.clientHeight - box.offsetHeight;
+        const maxLeft = gameArea.clientWidth - box.offsetWidth;
+        const newTop = Math.random() * maxTop;
+        const newLeft = Math.random() * maxLeft;
+        box.style.top = newTop + 'px';
+        box.style.left = newLeft + 'px';
+      }
+    </script>
+  </body>
+</html>

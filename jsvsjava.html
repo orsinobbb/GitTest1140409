@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>JavaScript vs Java - 變數比較教學</title>
+  <style>
+    body { font-family: 'Microsoft JhengHei', sans-serif; line-height: 1.6; background: #f2f2f2; margin: 0; padding: 20px; }
+    h1 { text-align: center; }
+    .section { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .title { font-weight: bold; font-size: 1.2em; margin-bottom: 10px; }
+    .columns { display: flex; gap: 20px; }
+    .column { flex: 1; }
+    pre { background: #eee; padding: 10px; border-radius: 6px; }
+    button { margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+<h1>JavaScript vs Java - 變數使用差異</h1>
+
+<!-- 宣告方式 -->
+<div class="section">
+  <div class="title">A. 宣告方式</div>
+  <div class="columns">
+    <div class="column">
+      <h3>JavaScript</h3>
+      <pre>
+let x = 5;
+const y = 10;
+var z = "hello";
+      </pre>
+      <button onclick="declareJS()">執行</button>
+      <pre id="output1"></pre>
+    </div>
+    <div class="column">
+      <h3>Java</h3>
+      <pre>
+int x = 5;
+final int y = 10;
+String z = "hello";
+      </pre>
+    </div>
+  </div>
+</div>
+
+<!-- 型別與重新賦值 -->
+<div class="section">
+  <div class="title">B. 型別轉換與賦值</div>
+  <div class="columns">
+    <div class="column">
+      <h3>JavaScript</h3>
+      <pre>
+let value = 10;
+value = "ten";
+      </pre>
+      <button onclick="reassignJS()">執行</button>
+      <pre id="output2"></pre>
+    </div>
+    <div class="column">
+      <h3>Java</h3>
+      <pre>
+int value = 10;
+value = "ten"; // 編譯錯誤
+      </pre>
+    </div>
+  </div>
+</div>
+
+<!-- 作用域 -->
+<div class="section">
+  <div class="title">C. 區域作用域（Scope）</div>
+  <div class="columns">
+    <div class="column">
+      <h3>JavaScript</h3>
+      <pre>
+if (true) {
+  let x = 1;
+}
+// console.log(x); // 錯誤：x 不存在
+      </pre>
+      <button onclick="scopeJS()">執行</button>
+      <pre id="output3"></pre>
+    </div>
+    <div class="column">
+      <h3>Java</h3>
+      <pre>
+if (true) {
+  int x = 1;
+}
+// System.out.println(x); // 錯誤：x 不存在
+      </pre>
+    </div>
+  </div>
+</div>
+
+<!-- 未初始化的變數 -->
+<div class="section">
+  <div class="title">D. 未初始化變數</div>
+  <div class="columns">
+    <div class="column">
+      <h3>JavaScript</h3>
+      <pre>
+let notSet;
+console.log(notSet); // undefined
+      </pre>
+      <button onclick="undefinedJS()">執行</button>
+      <pre id="output4"></pre>
+    </div>
+    <div class="column">
+      <h3>Java</h3>
+      <pre>
+int notSet;
+// System.out.println(notSet); // 編譯錯誤
+      </pre>
+    </div>
+  </div>
+</div>
+
+<script>
+function declareJS() {
+  let x = 5;
+  const y = 10;
+  var z = "hello";
+  document.getElementById("output1").textContent = `x=${x}, y=${y}, z=${z}`;
+}
+
+function reassignJS() {
+  let value = 10;
+  value = "ten";
+  document.getElementById("output2").textContent = `value=${value}（型別從數字變成字串）`;
+}
+
+function scopeJS() {
+  if (true) {
+    let x = 1;
+  }
+  try {
+    // @ts-ignore
+    document.getElementById("output3").textContent = `x = ${x}`;
+  } catch (e) {
+    document.getElementById("output3").textContent = `錯誤：x 未定義`;
+  }
+}
+
+function undefinedJS() {
+  let notSet;
+  document.getElementById("output4").textContent = `notSet = ${notSet}`;
+}
+</script>
+
+</body>
+</html>

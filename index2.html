@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>網站目錄</title>
+    <!-- 載入 Google 字型 -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* CSS Reset */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      body {
+        font-family: 'Noto Sans TC', sans-serif;
+        background: linear-gradient(135deg, #74ebd5, #acb6e5);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      
+      .container {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 12px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        max-width: 400px;
+        width: 100%;
+        padding: 30px;
+        text-align: center;
+      }
+      
+      h1 {
+        margin-bottom: 25px;
+        color: #333;
+        font-weight: 700;
+      }
+      
+      ul {
+        list-style: none;
+      }
+      
+      li {
+        margin-bottom: 15px;
+      }
+      
+      a {
+        display: block;
+        text-decoration: none;
+        padding: 12px;
+        border-radius: 8px;
+        background: #fff;
+        color: #333;
+        font-size: 18px;
+        transition: transform 0.3s, box-shadow 0.3s;
+        border: 1px solid #e0e0e0;
+      }
+      
+      a:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        background: #f7f7f7;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>網站目錄</h1>
+      <ul>
+        <li><a href="selfintro.html">自我簡介</a></li>
+        <li><a href="talk.html">個人聊天室</a></li>
+        <li><a href="game1.html">點擊方塊小遊戲</a></li>
+        <li><a href="video.html">推薦影片</a></li>
+      </ul>
+    </div>
+  </body>
+</html>

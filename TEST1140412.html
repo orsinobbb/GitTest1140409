@@ -33,13 +33,14 @@
         const scoreDisplay = document.getElementById('score');
         let score = 0;
 
-        box.addEventListener('click', () => {
+        box.addEventListener('click', dealbox());
+        function dealbox(){
             score++;
             scoreDisplay.textContent = score;
             // 每次被點到就移動到隨機位置
             box.style.top = Math.random() * (window.innerHeight - 60) + 'px';
             box.style.left = Math.random() * (window.innerWidth - 60) + 'px';
-        });
+        };
     </script>
 
 </body>

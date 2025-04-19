@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Orsino Info</title>
+    <!-- 載入 Google 字型 -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* CSS Reset */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      body {
+        font-family: 'Noto Sans TC', sans-serif;
+        background: linear-gradient(135deg, #74ebd5, #acb6e5);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      
+      .container {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 12px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        max-width: 600px;
+        width: 100%;
+        padding: 30px;
+      }
+      
+      h1 {
+        text-align: center;
+        margin-bottom: 20px;
+        color: #333;
+        font-weight: 700;
+      }
+      
+      hr {
+        border: none;
+        height: 1px;
+        background: #ccc;
+        margin: 20px 0;
+      }
+      
+      h2 {
+        color: #333;
+        margin: 20px 0 10px;
+      }
+      
+      h3 {
+        font-weight: 400;
+        line-height: 1.6;
+        color: #555;
+      }
+
+      /* 按鈕區塊樣式 */
+      .btn-container {
+        margin-top: 30px;
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+      }
+      
+      .btn {
+        display: inline-block;
+        padding: 10px 20px;
+        border-radius: 6px;
+        text-decoration: none;
+        background: #007BFF;
+        color: #fff;
+        font-size: 16px;
+        transition: background 0.3s, transform 0.3s;
+      }
+      
+      .btn:hover {
+        background: #0056b3;
+        transform: translateY(-2px);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Orsino Info</h1>
+      <hr>
+      <h2>1. 個人簡介:</h2>
+      <h3>
+        這裡是我的個人簡介網站<br>
+        我是 Orsino<br>
+        大家請多多指教
+      </h3>
+      <h2>2. 專長簡介:</h2>
+      <h3>
+        這裡是我的專長簡介<br>
+        HTML / JAVA / SQL<br>
+        這句話是新增的
+      </h3>
+      <div class="btn-container">
+        <a class="btn" href="javascript:history.back()">上一頁</a>
+        <a class="btn" href="index.html">回首頁</a>
+      </div>
+    </div>
+  </body>
+</html>
