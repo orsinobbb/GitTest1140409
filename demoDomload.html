@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>瀏覽器網頁載入流程模擬器</title>
+  <style>
+    body {
+      font-family: 'Microsoft JhengHei', sans-serif;
+      background: #f5f5f5;
+      padding: 30px;
+    }
+    h1 {
+      text-align: center;
+    }
+    #log {
+      white-space: pre-line;
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+      margin-top: 20px;
+      min-height: 200px;
+    }
+    button {
+      display: block;
+      margin: 20px auto;
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      background: #0078d7;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #005fa3;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🌐 瀏覽器網頁載入流程模擬器</h1>
+  <div id="log">🕓 等待使用者輸入網址...</div>
+  <button onclick="startSimulation()">開始模擬</button>
+
+  <script>
+    async function log(msg, delay = 1000) {
+      await new Promise(res => setTimeout(res, delay));
+      const el = document.getElementById('log');
+      el.textContent += `\n${msg}`;
+    }
+
+    async function startSimulation() {
+      const logEl = document.getElementById('log');
+      logEl.textContent = "🌐 使用者輸入網址：www.example.com";
+
+      await log("🔍 DNS 查詢 example.com → 93.184.216.34");
+      await log("🌐 建立 TCP / TLS 連線...");
+      await log("📨 發出 HTTP 請求：GET /index.html");
+      await log("📥 收到伺服器回應 HTML 文件");
+      await log("🧱 開始解析 HTML，建立 DOM Tree：");
+
+      await log("📄 <html>");
+      await log("  <head>");
+      await log("    <title>頁面標題</title>");
+      await log("  </head>");
+      await log("  <body>");
+      await log("    <h1>Hello World!</h1>");
+      await log("  </body>");
+      await log("</html>");
+
+      await log("🧩 載入 CSS、圖片與 JavaScript...");
+      await log("⚡ JavaScript 開始執行");
+      await log("✅ DOMContentLoaded 事件觸發");
+      await log("🎉 畫面呈現完成，等待使用者互動");
+    }
+  </script>
+
+</body>
+</html>
