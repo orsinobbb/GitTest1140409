@@ -127,7 +127,7 @@
     const input = document.getElementById('input');
     const username = document.getElementById('username');
 
-    const apiBase = 'https://9a8a-118-161-158-7.ngrok-free.app'; // ✅ <--- 請改成你的 ngrok 網址
+    const apiBase = 'https://a2c9-118-161-158-7.ngrok-free.app'; // ✅ <--- 請改成你的 ngrok 網址
 
     function sendMessage() {
       const name = username.value.trim();
@@ -156,7 +156,13 @@
 
     async function loadMessages() {
       try {
-        const resp = await fetch("https://9a8a-118-161-158-7.ngrok-free.app/chat/messages");
+        //const resp = await fetch("https://9a8a-118-161-158-7.ngrok-free.app/chat/messages");
+        const resp = await fetch('https://a2c9-118-161-158-7.ngrok-free.app/chat/messages', {
+          method: 'GET', // 或 POST 之類
+          headers: {
+            'ngrok-skip-browser-warning': 'true'
+          }
+        });
         const data = await resp.json();
         messages.innerHTML = '';
         data.forEach(msg => {
@@ -166,8 +172,8 @@
         });
         messages.scrollTop = messages.scrollHeight;
       } catch (err) {
-        messages.innerHTML = '<i>載入失敗</i>' + err.message;
-        console.error("載入訊息錯誤：", err);
+        messages.innerHTML = '<i>載入失敗</i>' + err;
+        console.error("載入訊息錯誤：", err); 0
       }
     }
 

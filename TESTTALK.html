@@ -44,7 +44,7 @@
             const text = A2.value.trim();
             if (!name || !text) return alert('請輸入名字和訊息');
 
-            fetch('https://9a8a-118-161-158-7.ngrok-free.app/chat/send', {
+            fetch('http://localhost:8000/chat/send', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name, message: text })
@@ -57,7 +57,7 @@
         // 撈取訊息
         async function loadMessages() {
             try {
-                const resp = await fetch('https://9a8a-118-161-158-7.ngrok-free.app/chat/messages');
+                const resp = await fetch('http://localhost:8000/chat/messages');
                 const data = await resp.json();
                 A1.innerHTML = '';
                 data.forEach(msg => {
