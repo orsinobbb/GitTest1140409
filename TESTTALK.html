@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
+
 <head>
     <meta charset="UTF-8">
     <title>小聊天室</title>
@@ -8,6 +9,7 @@
             font-family: Arial, sans-serif;
             margin: 30px;
         }
+
         #messages {
             border: 1px solid #ccc;
             height: 300px;
@@ -17,6 +19,7 @@
         }
     </style>
 </head>
+
 <body>
 
     <h1>簡易聊天室</h1>
@@ -35,19 +38,44 @@
         const A2 = document.getElementById('input');
         const A3 = document.getElementById('username');
 
+        // 發送訊息
         function sendMessage() {
-            if (A2.value.trim() === '' || A3.value.trim() === '') {
-                alert('請輸入名字和訊息！');
-                return;
-            }
-            const msg = `<b>${A3.value}：</b> ${A2.value}`; //文字組合
-            const A4 = document.createElement('div'); //創造新的區域
-            A4.innerHTML = msg; //文字組合放進新區域
-            A1.appendChild(A4); //附加文字到MESSAGES
-            A2.value = ''; //清空輸入框
-            A1.scrollTop = A1.scrollHeight; // 自動捲到最下面
+            const name = A3.value.trim();
+            const text = A2.value.trim();
+            if (!name || !text) return alert('請輸入名字和訊息');
+
+            fetch('https://9a8a-118-161-158-7.ngrok-free.app/chat/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, message: text })
+            }).then(() => {
+                A2.value = '';
+                loadMessages(); // 即時刷新
+            });
         }
+
+        // 撈取訊息
+        async function loadMessages() {
+            try {
+                const resp = await fetch('https://9a8a-118-161-158-7.ngrok-free.app/chat/messages');
+                const data = await resp.json();
+                A1.innerHTML = '';
+                data.forEach(msg => {
+                    const div = document.createElement('div');
+                    div.innerHTML = `<b>${msg.name}</b> (${msg.time})：${msg.message}`;
+                    A1.appendChild(div);
+                });
+                A1.scrollTop = A1.scrollHeight;
+            } catch (err) {
+                A1.innerHTML = '<i>載入失敗</i>';
+            }
+        }
+
+        // 每 3 秒刷新
+        setInterval(loadMessages, 1000);
+        loadMessages();
     </script>
 
 </body>
+
 </html>
