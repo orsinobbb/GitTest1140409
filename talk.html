@@ -127,7 +127,8 @@
     const input = document.getElementById('input');
     const username = document.getElementById('username');
 
-    const apiBase = 'https://a2c9-118-161-158-7.ngrok-free.app'; // ✅ <--- 請改成你的 ngrok 網址
+    //const apiBase ='http://localhost:8010'
+    const apiBase = 'https://web-production-dc72d.up.railway.app'; // ✅ <--- 請改成你的 ngrok 網址
 
     function sendMessage() {
       const name = username.value.trim();
@@ -143,7 +144,7 @@
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ name, message: text })
+        body: JSON.stringify({ name: name, message: text })
       })
         .then(() => {
           input.value = '';
@@ -156,8 +157,7 @@
 
     async function loadMessages() {
       try {
-        //const resp = await fetch("https://9a8a-118-161-158-7.ngrok-free.app/chat/messages");
-        const resp = await fetch('https://a2c9-118-161-158-7.ngrok-free.app/chat/messages', {
+        const resp = await fetch(`${apiBase}/chat/messages`, {
           method: 'GET', // 或 POST 之類
           headers: {
             'ngrok-skip-browser-warning': 'true'

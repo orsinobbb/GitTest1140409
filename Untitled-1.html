@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+  <title>天氣預報 (36 小時)</title>
+
+  <style>
+    .hidden {
+      display: none;
+    }
+
+    .tab-btn {
+      margin-right: 10px;
+      padding: 6px 12px;
+      cursor: pointer;
+      background-color: #0078D4;
+      color: white;
+      border: none;
+      border-radius: 4px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    th,
+    td {
+      border: 1px solid #ccc;
+      padding: 8px;
+    }
+
+    th {
+      background-color: #923434;
+      color: white;
+    }
+  </style>
+
+</head>
+
+<body>
+  <h1>資料表切換展示</h1>
+  <div>
+    <button class="tab-btn" onclick="showTab('customers')">顧客資料</button>
+    <button class="tab-btn" onclick="showTab('orders')">訂單資料</button>
+  </div>
+  <div>
+    <div id="tableContainer" class="hidden">載入中…</div>
+    <div id="tableContainer2" class="hidden">載入中…</div>
+  </div>
+
+  <script> //url要改
+    const apiUrl2 = 'http://localhost:8000/api/hello';
+    const apiCustomer = 'http://localhost:8000/api/customers';
+
+    const container1 = document.getElementById('tableContainer');
+    const container2 = document.getElementById('tableContainer2');
+
+    //1. 讀取資料fetch        固定url -> 不固定
+    //2. 產生table html  (jsondata+table混合產生)
+    //3. 顯示table到指定div   固定element -> 不固定
+    async function loadTable(url, todiv) {
+      try {
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(`HTTP 錯誤: ${resp.status}`);
+        const data = await resp.json();
+        if (!Array.isArray(data) || data.length === 0) {
+          container.textContent = '沒有資料';
+          return;
+        }
+        // 產生表格
+        let table = '<table><thead><tr>';
+        // 自動產出表頭
+        const keys = Object.keys(data[0]);
+        keys.forEach(k => {
+          table += `<th>${k}</th>`;
+        });
+        table += '</tr></thead><tbody>';
+        // 每一列資料
+        data.forEach(row => {
+          table += '<tr>';
+          keys.forEach(k => {
+            table += `<td>${row[k]}</td>`;
+          });
+          table += '</tr>';
+        });
+        table += '</tbody></table>';
+        todiv.innerHTML = table;
+      } catch (err) {
+        todiv.textContent = '載入失敗：' + err.message;
+      }
+    }
+
+    loadTable(apiUrl2, container2);
+    loadTable(apiCustomer, container1);
+    function showTab(name) {
+      switch(name){
+        case "customers":
+          container1.style.display = "block";
+          break;
+        case "orders":
+          container2.style.display = "block";
+          break;
+        default:
+          break;
+      }
+    }
+  </script>
+</body>
+
+</html>

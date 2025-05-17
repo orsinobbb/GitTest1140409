@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>簡單表單</title>
+</head>
+<body>
+  <h2>客戶新增表單</h2>
+  <label for="name">姓名：</label>
+  <input type="text" id="name" name="name">
+  <button onlick="insertpost()">新增</button>
+    <script>
+      function insertpost() {
+        //姓名正確的
+        var name = document.getElementById("name").value;
+        if(name){
+            //格式檢查
+            fetch('http://localhost:8000/api/2/insert', {
+                    method: 'POST',
+                    mode: 'cors', // ✅ 很關鍵
+                    body: name
+            })
+        }
+      }
+    </script>
+</body>
+</html>
