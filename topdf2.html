@@ -14,12 +14,27 @@
       border: 1px solid #ccc;
       margin-top: 10px;
     }
+    .controls {
+      margin: 10px 0;
+    }
   </style>
 </head>
 <body>
   <h3>上傳 JPG 預覽並轉成 PDF</h3>
   <input type="file" id="fileInput" accept="image/jpeg" multiple>
+
+  <div class="controls">
+    <label>
+      列印方向：
+      <select id="orientationSelect">
+        <option value="portrait">縱向（portrait）</option>
+        <option value="landscape">橫向（landscape）</option>
+      </select>
+    </label>
+  </div>
+
   <div id="previewContainer"></div>
+
   <button onclick="generatePDF()">產生 PDF 預覽</button>
   <button onclick="downloadPDF()" disabled id="downloadBtn">下載 PDF</button>
 
@@ -46,13 +61,14 @@
     async function generatePDF() {
       const { jsPDF } = window.jspdf;
       const files = document.getElementById('fileInput').files;
+      const orientation = document.getElementById('orientationSelect').value;
 
       if (files.length === 0) {
         alert("請上傳圖片");
         return;
       }
 
-      const pdf = new jsPDF();
+      const pdf = new jsPDF({ orientation });
       for (let i = 0; i < files.length; i++) {
         const imgData = await fileToBase64(files[i]);
         const img = new Image();
@@ -60,11 +76,12 @@
 
         await new Promise(resolve => {
           img.onload = () => {
-            const imgWidth = 210;
-            const ratio = img.height / img.width;
-            const imgHeight = imgWidth * ratio;
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const imgRatio = img.height / img.width;
+            const drawHeight = pageWidth * imgRatio;
             if (i > 0) pdf.addPage();
-            pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
+            pdf.addImage(imgData, 'JPEG', 0, 0, pageWidth, drawHeight);
             resolve();
           };
         });
