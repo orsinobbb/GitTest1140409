@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LINE 聊天紀錄</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        #chatbox {
+            width: 100%;
+            height: 300px;
+            overflow-y: scroll;
+            border: 1px solid #ccc;
+            margin-top: 20px;
+            padding: 10px;
+        }
+        .message {
+            margin-bottom: 10px;
+        }
+        .user {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<h1>歡迎來到 LINE 官方帳號</h1>
+<p>請掃描以下 QR code 並開始對話：</p>
+
+<!-- QR Code 顯示區域 -->
+<img src="https://qr.api.line.me/L/xxxxxxx.png" alt="QR Code" />
+
+<p>加入後，您將會看到您的對話歷史。</p>
+
+<div id="chatbox">
+    <!-- 訊息顯示區 -->
+</div>
+
+<script>
+    // 定期從 API Server 更新訊息
+    function fetchMessages() {
+        $.get("/api/chat", function(data) {
+            $("#chatbox").empty();
+            data.forEach(function(msg) {
+                $("#chatbox").append(`<div class="message"><span class="user">${msg.user}:</span> ${msg.text}</div>`);
+            });
+            $("#chatbox").scrollTop($("#chatbox")[0].scrollHeight);
+        });
+    }
+
+    // 每5秒更新一次訊息
+    setInterval(fetchMessages, 5000);
+    fetchMessages(); // 初始載入
+</script>
+
+</body>
+</html>
