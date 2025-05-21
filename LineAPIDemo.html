@@ -54,7 +54,7 @@
             $.get("https://web-production-dc72d.up.railway.app/line/messages", function (data) {
                 $("#chatbox").empty();
                 data.forEach(function (msg) {
-                    $("#chatbox").append(`<div class="message"><span class="user">${msg.user}:</span> ${msg.text}</div>`);
+                    $("#chatbox").append(`<div class="message"><span class="user">${msg.user}:</span> ${msg.message}</div>`);
                 });
                 $("#chatbox").scrollTop($("#chatbox")[0].scrollHeight);
             });
