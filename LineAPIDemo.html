@@ -51,7 +51,7 @@
     <script>
         // 定期從 API Server 更新訊息
         function fetchMessages() {
-            $.get("/api/messages", function (data) {
+            $.get("https://web-production-dc72d.up.railway.app/api/messages", function (data) {
                 $("#chatbox").empty();
                 data.forEach(function (msg) {
                     $("#chatbox").append(`<div class="message"><span class="user">${msg.user}:</span> ${msg.text}</div>`);
