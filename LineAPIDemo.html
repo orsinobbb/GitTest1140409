@@ -1,70 +1,147 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LINE 聊天紀錄</title>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>[API] LINE 聊天紀錄 + GoogleSheet 儲存</title>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      margin: 30px auto;
+      max-width: 800px;
+      background: #f9f9f9;
+      color: #333;
+      padding: 20px;
+    }
 
-        #chatbox {
-            width: 100%;
-            height: 300px;
-            overflow-y: scroll;
-            border: 1px solid #ccc;
-            margin-top: 20px;
-            padding: 10px;
-        }
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+    }
 
-        .message {
-            margin-bottom: 10px;
-        }
+    a img {
+      display: block;
+      margin: 10px auto;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
 
-        .user {
-            font-weight: bold;
-        }
-    </style>
+    .tabs {
+      margin-top: 30px;
+    }
+
+    .tabs input[type="radio"] {
+      display: none;
+    }
+
+    .tab-label {
+      padding: 12px 20px;
+      margin-right: 5px;
+      background: #e0e0e0;
+      border-radius: 5px 5px 0 0;
+      display: inline-block;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .tab-label:hover {
+      background: #d0d0d0;
+    }
+
+    .tabs input[type="radio"]:checked + .tab-label {
+      background: #ffffff;
+      border-bottom: 1px solid white;
+      font-weight: bold;
+      box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
+    }
+
+    .tab-content {
+      display: none;
+      background: white;
+      border: 1px solid #ccc;
+      padding: 20px;
+      border-radius: 0 5px 5px 5px;
+    }
+
+    #tab1:checked ~ #content1,
+    #tab2:checked ~ #content2 {
+      display: block;
+    }
+
+    #chatbox {
+      height: 300px;
+      overflow-y: auto;
+      padding: 10px;
+      border: 1px solid #ddd;
+      background: #fafafa;
+      border-radius: 6px;
+    }
+
+    .message {
+      background: #e3f2fd;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .message .user {
+      font-weight: bold;
+      color: #2c3e50;
+      margin-right: 5px;
+    }
+
+    iframe {
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+  </style>
 </head>
-
 <body>
 
-    <h1>歡迎來到 LINE 官方帳號</h1>
-    <p>請掃描以下 QR code 並開始對話：</p>
+  <h1>📲 LINE 聊天紀錄與儲存展示</h1>
+  <p style="text-align: center;">請掃描以下 QR Code 加入官方帳號：</p>
 
-    <!-- QR Code 顯示區域 -->
-    <a href="LINE://ti/p/@679efigf">
-        <img src="qrcode.png" style="width: 125px;" alt="LINE QR Code">
-    </a>
+  <a href="LINE://ti/p/@679efigf">
+    <img src="qrcode.png" width="150" alt="LINE QR Code">
+  </a>
 
+  <p style="text-align: center;">加入後，傳送訊息即可自動儲存並於下方分頁查看對話與儲存狀態。</p>
 
-    <p>加入後，您將會看到您的對話歷史。</p>
+  <div class="tabs">
+    <input type="radio" id="tab1" name="tabgroup" checked>
+    <label class="tab-label" for="tab1">💬 對話紀錄</label>
 
-    <div id="chatbox">
-        <!-- 訊息顯示區 -->
+    <input type="radio" id="tab2" name="tabgroup">
+    <label class="tab-label" for="tab2">📄 Google Sheets</label>
+
+    <div id="content1" class="tab-content">
+      <div id="chatbox">載入中...</div>
     </div>
 
-    <script>
-        // 定期從 API Server 更新訊息
-        function fetchMessages() {
-            $.get("https://web-production-dc72d.up.railway.app/line/messages", function (data) {
-                $("#chatbox").empty();
-                data.forEach(function (msg) {
-                    $("#chatbox").append(`<div class="message"><span class="user">${msg.user}:</span> ${msg.message}</div>`);
-                });
-                $("#chatbox").scrollTop($("#chatbox")[0].scrollHeight);
-            });
-        }
+    <div id="content2" class="tab-content">
+      <iframe 
+        src="https://docs.google.com/spreadsheets/d/17zvYjy2bDOQtlrX2OUwzIWobDrThoNWSG6OpJSd-B_Q/preview"
+        width="100%" height="400">
+      </iframe>
+    </div>
+  </div>
 
-        // 每5秒更新一次訊息
-        setInterval(fetchMessages, 5000);
-        fetchMessages(); // 初始載入
-    </script>
+  <script>
+    function fetchMessages() {
+      $.get("https://web-production-dc72d.up.railway.app/line/messages", function (data) {
+        const chatbox = $("#chatbox").empty();
+        data.forEach(msg => {
+          chatbox.append(`<div class="message"><span class="user">${msg.user}</span>${msg.message}</div>`);
+        });
+        chatbox.scrollTop(chatbox[0].scrollHeight);
+      });
+    }
+
+    setInterval(fetchMessages, 5000);
+    fetchMessages();
+  </script>
 
 </body>
-
 </html>

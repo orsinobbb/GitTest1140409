@@ -19,12 +19,15 @@
       let pname = document.getElementById("pname").value;
       let price = document.getElementById("price").value;
       if (pname && price) {
+        let returnbody= JSON.stringify({ table:"products", pname: pname,  price: price});
+        console.log(returnbody);
         //格式檢查
         fetch('http://localhost:8000/api/2/insert', {
           method: 'POST',
           mode: 'cors', // ✅ 很關鍵
-          body: JSON.stringify({ table:"products", pname: pname,  price: price}),
+          body: returnbody,
         })
+        console.log("完成fetch")
       } else {
         alert("請輸入資料");
       }
