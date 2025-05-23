@@ -1,0 +1,29 @@
+body {
+  font-family: sans-serif;
+  text-align: center;
+}
+#board {
+  display: grid;
+  grid-template-columns: repeat(8, 40px);
+  grid-template-rows: repeat(8, 40px);
+  gap: 2px;
+  margin: 20px auto;
+  width: fit-content;
+}
+.cell {
+  width: 40px;
+  height: 40px;
+  background-color: green;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.cell.black::after, .cell.white::after {
+  content: '';
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: block;
+  margin: auto;
+}
+.cell.black::after { background: black; }
+.cell.white::after { background: white; }

@@ -24,6 +24,7 @@
     const pname = document.getElementById("pname");
     const sname = document.getElementById("sname");
     const num = document.getElementById("num");
+    //function optiondataadd("api","idCust","CuName")
     //取得客戶名稱在新增到select id:cname
     async function cnameAdd() {
     try {
@@ -95,10 +96,12 @@
     function insertpost() {
       //姓名正確的
       let pname = document.getElementById("pname").value;
-      let num= document.getElementById("num").value;
-      /*
-      if (pname && price) {
-        let returnbody= JSON.stringify({ table:"products", pname: pname,  price: price});
+      let num= document.getElementById("num").value;     
+      let cname= document.getElementById("cname").value;
+      let sname= document.getElementById("sname").value;
+      
+      if (pname && num && cname && sname) {
+        let returnbody= JSON.stringify({ table:"orders", pname: pname,  num:num, cname:cname, sname:sname});
         console.log(returnbody);
         //格式檢查
         fetch('http://localhost:8000/api/2/insert', {
@@ -110,7 +113,7 @@
       } else {
         alert("請輸入資料");
       }
-        */
+    
     }
   </script>
 </body>
