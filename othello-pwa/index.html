@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -7,17 +8,16 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
   <h1>黑白棋（vs AI）</h1>
   <button id="installBtn" style="display:none;">📲 加到桌面</button>
   <div id="board"></div>
   <p id="status">輪到：黑棋（你）</p>
-  <script src="app.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('service-worker.js');
     }
-
     let deferredPrompt;
     const installBtn = document.getElementById('installBtn');
     window.addEventListener('beforeinstallprompt', (e) => {
@@ -25,7 +25,6 @@
       deferredPrompt = e;
       installBtn.style.display = 'inline-block';
     });
-
     installBtn.addEventListener('click', async () => {
       if (!deferredPrompt) return;
       deferredPrompt.prompt();
@@ -39,5 +38,7 @@
       installBtn.style.display = 'none';
     });
   </script>
+  <script src="app.js?v=1"></script>
 </body>
+
 </html>

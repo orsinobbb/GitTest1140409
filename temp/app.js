@@ -1,16 +1,35 @@
+
+alert("✅ JS 已啟動");
+
 const boardEl = document.getElementById('board');
 const statusEl = document.getElementById('status');
+const difficultyEl = document.createElement('select');
+difficultyEl.innerHTML = `
+  <option value="2">難度：簡單</option>
+  <option value="4" selected>難度：中等</option>
+  <option value="6">難度：困難</option>
+  <option value="99">難度：進階AI</option>
+`;
+document.body.insertBefore(difficultyEl, boardEl);
+let aiDifficulty = parseInt(difficultyEl.value);
+difficultyEl.onchange = () => {
+  aiDifficulty = parseInt(difficultyEl.value);
+};
+
 let board = Array(8).fill(null).map(() => Array(8).fill(null));
 let current = 'black';
 
+const corners = [[0, 0], [0, 7], [7, 0], [7, 7]];
+const bad_diagonals = [[1, 1], [1, 6], [6, 1], [6, 6]];
+const edge_exclude_corner = (x, y) =>
+  ((x === 0 || x === 7) && y > 1 && y < 6) ||
+  ((y === 0 || y === 7) && x > 1 && x < 6);
+const near_edges = [[0, 1], [1, 0], [1, 7], [0, 6], [6, 0], [7, 1], [6, 7], [7, 6]];
 function inBounds(x, y) {
   return x >= 0 && x < 8 && y >= 0 && y < 8;
 }
 
-const directions = [
-  [0,1],[1,0],[0,-1],[-1,0],
-  [1,1],[-1,-1],[1,-1],[-1,1]
-];
+const directions = [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, -1], [1, -1], [-1, 1]];
 
 function validMove(x, y, color) {
   if (board[y][x]) return false;
@@ -49,7 +68,6 @@ function flipPieces(x, y, color, boardRef) {
     }
   }
 }
-
 function place(x, y) {
   if (!validMove(x, y, current)) return;
   board[y][x] = current;
@@ -80,29 +98,6 @@ function simulateMove(boardState, x, y, color) {
   return newBoard;
 }
 
-function minimax(boardState, depth, maximizingPlayer) {
-  const color = maximizingPlayer ? 'white' : 'black';
-
-  if (depth === 0) return [evaluate(boardState), null];
-
-  const moves = getValidMovesForColor(boardState, color);
-  if (moves.length === 0) return [evaluate(boardState), null];
-
-  let bestValue = maximizingPlayer ? -Infinity : Infinity;
-  let bestMove = null;
-
-  for (const [x, y] of moves) {
-    const newBoard = simulateMove(boardState, x, y, color);
-    const [val] = minimax(newBoard, depth - 1, !maximizingPlayer);
-    if ((maximizingPlayer && val > bestValue) || (!maximizingPlayer && val < bestValue)) {
-      bestValue = val;
-      bestMove = [x, y];
-    }
-  }
-
-  return [bestValue, bestMove];
-}
-
 function getValidMovesForColor(boardState, color) {
   const moves = [];
   for (let y = 0; y < 8; y++) {
@@ -114,12 +109,61 @@ function getValidMovesForColor(boardState, color) {
   }
   return moves;
 }
+function alphabeta(boardState, depth, alpha, beta, maximizingPlayer) {
+  const color = maximizingPlayer ? 'white' : 'black';
+  if (depth === 0) return [evaluate(boardState), null];
+
+  const moves = getValidMovesForColor(boardState, color);
+  if (moves.length === 0) return [evaluate(boardState), null];
+
+  let bestMove = null;
+
+  for (const [x, y] of moves) {
+    const newBoard = simulateMove(boardState, x, y, color);
+    const [val] = alphabeta(newBoard, depth - 1, alpha, beta, !maximizingPlayer);
+
+    if (maximizingPlayer) {
+      if (val > alpha) {
+        alpha = val;
+        bestMove = [x, y];
+      }
+      if (alpha >= beta) break;
+    } else {
+      if (val < beta) {
+        beta = val;
+        bestMove = [x, y];
+      }
+      if (alpha >= beta) break;
+    }
+  }
+
+  return [maximizingPlayer ? alpha : beta, bestMove];
+}
+
+function selectAdvancedMove(moves) {
+  for (let [x, y] of moves) {
+    if (corners.some(([cx, cy]) => cx === x && cy === y)) return [x, y];
+  }
+  for (let [x, y] of moves) {
+    if (edge_exclude_corner(x, y)) return [x, y];
+  }
+  const filtered = moves.filter(([x, y]) =>
+    !bad_diagonals.some(([bx, by]) => bx === x && by === y) &&
+    !near_edges.some(([ex, ey]) => ex === x && ey === y)
+  );
+  return filtered.length > 0 ? filtered[Math.floor(Math.random() * filtered.length)] : moves[0];
+}
 
 function aiMove() {
-  const [_, bestMove] = minimax(board, 3, true);
-  if (bestMove) {
-    const [x, y] = bestMove;
+  const moves = getValidMoves('white');
+  if (moves.length === 0) return;
+
+  if (aiDifficulty === 99) {
+    const [x, y] = selectAdvancedMove(moves);
     place(x, y);
+  } else {
+    const [_, bestMove] = alphabeta(board, aiDifficulty, -Infinity, Infinity, true);
+    if (bestMove) place(...bestMove);
   }
 }
 
