@@ -1,23 +1,44 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>黑白棋 PWA</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="style.css" />
-</head>
 
+  <!-- ✅ SEO Meta 標籤 -->
+  <meta name="description" content="免費好玩！AI 對戰黑白棋網頁版，支援安裝與離線遊玩。">
+  <meta name="keywords" content="黑白棋,Othello,網頁遊戲,AI 對戰,PWA,免費遊戲,棋類遊戲">
+  <meta name="author" content="Orsino Tseng">
+  <meta name="robots" content="index, follow">
+
+  <!-- ✅ 社群分享（OG） -->
+  <meta property="og:title" content="黑白棋 PWA – 免費 AI 對戰！"/>
+  <meta property="og:description" content="免下載的黑白棋遊戲！支援離線、PWA、AI 對戰與安裝"/>
+  <meta property="og:image" content="icon-512.png"/>
+  <meta property="og:url" content="https://你的網址/"/>
+  <meta name="twitter:card" content="summary_large_image"/>
+</head>
 <body>
   <h1>黑白棋（vs AI）</h1>
+
+  <!-- ✅ SEO 友善介紹 -->
+  <p>
+    這是一款支援 AI 對戰的免費黑白棋遊戲，適合休閒娛樂與邏輯訓練。
+    使用 PWA 技術，讓你可離線使用、加到桌面，就像原生 App 一樣操作順暢。
+    遊戲提供簡單、中等、困難與進階 AI 難度，歡迎挑戰電腦！
+  </p>
+
   <button id="installBtn" style="display:none;">📲 加到桌面</button>
   <div id="board"></div>
   <p id="status">輪到：黑棋（你）</p>
+
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('service-worker.js');
     }
+
     let deferredPrompt;
     const installBtn = document.getElementById('installBtn');
     window.addEventListener('beforeinstallprompt', (e) => {
@@ -25,6 +46,7 @@
       deferredPrompt = e;
       installBtn.style.display = 'inline-block';
     });
+
     installBtn.addEventListener('click', async () => {
       if (!deferredPrompt) return;
       deferredPrompt.prompt();
@@ -40,5 +62,4 @@
   </script>
   <script src="app.js?v=1"></script>
 </body>
-
 </html>
