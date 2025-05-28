@@ -1,0 +1,152 @@
+<!-- Vue 3 單頁應用（SPA） + 側邊欄導覽 + fetch 串接 -->
+<!-- 可用於 index.html，需搭配 Vue 3 CDN -->
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vue SPA 系統導覽</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", sans-serif;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .sidebar {
+      width: 220px;
+      background-color: #2c3e50;
+      color: white;
+      padding-top: 20px;
+      flex-shrink: 0;
+    }
+    .sidebar h2 {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .sidebar a {
+      display: block;
+      padding: 12px 20px;
+      color: white;
+      text-decoration: none;
+    }
+    .sidebar a:hover {
+      background: #34495e;
+    }
+    .content {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="sidebar">
+      <h2>功能選單</h2>
+      <a href="#" @click="page='customer'">➕ 新增客戶</a>
+      <a href="#" @click="page='product'">📦 新增產品</a>
+      <a href="#" @click="page='query'">📋 查詢資料</a>
+    </div>
+    <div class="content">
+      <component :is="currentPage"></component>
+    </div>
+  </div>
+
+  <script>
+    const CustomerForm = {
+      template: `
+        <div>
+          <h1>新增客戶</h1>
+          <form @submit.prevent="submit">
+            <input v-model="name" placeholder="客戶名稱" required />
+            <button type="submit">新增</button>
+          </form>
+          <p v-if="result">✅ {{ result }}</p>
+        </div>
+      `,
+      data() {
+        return { name: '', result: '' }
+      },
+      methods: {
+        async submit() {
+          const res = await fetch('/api/addCustomer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: this.name })
+          });
+          const data = await res.json();
+          this.result = data.message || '新增成功';
+        }
+      }
+    };
+
+    const ProductForm = {
+      template: `
+        <div>
+          <h1>新增產品</h1>
+          <form @submit.prevent="submit">
+            <input v-model="product" placeholder="產品名稱" required />
+            <button type="submit">新增</button>
+          </form>
+          <p v-if="result">✅ {{ result }}</p>
+        </div>
+      `,
+      data() {
+        return { product: '', result: '' };
+      },
+      methods: {
+        async submit() {
+          const res = await fetch('/api/addProduct', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ product: this.product })
+          });
+          const data = await res.json();
+          this.result = data.message || '新增成功';
+        }
+      }
+    };
+
+    const QueryTable = {
+      template: `
+        <div>
+          <h1>查詢資料</h1>
+          <table border="1" cellpadding="8">
+            <tr><th>ID</th><th>名稱</th></tr>
+            <tr v-for="item in items" :key="item.id">
+              <td>{{ item.id }}</td><td>{{ item.name }}</td>
+            </tr>
+          </table>
+        </div>
+      `,
+      data() {
+        return { items: [] };
+      },
+      async mounted() {
+        const res = await fetch('/api/query');
+        this.items = await res.json();
+      }
+    };
+
+    const app = Vue.createApp({
+      data() {
+        return { page: '' }
+      },
+      computed: {
+        currentPage() {
+          return this.page === 'customer' ? CustomerForm
+               : this.page === 'product' ? ProductForm
+               : this.page === 'query' ? QueryTable
+               : { template: '<h1>請選擇功能</h1>' }
+        }
+      }
+    });
+
+    app.mount('#app');
+  </script>
+</body>
+</html>

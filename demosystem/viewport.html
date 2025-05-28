@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>系統導覽頁</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f2f2f2;
+      padding: 40px;
+    }
+    .container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 24px;
+    }
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      text-align: center;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .card:hover {
+      transform: scale(1.03);
+    }
+    .card h3 {
+      margin: 12px 0 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>功能選單</h1>
+  <div class="container">
+    <div class="card" onclick="location.href='addCustomer.html'">
+      <h3>新增客戶</h3>
+    </div>
+    <div class="card" onclick="location.href='addProduct.html'">
+      <h3>新增產品</h3>
+    </div>
+    <div class="card" onclick="location.href='queryTable.html'">
+      <h3>查詢資料</h3>
+    </div>
+    <!-- 可繼續擴充 -->
+  </div>
+</body>
+</html>

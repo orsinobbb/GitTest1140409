@@ -1,0 +1,268 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>尼泊爾虎棋 - 完整最終版</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; }
+    canvas { background: #fefefe; border: 2px solid #000; margin-top: 10px; }
+    button { margin: 5px; padding: 6px 12px; }
+  </style>
+</head>
+<body>
+  <h1>尼泊爾虎棋 - 最終加強版</h1>
+  <p id="status">遊戲開始，輪到山羊放置</p>
+  <p id="goatStatus">尚未放置山羊：20 / 棋盤上山羊：0 / 被吃掉：0</p>
+  <canvas id="board" width="500" height="500"></canvas><br>
+  <button onclick="saveGame()">💾 儲存棋局</button>
+  <button onclick="resetGame()">🔁 重新開始</button>
+
+  <script>
+    const canvas = document.getElementById("board");
+    const ctx = canvas.getContext("2d");
+    const statusText = document.getElementById("status");
+    const goatStatusText = document.getElementById("goatStatus");
+
+    const size = 5;
+    const spacing = canvas.width / (size + 1);
+    const totalGoats = 20;
+    let goats = [];
+    let tigers = [];
+    let goatsToPlace = totalGoats;
+    let turn = 'goat';
+    let selectedTiger = null;
+    let selectedGoat = null;
+    let gameOver = false;
+
+    function validDirs(i, j) {
+      const isEven = (i + j) % 2 === 0;
+      const dirs = [
+        { di: 0, dj: 1 }, { di: 1, dj: 0 },
+        { di: 0, dj: -1 }, { di: -1, dj: 0 }
+      ];
+      if (isEven) {
+        dirs.push({ di: 1, dj: 1 }, { di: -1, dj: -1 }, { di: 1, dj: -1 }, { di: -1, dj: 1 });
+      }
+      return dirs;
+    }
+
+    function coord(i, j) {
+      return { x: (i + 1) * spacing, y: (j + 1) * spacing };
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let i = 0; i < size; i++) {
+        for (let j = 0; j < size; j++) {
+          const from = coord(i, j);
+          for (const { di, dj } of validDirs(i, j)) {
+            const ni = i + di, nj = j + dj;
+            if (ni >= 0 && ni < size && nj >= 0 && nj < size) {
+              const to = coord(ni, nj);
+              ctx.beginPath();
+              ctx.moveTo(from.x, from.y);
+              ctx.lineTo(to.x, to.y);
+              ctx.stroke();
+            }
+          }
+        }
+      }
+      for (let i = 0; i < size; i++) {
+        for (let j = 0; j < size; j++) {
+          const { x, y } = coord(i, j);
+          ctx.beginPath();
+          ctx.arc(x, y, 5, 0, Math.PI * 2);
+          ctx.fillStyle = "#000";
+          ctx.fill();
+        }
+      }
+      for (const g of goats) drawPiece(g, "gray");
+      for (const t of tigers) drawPiece(t, "orange");
+
+      if (selectedTiger) {
+        const { x, y } = coord(selectedTiger.i, selectedTiger.j);
+        ctx.beginPath();
+        ctx.arc(x, y, 15, 0, Math.PI * 2);
+        ctx.strokeStyle = "blue";
+        ctx.stroke();
+      }
+      if (selectedGoat) {
+        const { x, y } = coord(selectedGoat.i, selectedGoat.j);
+        ctx.beginPath();
+        ctx.arc(x, y, 15, 0, Math.PI * 2);
+        ctx.strokeStyle = "green";
+        ctx.stroke();
+      }
+
+      updateGoatStats();
+    }
+
+    function drawPiece(pos, color) {
+      const { x, y } = coord(pos.i, pos.j);
+      ctx.beginPath();
+      ctx.arc(x, y, 12, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+    }
+
+    function getGrid(x, y) {
+      for (let i = 0; i < size; i++) {
+        for (let j = 0; j < size; j++) {
+          const { x: cx, y: cy } = coord(i, j);
+          if (Math.hypot(cx - x, cy - y) < 15) return { i, j };
+        }
+      }
+      return null;
+    }
+
+    function isOccupied(i, j) {
+      return [...goats, ...tigers].some(p => p.i === i && p.j === j);
+    }
+
+    function findPieceAt(i, j, list) {
+      return list.find(p => p.i === i && p.j === j);
+    }
+
+    function updateGoatStats() {
+      const eaten = totalGoats - goats.length - goatsToPlace;
+      goatStatusText.textContent =
+        `尚未放置山羊：${goatsToPlace} / 棋盤上山羊：${goats.length} / 被吃掉：${eaten}`;
+    }
+
+    function canTigerMove(t) {
+      return validDirs(t.i, t.j).some(({ di, dj }) => {
+        const ni = t.i + di, nj = t.j + dj;
+        if (ni >= 0 && ni < size && nj >= 0 && nj < size) {
+          if (!isOccupied(ni, nj)) return true;
+          const ni2 = t.i + 2 * di, nj2 = t.j + 2 * dj;
+          if (ni2 >= 0 && ni2 < size && nj2 >= 0 && nj2 < size &&
+              !isOccupied(ni2, nj2) && findPieceAt(ni, nj, goats)) return true;
+        }
+        return false;
+      });
+    }
+
+    function checkVictory() {
+      const eaten = totalGoats - goats.length - goatsToPlace;
+      const tigersStuck = tigers.every(t => !canTigerMove(t));
+      if (tigersStuck) {
+        gameOver = true;
+        statusText.textContent = "山羊勝利！所有老虎被困住。";
+      } else if (eaten >= 6) {
+        gameOver = true;
+        statusText.textContent = "老虎勝利！吃掉 6 隻山羊。";
+      }
+    }
+
+    function saveGame() {
+      const state = {
+        goats, tigers, goatsToPlace, turn
+      };
+      localStorage.setItem("baghchal_save", JSON.stringify(state));
+      alert("✅ 棋局已儲存！");
+    }
+
+    function resetGame() {
+      if (!confirm("確定要重新開始遊戲？")) return;
+      startGame();
+    }
+
+    function loadGame() {
+      const saved = localStorage.getItem("baghchal_save");
+      if (!saved) return startGame();
+      const state = JSON.parse(saved);
+      goats = state.goats || [];
+      tigers = state.tigers || [];
+      goatsToPlace = state.goatsToPlace ?? 20;
+      turn = state.turn || 'goat';
+      selectedTiger = null;
+      selectedGoat = null;
+      gameOver = false;
+      statusText.textContent = `載入成功，輪到 ${turn === 'goat' ? '山羊' : '老虎'}`;
+      draw();
+    }
+
+    function startGame() {
+      goats = [];
+      tigers = [
+        { i: 0, j: 0 }, { i: 0, j: 4 },
+        { i: 4, j: 0 }, { i: 4, j: 4 }
+      ];
+      goatsToPlace = totalGoats;
+      turn = 'goat';
+      selectedTiger = null;
+      selectedGoat = null;
+      gameOver = false;
+      statusText.textContent = "遊戲開始，輪到山羊放置";
+      draw();
+    }
+
+    canvas.addEventListener("click", e => {
+      if (gameOver) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left, y = e.clientY - rect.top;
+      const grid = getGrid(x, y);
+      if (!grid) return;
+      const { i, j } = grid;
+
+      if (turn === 'goat') {
+        if (goatsToPlace > 0 && !isOccupied(i, j)) {
+          goats.push({ i, j });
+          goatsToPlace--;
+          turn = 'tiger';
+          statusText.textContent = "輪到老虎";
+        } else if (goatsToPlace === 0) {
+          const g = findPieceAt(i, j, goats);
+          if (g) {
+            selectedGoat = (selectedGoat === g) ? null : g;
+          } else if (selectedGoat && !isOccupied(i, j)) {
+            const dx = i - selectedGoat.i;
+            const dy = j - selectedGoat.j;
+            const isValid = validDirs(selectedGoat.i, selectedGoat.j).some(d => d.di === dx && d.dj === dy);
+            if (isValid) {
+              selectedGoat.i = i;
+              selectedGoat.j = j;
+              selectedGoat = null;
+              turn = 'tiger';
+              statusText.textContent = "輪到老虎";
+            }
+          }
+        }
+      } else if (turn === 'tiger') {
+        const t = findPieceAt(i, j, tigers);
+        if (t) {
+          selectedTiger = (selectedTiger === t) ? null : t;
+        } else if (selectedTiger) {
+          const dx = i - selectedTiger.i;
+          const dy = j - selectedTiger.j;
+          const isValidMove = validDirs(selectedTiger.i, selectedTiger.j).some(d => d.di === dx && d.dj === dy);
+          const isValidJump = validDirs(selectedTiger.i, selectedTiger.j).some(d => d.di * 2 === dx && d.dj * 2 === dy);
+          if (isValidMove && !isOccupied(i, j)) {
+            selectedTiger.i = i;
+            selectedTiger.j = j;
+            selectedTiger = null;
+            turn = 'goat';
+            statusText.textContent = "輪到山羊";
+          } else if (isValidJump) {
+            const mi = selectedTiger.i + dx / 2;
+            const mj = selectedTiger.j + dy / 2;
+            if (findPieceAt(mi, mj, goats) && !isOccupied(i, j)) {
+              goats.splice(goats.indexOf(findPieceAt(mi, mj, goats)), 1);
+              selectedTiger.i = i;
+              selectedTiger.j = j;
+              selectedTiger = null;
+              turn = 'goat';
+              statusText.textContent = "輪到山羊";
+            }
+          }
+        }
+        checkVictory();
+      }
+      draw();
+    });
+
+    loadGame();
+  </script>
+</body>
+</html>
