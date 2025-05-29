@@ -1,15 +1,28 @@
-
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <title>尼泊爾虎棋 - 完整最終版</title>
   <style>
-    body { font-family: sans-serif; text-align: center; }
-    canvas { background: #fefefe; border: 2px solid #000; margin-top: 10px; }
-    button { margin: 5px; padding: 6px 12px; }
+    body {
+      font-family: sans-serif;
+      text-align: center;
+    }
+
+    canvas {
+      background: #fefefe;
+      border: 2px solid #000;
+      margin-top: 10px;
+    }
+
+    button {
+      margin: 5px;
+      padding: 6px 12px;
+    }
   </style>
 </head>
+
 <body>
   <h1>尼泊爾虎棋 - 最終加強版</h1>
   <p id="status">遊戲開始，輪到山羊放置</p>
@@ -137,7 +150,7 @@
           if (!isOccupied(ni, nj)) return true;
           const ni2 = t.i + 2 * di, nj2 = t.j + 2 * dj;
           if (ni2 >= 0 && ni2 < size && nj2 >= 0 && nj2 < size &&
-              !isOccupied(ni2, nj2) && findPieceAt(ni, nj, goats)) return true;
+            !isOccupied(ni2, nj2) && findPieceAt(ni, nj, goats)) return true;
         }
         return false;
       });
@@ -265,4 +278,5 @@
     loadGame();
   </script>
 </body>
+
 </html>
