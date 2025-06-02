@@ -66,6 +66,24 @@
         //3. 顯示table到指定div   固定element -> 不固定
         async function loadTable(url, todiv) {
             try {
+                let tablename=''
+                switch(url){
+                    case apiCustomer:
+                        tablename='customers'
+                        break
+                    case apiOrder:
+                        tablename='orders'
+                        break
+                    case apiProduct:
+                        tablename='products'
+                        break
+                    case apiShipper:
+                        tablename='shippers'
+                        break
+                    case apiCategory:
+                        tablename='categorys'
+                        break
+                }
                 const resp = await fetch(url);
                 if (!resp.ok) throw new Error(`HTTP 錯誤: ${resp.status}`);
                 const data = await resp.json();//[{},{}]
@@ -85,7 +103,8 @@
                 // 每一列資料
                 data.forEach(row => {//{}
                     //console.log({ ...row, state: -1 })
-                    const x = JSON.stringify({ ...row, state: -1 })
+                    const x = JSON.stringify({ ...row, state: -1 , table: tablename })
+                    console.log(x);
                     table += '<tr>';
                     table += `<td><button onclick='updaterow(${x})'>刪除</button></td>`;
                     keys.forEach(k => {
@@ -107,7 +126,7 @@
             fetch('http://localhost:8000/api/2/update', {
                 method: 'POST',
                 mode: 'cors', // ✅ 很關鍵
-                body: returnbody,
+                body: JSON.stringify(returnbody),
             })
         }
     </script>
