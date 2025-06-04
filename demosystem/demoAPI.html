@@ -2,57 +2,27 @@
 <html lang="zh-Hant">
 
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>資料查詢展示</title>
-  <style>
-    .hidden {
-      display: none;
-    }
-
-    .tab-btn {
-      margin-right: 10px;
-      padding: 6px 12px;
-      cursor: pointer;
-      background-color: #0078D4;
-      color: white;
-      border: none;
-      border-radius: 4px;
-    }
-
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      margin-top: 10px;
-    }
-
-    th,
-    td {
-      border: 1px solid #ccc;
-      padding: 8px;
-    }
-
-    th {
-      background-color: #e54f4f;
-      color: white;
-    }
-  </style>
+  <link rel="stylesheet" href="main.css">
 
 </head>
 
 <body>
   <h1>資料表切換展示</h1>
-  <div>
-    <button class="tab-btn" onclick="loadTable(apiCustomer, container1);">顧客資料</button>
-    <button class="tab-btn" onclick="loadTable(apiOrder, container1)">訂單資料</button>
-    <button class="tab-btn" onclick="loadTable(apiProduct, container1)">產品資料</button>
-    <button class="tab-btn" onclick="loadTable(apiShipper, container1)">貨運商資料</button>
-    <button class="tab-btn" onclick="loadTable(apiCategory, container1)">分類資料</button>
-  </div>
-  <div>
-    <div id="tableContainer">載入中…</div>
+
+  <div class="button-group">
+    <button class="tab-btn" onclick="loadTable(apiCustomer, container1)">👤 顧客資料</button>
+    <button class="tab-btn" onclick="loadTable(apiOrder, container1)">🧾 訂單資料</button>
+    <button class="tab-btn" onclick="loadTable(apiProduct, container1)">📦 產品資料</button>
+    <button class="tab-btn" onclick="loadTable(apiShipper, container1)">🚚 貨運商資料</button>
+    <button class="tab-btn" onclick="loadTable(apiCategory, container1)">🗂️ 分類資料</button>
   </div>
 
-  <script> //url要改
-    //const apiUrl2 = 'http://localhost:8000/api/hello';
+  <div id="tableContainer">請選擇資料表</div>
+
+  <script>
     const apiCustomer = 'http://localhost:8000/api/1/customers';
     const apiOrder = 'http://localhost:8000/api/hello';
     const apiProduct = 'http://localhost:8000/api/1/products';
@@ -61,27 +31,23 @@
 
     const container1 = document.getElementById('tableContainer');
 
-    //1. 讀取資料fetch        固定url -> 不固定
-    //2. 產生table html  (jsondata+table混合產生)
-    //3. 顯示table到指定div   固定element -> 不固定
     async function loadTable(url, todiv) {
       try {
         const resp = await fetch(url);
         if (!resp.ok) throw new Error(`HTTP 錯誤: ${resp.status}`);
         const data = await resp.json();
         if (!Array.isArray(data) || data.length === 0) {
-          container.textContent = '沒有資料';
+          todiv.textContent = '沒有資料';
           return;
         }
-        // 產生表格
+
         let table = '<table><thead><tr>';
-        // 自動產出表頭
         const keys = Object.keys(data[0]);
         keys.forEach(k => {
           table += `<th>${k}</th>`;
         });
         table += '</tr></thead><tbody>';
-        // 每一列資料
+
         data.forEach(row => {
           table += '<tr>';
           keys.forEach(k => {
@@ -89,14 +55,13 @@
           });
           table += '</tr>';
         });
+
         table += '</tbody></table>';
         todiv.innerHTML = table;
       } catch (err) {
         todiv.textContent = '載入失敗：' + err.message;
       }
     }
-    //loadtable * 2
-    //showtab()
   </script>
 </body>
 

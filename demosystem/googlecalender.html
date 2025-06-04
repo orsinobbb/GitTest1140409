@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Google Calendar API Demo</title>
+</head>
+
+<body>
+    <h1>📅 Google Calendar 活動讀取</h1>
+
+    <button onclick="handleAuthClick()">🔐 登入 Google</button>
+    <button onclick="listUpcomingEvents()">📆 顯示活動</button>
+
+    <ul id="eventList"></ul>
+
+    <!-- 載入必要的 Google API Script -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js" async defer></script>
+
+    <script>
+        const CLIENT_ID = '597040503500-h30hl16kji7qv1vufam7uteo1770cr37.apps.googleusercontent.com';
+        const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly';
+        const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
+
+        let tokenClient;
+        let gapiInited = false;
+        let gisInited = false;
+
+        // 初始化 GAPI
+        function gapiLoaded() {
+            gapi.load('client', async () => {
+                await gapi.client.init({ discoveryDocs: [DISCOVERY_DOC] });
+                gapiInited = true;
+            });
+        }
+
+        // 初始化 Google Identity Services
+        function gisLoaded() {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: (tokenResponse) => {
+                    gapi.client.setToken(tokenResponse);
+                    alert("✅ 登入成功！");
+                },
+            });
+            gisInited = true;
+        }
+
+        // 點擊登入
+        function handleAuthClick() {
+            if (!gapiInited || !gisInited) {
+                alert("API 尚未初始化完成，請稍候");
+                return;
+            }
+            tokenClient.requestAccessToken();
+        }
+
+        // 讀取活動
+        async function listUpcomingEvents() {
+            const response = await gapi.client.calendar.events.list({
+                calendarId: 'primary',
+                timeMin: (new Date()).toISOString(),
+                showDeleted: false,
+                singleEvents: true,
+                maxResults: 10,
+                orderBy: 'startTime',
+            });
+
+            const events = response.result.items;
+            const list = document.getElementById('eventList');
+            list.innerHTML = '';
+
+            if (!events || events.length === 0) {
+                list.innerHTML = '<li>📭 沒有找到活動</li>';
+                return;
+            }
+
+            events.forEach(event => {
+                const when = event.start.dateTime || event.start.date;
+                const li = document.createElement('li');
+                li.textContent = `${when} - ${event.summary}`;
+                list.appendChild(li);
+            });
+        }
+
+        // 載入 script 時執行初始化
+        window.onload = () => {
+            const script1 = document.createElement('script');
+            script1.src = "https://apis.google.com/js/api.js";
+            script1.onload = gapiLoaded;
+            document.body.appendChild(script1);
+
+            const script2 = document.createElement('script');
+            script2.src = "https://accounts.google.com/gsi/client";
+            script2.onload = gisLoaded;
+            document.body.appendChild(script2);
+        };
+    </script>
+</body>
+
+</html>

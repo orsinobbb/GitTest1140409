@@ -40,12 +40,11 @@
 
 <body>
     <h1>資料表操作</h1>
-    <div>
-        <button class="tab-btn" onclick="loadTable(apiCustomer, container1);">顧客資料</button>
-        <button class="tab-btn" onclick="loadTable(apiOrder, container1)">訂單資料</button>
-        <button class="tab-btn" onclick="loadTable(apiProduct, container1)">產品資料</button>
-        <button class="tab-btn" onclick="loadTable(apiShipper, container1)">貨運商資料</button>
-        <button class="tab-btn" onclick="loadTable(apiCategory, container1)">分類資料</button>
+    <div><button class="tab-btn" onclick="loadTable(apiCustomer, container1)">👤 顧客資料</button>
+    <button class="tab-btn" onclick="loadTable(apiOrder, container1)">🧾 訂單資料</button>
+    <button class="tab-btn" onclick="loadTable(apiProduct, container1)">📦 產品資料</button>
+    <button class="tab-btn" onclick="loadTable(apiShipper, container1)">🚚 貨運商資料</button>
+    <button class="tab-btn" onclick="loadTable(apiCategory, container1)">🗂️ 分類資料</button>
     </div>
     <div>
         <div id="tableContainer">載入中…</div>
@@ -61,27 +60,31 @@
 
         const container1 = document.getElementById('tableContainer');
 
+        let currenturl = ''
+        let currenttodiv=container1
         //1. 讀取資料fetch        固定url -> 不固定
         //2. 產生table html  (jsondata+table混合產生)
         //3. 顯示table到指定div   固定element -> 不固定
         async function loadTable(url, todiv) {
+            currenturl = url;
+            currenttodiv = todiv;
             try {
-                let tablename=''
-                switch(url){
+                let tablename = ''
+                switch (url) {
                     case apiCustomer:
-                        tablename='customers'
+                        tablename = 'customers'
                         break
                     case apiOrder:
-                        tablename='orders'
+                        tablename = 'orders'
                         break
                     case apiProduct:
-                        tablename='products'
+                        tablename = 'products'
                         break
                     case apiShipper:
-                        tablename='shippers'
+                        tablename = 'shippers'
                         break
                     case apiCategory:
-                        tablename='categorys'
+                        tablename = 'categorys'
                         break
                 }
                 const resp = await fetch(url);
@@ -103,7 +106,7 @@
                 // 每一列資料
                 data.forEach(row => {//{}
                     //console.log({ ...row, state: -1 })
-                    const x = JSON.stringify({ ...row, state: -1 , table: tablename })
+                    const x = JSON.stringify({ ...row, state: -1, table: tablename })
                     console.log(x);
                     table += '<tr>';
                     table += `<td><button onclick='updaterow(${x})'>刪除</button></td>`;
@@ -122,12 +125,14 @@
         //showtab()
         function updaterow(returnbody) {
             console.log(returnbody)
-        
+
             fetch('http://localhost:8000/api/2/update', {
                 method: 'POST',
                 mode: 'cors', // ✅ 很關鍵
                 body: JSON.stringify(returnbody),
             })
+
+            loadTable(currenturl, currenttodiv)
         }
     </script>
 </body>
