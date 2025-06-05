@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>YouTube 播放清單 Demo</title>
+</head>
+
+<body>
+    <h1>📺 YouTube 播放清單 API 測試</h1>
+
+    <button onclick="handleAuthClick()">🔐 登入 Google</button>
+    <button onclick="listPlaylists()">📂 讀取我的播放清單</button>
+
+    <ul id="playlistList"></ul>
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js" async defer></script>
+
+    <script>
+        const CLIENT_ID = '597040503500-h30hl16kji7qv1vufam7uteo1770cr37.apps.googleusercontent.com';
+        const SCOPES = 'https://www.googleapis.com/auth/youtube.readonly';
+        const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest';
+
+        let tokenClient;
+        let gapiInited = false;
+        let gisInited = false;
+
+        function gapiLoaded() {
+            gapi.load('client', async () => {
+                await gapi.client.init({ discoveryDocs: [DISCOVERY_DOC] });
+                gapiInited = true;
+            });
+        }
+
+        function gisLoaded() {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: (tokenResponse) => {
+                    gapi.client.setToken(tokenResponse);
+                    alert("✅ 登入成功！");
+                },
+            });
+            gisInited = true;
+        }
+
+        function handleAuthClick() {
+            if (!gapiInited || !gisInited) {
+                alert("尚未初始化，請稍候");
+                return;
+            }
+            tokenClient.requestAccessToken();
+        }
+
+        async function listPlaylists() {
+            const response = await gapi.client.youtube.playlists.list({
+                part: 'snippet,contentDetails',
+                mine: true,
+                maxResults: 10,
+            });
+
+            const playlists = response.result.items;
+            const list = document.getElementById('playlistList');
+            list.innerHTML = '';
+
+            if (!playlists || playlists.length === 0) {
+                list.innerHTML = '<li>🙁 找不到任何播放清單</li>';
+                return;
+            }
+
+            playlists.forEach(pl => {
+                const li = document.createElement('li');
+                const title = pl.snippet.title;
+                const thumbnail = pl.snippet.thumbnails.default.url;
+                const id = pl.id;
+
+                li.innerHTML = `
+          <img src="${thumbnail}" alt="thumb" />
+          <strong>${title}</strong><br>
+          <a href="https://www.youtube.com/playlist?list=${id}" target="_blank">觀看清單</a>
+        `;
+                list.appendChild(li);
+            });
+        }
+
+        // 初始化 script
+        window.onload = () => {
+            const script1 = document.createElement('script');
+            script1.src = "https://apis.google.com/js/api.js";
+            script1.onload = gapiLoaded;
+            document.body.appendChild(script1);
+
+            const script2 = document.createElement('script');
+            script2.src = "https://accounts.google.com/gsi/client";
+            script2.onload = gisLoaded;
+            document.body.appendChild(script2);
+        };
+    </script>
+</body>
+
+</html>
