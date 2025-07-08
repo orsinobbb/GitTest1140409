@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Hangman Game</title>
+  <style>
+    body { font-family: sans-serif; background: #f4f4f4; text-align: center; margin: 0; padding: 30px; }
+    h1 { color: #333; }
+    #word { font-size: 40px; letter-spacing: 10px; margin: 20px; }
+    #letters button { margin: 5px; padding: 10px 15px; font-size: 16px; }
+    #wrong { color: red; font-size: 20px; margin-top: 20px; }
+    #result { font-size: 30px; margin-top: 30px; }
+  </style>
+</head>
+<body>
+
+  <h1>Hangman Game</h1>
+  <div id="word"></div>
+  <div id="letters"></div>
+  <div id="wrong"></div>
+  <div id="result"></div>
+  <button onclick="resetGame()">Restart Game</button>
+
+  <script>
+    const words = [
+      "apple","banana","cherry","grape","orange","lemon","peach","mango","kiwi","melon",
+      "avocado","blueberry","raspberry","strawberry","pineapple","papaya","plum","pear","fig","date",
+      "car","train","plane","bicycle","motorcycle","boat","bus","truck","scooter","subway",
+      "cat","dog","lion","tiger","elephant","giraffe","monkey","panda","zebra","kangaroo",
+      "table","chair","sofa","bed","lamp","desk","shelf","closet","mirror","drawer",
+      "guitar","piano","violin","drums","flute","trumpet","saxophone","cello","harp","clarinet",
+      "japan","france","brazil","canada","india","china","mexico","germany","italy","spain",
+      "summer","winter","spring","autumn","rain","snow","wind","sun","cloud","storm"
+    ];
+
+    let chosenWord, displayedWord, wrongGuesses;
+
+    function pickWord() {
+      return words[Math.floor(Math.random() * words.length)].toUpperCase();
+    }
+
+    function resetGame() {
+      chosenWord = pickWord();
+      displayedWord = Array(chosenWord.length).fill("_");
+      wrongGuesses = [];
+      document.getElementById("word").textContent = displayedWord.join(" ");
+      document.getElementById("wrong").textContent = "";
+      document.getElementById("result").textContent = "";
+      createLetterButtons();
+    }
+
+    function createLetterButtons() {
+      const lettersDiv = document.getElementById("letters");
+      lettersDiv.innerHTML = "";
+      for (let i = 65; i <= 90; i++) {
+        const letter = String.fromCharCode(i);
+        const btn = document.createElement("button");
+        btn.textContent = letter;
+        btn.onclick = () => guessLetter(letter, btn);
+        lettersDiv.appendChild(btn);
+      }
+    }
+
+    function guessLetter(letter, btn) {
+      btn.disabled = true;
+      if (chosenWord.includes(letter)) {
+        for (let i = 0; i < chosenWord.length; i++) {
+          if (chosenWord[i] === letter) displayedWord[i] = letter;
+        }
+        document.getElementById("word").textContent = displayedWord.join(" ");
+        if (!displayedWord.includes("_")) document.getElementById("result").textContent = "🎉 You Win!";
+      } else {
+        wrongGuesses.push(letter);
+        document.getElementById("wrong").textContent = `Wrong guesses: ${wrongGuesses.join(", ")}`;
+        if (wrongGuesses.length >= 6) {
+          document.getElementById("result").textContent = `💀 You Lose! The word was: ${chosenWord}`;
+          disableAllButtons();
+        }
+      }
+    }
+
+    function disableAllButtons() {
+      const buttons = document.querySelectorAll("#letters button");
+      buttons.forEach(btn => btn.disabled = true);
+    }
+
+    resetGame();
+  </script>
+
+</body>
+</html>
