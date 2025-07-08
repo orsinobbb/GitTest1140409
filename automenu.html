@@ -1,64 +1,39 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
-
 <head>
-    <meta charset="UTF-8">
-    <title>自動選單導覽</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            padding: 20px;
-            background-color: #f7f7f7;
-        }
-
-        h1 {
-            color: #333;
-        }
-
-        ul {
-            list-style: none;
-            padding: 0;
-        }
-
-        li {
-            margin: 10px 0;
-        }
-
-        a {
-            text-decoration: none;
-            color: #0077cc;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>我的網站選單</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background-color: #f0f0f0; }
+    h1 { color: #333; }
+    ul { list-style: none; padding: 0; }
+    li { margin: 8px 0; }
+    a { text-decoration: none; color: #007acc; font-weight: bold; }
+  </style>
 </head>
-
 <body>
-    <h1>我的網頁選單</h1>
-    <ul id="menu"></ul>
+  <h1>🌐 我的網頁選單</h1>
+  <ul id="menu">載入中...</ul>
 
-    <script>
-        const repo = "GitTest1140409";      // ← 你的儲存庫名稱
-        const user = "orsinobbb";  // ← 你的 GitHub 帳號
-
-        fetch(`https://api.github.com/repos/${user}/${repo}/contents/`)
-            .then(response => response.json())
-            .then(files => {
-                const menu = document.getElementById("menu");
-                files
-                    .filter(file => file.name.endsWith(".html") && file.name !== "index.html")
-                    .forEach(file => {
-                        const li = document.createElement("li");
-                        const a = document.createElement("a");
-                        a.href = file.name;
-                        a.textContent = file.name;
-                        li.appendChild(a);
-                        menu.appendChild(li);
-                    });
-            })
-            .catch(err => {
-                document.getElementById("menu").innerHTML = "無法取得檔案列表。";
-                console.error(err);
-            });
-    </script>
+  <script>
+    fetch("pages.json")
+      .then(response => response.json())
+      .then(pages => {
+        const menu = document.getElementById("menu");
+        menu.innerHTML = ""; // 清空 loading 字樣
+        pages.forEach(page => {
+          const li = document.createElement("li");
+          const a = document.createElement("a");
+          a.href = page.file;
+          a.textContent = page.title;
+          li.appendChild(a);
+          menu.appendChild(li);
+        });
+      })
+      .catch(error => {
+        document.getElementById("menu").innerHTML = "<li>⚠️ 無法載入選單</li>";
+        console.error("載入 pages.json 錯誤：", error);
+      });
+  </script>
 </body>
-
 </html>
