@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>足球傳球練習 v4</title>
+<style>
+  canvas{border:3px solid #000;background:#e6e6e6}
+  #info{margin-top:6px;font-family:"Noto Sans TC",sans-serif}
+</style>
+</head>
+<body>
+<canvas id="field" width="800" height="500"></canvas>
+<div id="info">
+  <span id="status">載入中…</span><br>
+  紅隊連續傳球：<span id="redCnt">0</span>　
+  綠隊連續傳球：<span id="grnCnt">0</span>
+</div>
+
+<script>
+/* ===== 視覺與物理參數 ===== */
+const W=800, H=500;
+const R_PLAYER=18;           // 球員半徑
+const R_BALL  =12;           // 足球半徑
+const SAFE_DIST = R_PLAYER + R_BALL + 4; // 傳球冷卻距離
+const MOVE_V   = 1.5;        // 球員移動速
+const CHASE_V  = 1.2;        // 追球速
+const FRICTION = 0.985;      // 球速衰減
+
+const TEAM_RED='red', TEAM_GRN='green';
+const canvas=document.getElementById('field');
+const ctx=canvas.getContext('2d');
+const $st=document.getElementById('status'), $r=document.getElementById('redCnt'), $g=document.getElementById('grnCnt');
+
+/* ===== 狀態機 ===== */
+const STATE={KO_PLAYER:0,KO_EDGE:1,KO_TARGET:2,WAIT_ACT:3,WAIT_TGT:4,RUN:5};
+let state;
+
+/* ===== 物件 ===== */
+const players=[];
+function addP(x,y,t){players.push({x,y,team:t,dest:null});}
+addP(100,130,TEAM_RED); addP(100,250,TEAM_RED); addP(100,370,TEAM_RED);
+addP(700,130,TEAM_GRN); addP(700,250,TEAM_GRN); addP(700,370,TEAM_GRN);
+
+const ball={x:W/2,y:H/2,vx:0,vy:0,holder:null};
+let kickoffTeam=TEAM_RED, currentTeam=TEAM_RED;
+let redPass=0, grnPass=0;
+
+/* ===== 傳球冷卻 ===== */
+let lastHolder=null;
+let launchX=0, launchY=0;
+
+/* ===== 工具 ===== */
+const dist=(x1,y1,x2,y2)=>Math.hypot(x1-x2,y1-y2);
+const inside=(x,y)=>x>0&&x<W&&y>0&&y<H;
+const boundary=(x,y)=>x<=0||x>=W||y<=0||y>=H;
+const pickPlayer=(x,y,cond)=>players.find(p=>cond(p)&&dist(p.x,p.y,x,y)<R_PLAYER);
+
+/* ===== 初始進入發球 ===== */
+setKickoff(kickoffTeam);
+
+/* ===== 事件 ===== */
+canvas.addEventListener('click',e=>{
+  const r=canvas.getBoundingClientRect();
+  const mx=e.clientX-r.left, my=e.clientY-r.top;
+
+  switch(state){
+    /* ---- 發球三步 ---- */
+    case STATE.KO_PLAYER:{
+      const p=pickPlayer(mx,my,p=>p.team===kickoffTeam);
+      if(!p) return;
+      koPlayer=p=pickPlayer(mx,my,pl=>pl.team===kickoffTeam);
+      state=STATE.KO_EDGE; setStatus('請在邊線點擊發球位置'); break;
+    }
+    case STATE.KO_EDGE:{
+      if(!boundary(mx,my)) return;
+      koPlayer.x=mx; koPlayer.y=my;
+      Object.assign(ball,{x:mx,y:my,vx:0,vy:0,holder:koPlayer});
+      state=STATE.KO_TARGET; setStatus('僅能傳球 ▶ 請點擊傳球目標'); break;
+    }
+    case STATE.KO_TARGET:{
+      if(!inside(mx,my)) return;
+      shoot(mx,my); currentTeam=kickoffTeam;
+      state=STATE.RUN; setStatus(`${teamName(currentTeam)}持球中…`); break;
+    }
+
+    /* ---- 持球指令 ---- */
+    case STATE.WAIT_ACT:{
+      const p=pickPlayer(mx,my,p=>p===ball.holder);
+      if(!p) return;
+      selected=p;
+      const act=prompt("選動作：1=移動到  2=傳到");
+      if(act==='1'){mode='move';state=STATE.WAIT_TGT;setStatus('點移動目標');}
+      else if(act==='2'){mode='pass';state=STATE.WAIT_TGT;setStatus('點傳球目標');}
+      else selected=null;
+      break;
+    }
+    case STATE.WAIT_TGT:{
+      if(!selected||!mode) return;
+      if(mode==='move'){
+        if(!inside(mx,my)) return;
+        selected.dest={x:mx,y:my}; state=STATE.RUN; setStatus('移動中…');
+      }else{
+        if(!inside(mx,my)) return;
+        shoot(mx,my); state=STATE.RUN; setStatus('傳球中…');
+      }
+      selected=null; mode=null; break;
+    }
+  }
+});
+
+/* ===== 主迴圈 ===== */
+function loop(){
+  if(state===STATE.RUN) physics();
+  draw(); requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* ===== 物理 ===== */
+function physics(){
+  /* --- 球 --- */
+  if(!ball.holder){
+    ball.x+=ball.vx; ball.y+=ball.vy;
+    ball.vx*=FRICTION; ball.vy*=FRICTION;
+
+    /* 出界 */
+    if(!inside(ball.x,ball.y)){ switchSide('出界！'); return; }
+
+    /* 碰撞 */
+    for(const p of players){
+      if(p===lastHolder && dist(launchX,launchY,ball.x,ball.y)<SAFE_DIST) continue; // 冷卻
+      if(dist(p.x,p.y,ball.x,ball.y)<R_PLAYER+R_BALL){
+        if(p.team===currentTeam){
+          ball.holder=p; lastHolder=null; incPass();
+          state=STATE.WAIT_ACT; setStatus('請點持球員選動作');
+        }else{
+          switchSide(`${teamName(p.team)}攔截！`);
+        }
+        break;
+      }
+    }
+  }else{
+    ball.x=ball.holder.x; ball.y=ball.holder.y;
+  }
+
+  /* --- 球員 --- */
+  for(const p of players){
+    if(p.dest){
+      const dx=p.dest.x-p.x, dy=p.dest.y-p.y, d=Math.hypot(dx,dy);
+      if(d<MOVE_V){p.x=p.dest.x; p.y=p.dest.y; p.dest=null;
+        if(p===ball.holder){state=STATE.WAIT_ACT; setStatus('請點持球員選動作');}}
+      else {p.x+=dx/d*MOVE_V; p.y+=dy/d*MOVE_V;}
+    }else if(state===STATE.RUN && p!==ball.holder){
+      const dx=ball.x-p.x, dy=ball.y-p.y, d=Math.hypot(dx,dy);
+      if(d>1){p.x+=dx/d*CHASE_V; p.y+=dy/d*CHASE_V;}
+    }
+  }
+}
+
+/* ===== 發球、傳球 ===== */
+let koPlayer=null, selected=null, mode=null;
+function shoot(tx,ty){
+  const dx=tx-ball.x, dy=ty-ball.y, len=Math.hypot(dx,dy)||1;
+  ball.vx=dx/Math.max(7,len/7); ball.vy=dy/Math.max(7,len/7);
+  lastHolder=ball.holder; launchX=ball.x; launchY=ball.y;
+  ball.holder=null; incStatus();
+}
+function switchSide(msg){
+  alert(msg); redPass=grnPass=0; scoreUI();
+  kickoffTeam=currentTeam===TEAM_RED?TEAM_GRN:TEAM_RED; currentTeam=kickoffTeam;
+  setKickoff(kickoffTeam);
+}
+function setKickoff(t){
+  state=STATE.KO_PLAYER;
+  ball.holder=null; Object.assign(ball,{x:W/2,y:H/2,vx:0,vy:0});
+  setStatus(`${teamName(t)}發球 ▶ 請點選球員`);
+}
+
+/* ===== UI 與輔助 ===== */
+function incPass(){ (currentTeam===TEAM_RED?++redPass:++grnPass); scoreUI(); }
+function scoreUI(){ $r.textContent=redPass; $g.textContent=grnPass; }
+function setStatus(t){ $st.textContent=t; }
+function teamName(t){return t===TEAM_RED?'紅隊':'綠隊';}
+function incStatus(){ /* 佔位，可加動畫 */ }
+
+/* ===== 繪圖 ===== */
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  /* 球 */
+  ctx.beginPath(); ctx.arc(ball.x,ball.y,R_BALL,0,Math.PI*2);
+  ctx.fillStyle='orange'; ctx.fill(); ctx.closePath();
+  /* 球員 */
+  for(const p of players){
+    ctx.beginPath(); ctx.arc(p.x,p.y,R_PLAYER,0,Math.PI*2);
+    ctx.fillStyle=p.team; ctx.fill(); ctx.stroke();
+  }
+}
+</script>
+</body>
+</html>
