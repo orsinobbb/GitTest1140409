@@ -20,6 +20,7 @@
 /* ===== 常數 ===== */
 const W=800, H=500;
 const R_PLAYER=18, R_BALL=12, SAFE_DIST=R_PLAYER+R_BALL+4; //34
+const MIN_PP_DIST = R_PLAYER * 2;   // 🆕 36px：球員-球員最小間距
 const MOVE_V=1.5, CHASE_V=1.2, FRICTION=0.985;
 const TEAM_RED='red', TEAM_GRN='green';
 const STATE={KO_PLAYER:0,KO_EDGE:1,KO_TARGET:2,WAIT_ACT:3,WAIT_TGT:4,RUN:5};
@@ -154,6 +155,20 @@ function physics(){
       if(d>1){ p.x+=dx/d*CHASE_V; p.y+=dy/d*CHASE_V; }
     }
   });
+  /* 🆕 球員-球員碰撞分離（雙迴圈） */
+  for(let i=0;i<players.length;i++){
+    for(let j=i+1;j<players.length;j++){
+      const a=players[i], b=players[j];
+      const d = dist(a.x,a.y,b.x,b.y);
+      if(d>0 && d < MIN_PP_DIST){
+        const overlap = (MIN_PP_DIST - d) / 2;
+        const ux = (a.x - b.x) / d,  uy = (a.y - b.y) / d; // 單位向量
+        a.x += ux * overlap;  a.y += uy * overlap;
+        b.x -= ux * overlap;  b.y -= uy * overlap;
+      }
+    }
+  }
+ }
 }
 
 /* ===== 行為 ===== */
