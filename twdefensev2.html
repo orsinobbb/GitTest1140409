@@ -239,6 +239,9 @@
     function spawnMonster() {
       if(spawnIdx<curWaveMon.length) {
         let type = curWaveMon[spawnIdx++];
+        if (!MONSTER_TYPES[type]) {
+          console.error('Unknown monster type:', type); // 這一行很重要
+        }
         let mType = MONSTER_TYPES[type];
         monsters.push({
           type, ...mType, t:0, hp:mType.hp, dead:false, frame:0, anim:0
@@ -374,7 +377,13 @@
       }
       if(running) requestAnimationFrame(gameLoop);
     }
-    function mhp(m){ return MONSTER_TYPES[m.type].hp; }
+    function mhp(m){ 
+      if (!MONSTER_TYPES[m.type]) {
+        console.error('mhp: no monster type', m.type, m);
+        return 1;
+      }
+      return MONSTER_TYPES[m.type].hp; 
+    }
 
     // === 結果顯示 ===
     function showResult(win){
