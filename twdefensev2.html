@@ -353,13 +353,6 @@
       }
       for(let k in cooldown){
         if(cooldown[k]>0) cooldown[k]-=16;
-       
-
-當然，以下為 **v1.2 剩餘主程式收尾段**，只要將這段**直接接在上段**（在 `for(let k in cooldown){` 之後），即可完整運作！
-
----
-
-```js
         if(cooldown[k]>0) cooldown[k]-=16;
         if(cooldown[k]<0) cooldown[k]=0;
       }
