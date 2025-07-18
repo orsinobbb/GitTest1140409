@@ -172,6 +172,9 @@
       fireball: svgToImgURL(svgFireball)
     };
     const canvas = document.getElementById("gameCanvas");
+    const startPanel = document.getElementById("start-panel");
+    const btnStart = document.getElementById("btnStart");
+
     const ctx = canvas.getContext("2d");
     let img = {};
     let loaded = 0, toLoad = Object.keys(ASSET).length;
@@ -352,7 +355,6 @@
         }
       }
       for(let k in cooldown){
-        if(cooldown[k]>0) cooldown[k]-=16;
         if(cooldown[k]>0) cooldown[k]-=16;
         if(cooldown[k]<0) cooldown[k]=0;
       }
