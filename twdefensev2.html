@@ -242,10 +242,11 @@
 
     // 怪物資料
     const MONSTER_TYPES = {
-      fake: { name: "假訊息兵", speed: 1.5, hp: 28, reward: 10, frame: [0, 1], frameDead: 3},
-      psych: { name: "心理戰士", speed: 1.1, hp: 50, reward: 18, frame: [0, 1], frameDead: 3},
-      spy: { name: "滲透幹部", speed: 0.88, hp: 90, reward: 30, frame: [0, 1], frameDead: 3}
+      fake: { name: "假訊息兵", speed: 1.5, hp: 28, reward: 10, frame: [0, 1], frameDead: 1 },
+      psych: { name: "心理戰士", speed: 1.1, hp: 50, reward: 18, frame: [0, 1], frameDead: 1 },
+      spy: { name: "滲透幹部", speed: 0.88, hp: 90, reward: 30, frame: [0, 1], frameDead: 1 }
     };
+
     // 技能
     const SKILLS = {
       verify: { name: "查證", icon: "🔍", cooldown: 1700, cost: 15, radius: 28, effect: "對單體傷害", dmg: 32, key: 'verify' },
@@ -376,6 +377,7 @@
         let frame = m.dead ? m.frameDead : m.frame[Math.floor(m.anim) % m.frame.length];
         let pt = getPathPoint(Math.min(m.t, 1));
         if (img.bear) {
+          let frameIdx = Math.max(0, Math.min(3, frame)); // 保證frame只在0-3
           ctx.drawImage(img.bear, frame * 64, 0, 64, 64, pt.x - 25, pt.y - 30, 50, 50);
         } else {
           ctx.beginPath();
