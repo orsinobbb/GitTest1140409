@@ -375,6 +375,8 @@
         }
         if (!m.dead) m.anim += 0.13;
         let frame = m.dead ? m.frameDead : m.frame[Math.floor(m.anim) % m.frame.length];
+        // 加入這一行防呆
+        frame = Math.max(0, Math.min(3, Number(frame)||0));
         let pt = getPathPoint(Math.min(m.t, 1));
         if (img.bear) {
           let frameIdx = Math.max(0, Math.min(3, frame)); // 保證frame只在0-3
