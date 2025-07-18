@@ -380,7 +380,7 @@
         let pt = getPathPoint(Math.min(m.t, 1));
         if (img.bear) {
           let frameIdx = Math.max(0, Math.min(3, frame)); // 保證frame只在0-3
-          ctx.drawImage(img.bear, frame * 64, 0, 64, 64, pt.x - 25, pt.y - 30, 50, 50);
+          ctx.drawImage(img.bear, 0, 0, 64, 64, pt.x - 25, pt.y - 30, 50, 50);
         } else {
           ctx.beginPath();
           ctx.arc(pt.x, pt.y, 18, 0, 2 * Math.PI);
