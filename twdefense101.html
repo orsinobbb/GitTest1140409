@@ -1,432 +1,518 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
-  <meta charset="UTF-8">
-  <title>媒體社群防衛戰：假訊息攻防遊戲</title>
-  <meta name="viewport" content="width=700,user-scalable=no">
-  <style>
-    body {
-      background: #f9fbe7;
-      font-family: "Noto Sans TC", Arial, sans-serif;
-      text-align: center;
-      margin: 0; padding: 0;
-      user-select: none;
-    }
-    h1 { color: #43a047; margin: 18px 0 2px 0; }
-    #desc {
-      margin: 0 auto 1.2em auto;
-      width: 95vw; max-width: 640px;
-      color: #263238; font-size: 18px;
-      line-height: 1.5;
-      border-radius: 9px;
-      background: #eafaf1;
-      box-shadow: 0 0 4px #a5d6a7a8;
-      padding: 0.7em 1.2em 0.9em 1.2em;
-    }
-    #game-container { margin: 0 auto; }
-    canvas {
-      background: #fffde7;
-      border: 2.5px solid #43a047;
-      border-radius: 12px;
-      box-shadow: 0 0 24px #aed58155;
-      margin-top: 6px;
-    }
-    #ui-bar {
-      margin: 14px auto 2px auto;
-      max-width: 650px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 24px;
-      font-size: 18px;
-    }
-    #skills { display: flex; gap: 12px; }
-    .skill-btn {
-      font-size: 17px; padding: 9px 14px;
-      border-radius: 8px; border: 2px solid #aed581;
-      background: #c8e6c9;
-      color: #37474f;
-      cursor: pointer;
-      transition: background 0.15s;
-      min-width: 90px;
-      outline: none;
-      box-shadow: 0 2px 10px #a5d6a744;
-      display: flex; align-items: center; gap: 6px;
-      position: relative;
-    }
-    .skill-btn.selected { background: #fff176; border-color: #fbc02d; }
-    .skill-lv {
-      position: absolute; right: 7px; bottom: 5px;
-      font-size: 13px; color: #7cb342;
-      background: #fff; border-radius: 50%; padding: 0 5px;
-      border: 1px solid #aed581;
-    }
-    .upgrade-btn {
-      font-size: 15px; padding: 2px 9px;
-      background: #fffde7; color: #d84315;
-      border: 1.5px solid #ffd54f; border-radius: 7px;
-      cursor: pointer; margin-left: 5px;
-    }
-    #status-bar {
-      margin: 0 auto 8px auto;
-      font-size: 16px; color: #558b2f;
-      max-width: 700px;
-      display: flex; justify-content: center; gap: 22px;
-      align-items: center;
-    }
-    #timer-bar {
-      width: 220px; height: 16px; background: #e0e0e0;
-      border-radius: 7px; margin: 0 8px; position: relative;
-      display: inline-block; vertical-align: middle;
-    }
-    #timer-inner {
-      position: absolute; left: 0; top: 0; height: 100%;
-      background: linear-gradient(90deg,#7ec850,#fff176);
-      border-radius: 7px;
-      transition: width 0.12s;
-    }
-    #result-panel {
-      display: none; position: fixed;
-      left: 0; right: 0; top: 0; bottom: 0;
-      background: #f9fbe7d5;
-      justify-content: center; align-items: center; z-index: 10;
-    }
-    #result-box {
-      background: #fff; border: 2px solid #43a047;
-      border-radius: 16px; padding: 42px 44px;
-      font-size: 23px; color: #d84315;
-      box-shadow: 0 2px 40px #7ec85055;
-    }
-    #result-box button {
-      margin-top: 22px; font-size: 20px;
-      background: #fff176;
-      border: 2px solid #fbc02d; border-radius: 10px;
-      padding: 8px 34px; color: #4e342e;
-      cursor: pointer;
-    }
-    @media (max-width:800px) {
-      #ui-bar,#status-bar { flex-direction: column; gap: 8px;}
-      #game-container { width: 99vw;}
-    }
-  </style>
-</head>
-<body>
-  <h1>媒體社群防衛戰</h1>
-  <div id="desc">
-    <b>2025 台灣資訊場危機</b>—— 假訊息、輿論攻擊、情緒煽動四處蔓延。守護媒體社群每一點理性，請善用公民技能防止紅色污染！<br>
-    <span style="color:#d84315;">總污染度過高即遊戲失敗，堅持下去才能贏得最後的資訊健康！</span>
-  </div>
-  <div id="status-bar">
-    <span>能量 <b id="energy">50</b></span>
-    <span>總污染度 <b id="pollution">0%</b></span>
-    <span id="timer-bar"><div id="timer-inner"></div></span>
-    <span>剩餘 <b id="timeleft">60</b>s</span>
-  </div>
-  <div id="ui-bar">
-    <div id="skills">
-      <button class="skill-btn" id="btnCheck"><span>🔍</span>查證 <span class="skill-lv" id="lvCheck">1</span></button>
-      <button class="skill-btn" id="btnReply"><span>💬</span>留言 <span class="skill-lv" id="lvReply">1</span></button>
-      <button class="skill-btn" id="btnReport"><span>🚩</span>舉報 <span class="skill-lv" id="lvReport">1</span></button>
-      <button class="skill-btn" id="btnAI"><span>🤖</span>AI <span class="skill-lv" id="lvAI">1</span></button>
-    </div>
-    <div>
-      <button class="upgrade-btn" id="btnUpgrade">技能升級</button>
-    </div>
-  </div>
-  <div id="game-container">
-    <canvas id="gameCanvas" width="650" height="420"></canvas>
-  </div>
-  <div id="result-panel">
-    <div id="result-box"></div>
-  </div>
-  <script>
-    // === 遊戲參數 ===
-    const NODE_COUNT = 14;      // 社群節點數
-    const NODE_LINKS = 2;       // 每節點鄰居連結數
-    const GAME_TIME = 60;       // 遊戲時長(s)
-    const POLLUTION_FAIL = 55;  // 失敗閾值(%)
-    const ENERGY_INIT = 50;     // 初始能量
-
-    // === 技能參數與升級路徑 ===
-    const SKILL_PROPS = {
-      check:   [{name:"查證",   icon:"🔍", cost: 8,  cooldown:1100, effect:28},
-                {cost: 7,  cooldown:900,  effect:35},
-                {cost: 6,  cooldown:780,  effect:44}],
-      reply:   [{name:"留言",   icon:"💬", cost: 10, cooldown:2100, effect:22, range:1},
-                {cost: 9,  cooldown:1700, effect:28, range:1.2},
-                {cost: 8,  cooldown:1350, effect:38, range:1.3}],
-      report:  [{name:"舉報",   icon:"🚩", cost: 14, cooldown:4200, effect:0,  immune:4000},
-                {cost: 13, cooldown:3200, effect:0,  immune:6000},
-                {cost: 11, cooldown:2600, effect:0,  immune:9000}],
-      ai:      [{name:"AI",     icon:"🤖", cost: 24, cooldown:6800, effect:0,  auto:3},
-                {cost: 22, cooldown:4800, effect:0,  auto:5},
-                {cost: 20, cooldown:3400, effect:0,  auto:7}],
-    };
-    let skillLevel = {check:1, reply:1, report:1, ai:1};
-    let skillCD = {check:0, reply:0, report:0, ai:0};
-    let selectedSkill = null;
-    let energy = ENERGY_INIT;
-    let timeLeft = GAME_TIME;
-    let pollutionPct = 0;
-    let gameRunning = false;
-
-    // === 節點資料 ===
-    let nodes = [];
-    let links = [];
-    let lastAttack = 0;
-
-    // === 畫布 ===
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
-
-    // === 初始化節點與關聯 ===
-    function resetNodes() {
-      nodes = [];
-      links = [];
-      let cx = 325, cy = 205, R = 165;
-      for(let i=0; i<NODE_COUNT; i++){
-        let angle = i*2*Math.PI/NODE_COUNT - Math.PI/2 + Math.random()*0.14;
-        nodes.push({
-          x: cx + R*Math.cos(angle),
-          y: cy + R*Math.sin(angle),
-          pollution: 7+Math.random()*5,  // 初始污染
-          immuneUntil: 0,                // 舉報免疫
-          id: i,
-        });
-      }
-      // 隨機連結節點作為鄰居(便於連鎖)
-      for(let i=0; i<NODE_COUNT; i++){
-        let neighbors = [];
-        for(let j=1;j<=NODE_LINKS;j++) {
-          neighbors.push((i+j)%NODE_COUNT);
+    <meta charset="UTF-8">
+    <title>媒體社群防衛戰：假訊息攻防遊戲</title>
+    <meta name="viewport" content="width=700,user-scalable=no">
+    <style>
+        body {
+            background: #f9fbe7;
+            font-family: "Noto Sans TC", Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            user-select: none;
         }
-        links[i] = neighbors;
-      }
-    }
 
-    // === 技能操作 ===
-    function skillReady(key){
-      return skillCD[key]<=0 && energy>=SKILL_PROPS[key][skillLevel[key]-1].cost && gameRunning;
-    }
-    function setSkillBtnStates(){
-      for(let key of ["check","reply","report","ai"]) {
-        let btn = document.getElementById("btn"+key[0].toUpperCase()+key.slice(1));
-        if(selectedSkill===key) btn.classList.add("selected"); else btn.classList.remove("selected");
-        btn.disabled = !skillReady(key);
-        document.getElementById("lv"+key[0].toUpperCase()+key.slice(1)).innerText = skillLevel[key];
-      }
-    }
-
-    // === 技能觸發 ===
-    canvas.onclick = function(e){
-      if(!gameRunning || !selectedSkill) return;
-      const rect = canvas.getBoundingClientRect();
-      let x = (e.clientX-rect.left)/rect.width*canvas.width;
-      let y = (e.clientY-rect.top)/rect.height*canvas.height;
-      let hit = null;
-      for(let n of nodes){
-        let d = Math.hypot(n.x-x,n.y-y);
-        if(d<28) { hit = n; break; }
-      }
-      if(!hit) return;
-      const now = Date.now();
-      const lv = skillLevel[selectedSkill]-1;
-      const prop = SKILL_PROPS[selectedSkill][lv];
-      if(selectedSkill==="check"){
-        if(skillCD.check>0||energy<prop.cost) return;
-        n = hit;
-        if(n.immuneUntil>now) return;
-        n.pollution = Math.max(0, n.pollution-prop.effect);
-        energy -= prop.cost;
-        skillCD.check = prop.cooldown;
-      }
-      else if(selectedSkill==="reply"){
-        if(skillCD.reply>0||energy<prop.cost) return;
-        // 消除中心與周圍節點
-        let affected = nodes.filter(m=>Math.hypot(m.x-hit.x,m.y-hit.y)<45*prop.range);
-        for(let n of affected){
-          if(n.immuneUntil>now) continue;
-          n.pollution = Math.max(0, n.pollution-prop.effect);
+        h1 {
+            color: #43a047;
+            margin: 18px 0 2px 0;
         }
-        energy -= prop.cost;
-        skillCD.reply = prop.cooldown;
-      }
-      else if(selectedSkill==="report"){
-        if(skillCD.report>0||energy<prop.cost) return;
-        if(hit.immuneUntil>now) return;
-        hit.immuneUntil = now+prop.immune;
-        energy -= prop.cost;
-        skillCD.report = prop.cooldown;
-      }
-      setSkillBtnStates();
-      updateUI();
-    };
 
-    document.getElementById("btnCheck").onclick = ()=>{ if(skillReady("check")) selectedSkill="check"; setSkillBtnStates(); };
-    document.getElementById("btnReply").onclick = ()=>{ if(skillReady("reply")) selectedSkill="reply"; setSkillBtnStates(); };
-    document.getElementById("btnReport").onclick = ()=>{ if(skillReady("report")) selectedSkill="report"; setSkillBtnStates(); };
-    document.getElementById("btnAI").onclick = ()=>{
-      if(!skillReady("ai")) return;
-      const lv = skillLevel.ai-1, prop = SKILL_PROPS.ai[lv];
-      // AI自動消除污染
-      let dirty = nodes.filter(n=>n.pollution>10 && n.immuneUntil<Date.now());
-      for(let i=0;i<Math.min(prop.auto,dirty.length);i++){
-        dirty[i].pollution = Math.max(0, dirty[i].pollution-38-4*lv);
-      }
-      energy -= prop.cost;
-      skillCD.ai = prop.cooldown;
-      setSkillBtnStates();
-      updateUI();
-    };
-
-    // === 技能升級 ===
-    document.getElementById("btnUpgrade").onclick = ()=>{
-      let upList = ["check","reply","report","ai"].filter(k=>skillLevel[k]<SKILL_PROPS[k].length);
-      if(upList.length==0) return alert("已全數滿級！");
-      // 最低等技能優先
-      let minLv = Math.min(...upList.map(k=>skillLevel[k]));
-      let key = upList.find(k=>skillLevel[k]==minLv);
-      skillLevel[key]++;
-      updateUI();
-      setSkillBtnStates();
-    };
-
-    // === 遊戲主循環 ===
-    function updateGame(dt){
-      // 技能冷卻倒數
-      for(let k in skillCD){ if(skillCD[k]>0) skillCD[k]-=dt; if(skillCD[k]<0) skillCD[k]=0;}
-      // 攻擊/污染擴散
-      let now = Date.now();
-      if(now-lastAttack>800){
-        lastAttack = now;
-        let targets = [];
-        // 先隨機直接攻擊一個節點
-        for(let n of nodes){
-          if(Math.random()<0.10 && n.immuneUntil<now){
-            n.pollution += 9+Math.random()*5;
-            targets.push(n);
-          }
+        #desc {
+            margin: 0 auto 1.2em auto;
+            width: 95vw;
+            max-width: 640px;
+            color: #263238;
+            font-size: 18px;
+            line-height: 1.5;
+            border-radius: 9px;
+            background: #eafaf1;
+            box-shadow: 0 0 4px #a5d6a7a8;
+            padding: 0.7em 1.2em 0.9em 1.2em;
         }
-        // 擴散機會
-        for(let n of nodes){
-          if(n.pollution>55 && Math.random()<0.23 && n.immuneUntil<now){
-            for(let idx of links[n.id]){
-              let neighbor = nodes[idx];
-              if(neighbor.immuneUntil<now) neighbor.pollution += 4+Math.random()*4;
+
+        #game-container {
+            margin: 0 auto;
+        }
+
+        canvas {
+            background: #fffde7;
+            border: 2.5px solid #43a047;
+            border-radius: 12px;
+            box-shadow: 0 0 24px #aed58155;
+            margin-top: 6px;
+        }
+
+        #ui-bar {
+            margin: 14px auto 2px auto;
+            max-width: 650px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 24px;
+            font-size: 18px;
+        }
+
+        #skills {
+            display: flex;
+            gap: 12px;
+        }
+
+        .skill-btn {
+            font-size: 17px;
+            padding: 9px 14px;
+            border-radius: 8px;
+            border: 2px solid #aed581;
+            background: #c8e6c9;
+            color: #37474f;
+            cursor: pointer;
+            transition: background 0.15s;
+            min-width: 90px;
+            outline: none;
+            box-shadow: 0 2px 10px #a5d6a744;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            position: relative;
+        }
+
+        .skill-btn.selected {
+            background: #fff176;
+            border-color: #fbc02d;
+        }
+
+        .skill-lv {
+            position: absolute;
+            right: 7px;
+            bottom: 5px;
+            font-size: 13px;
+            color: #7cb342;
+            background: #fff;
+            border-radius: 50%;
+            padding: 0 5px;
+            border: 1px solid #aed581;
+        }
+
+        .upgrade-btn {
+            font-size: 15px;
+            padding: 2px 9px;
+            background: #fffde7;
+            color: #d84315;
+            border: 1.5px solid #ffd54f;
+            border-radius: 7px;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+
+        #status-bar {
+            margin: 0 auto 8px auto;
+            font-size: 16px;
+            color: #558b2f;
+            max-width: 700px;
+            display: flex;
+            justify-content: center;
+            gap: 22px;
+            align-items: center;
+        }
+
+        #timer-bar {
+            width: 220px;
+            height: 16px;
+            background: #e0e0e0;
+            border-radius: 7px;
+            margin: 0 8px;
+            position: relative;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        #timer-inner {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            background: linear-gradient(90deg, #7ec850, #fff176);
+            border-radius: 7px;
+            transition: width 0.12s;
+        }
+
+        #result-panel {
+            display: none;
+            position: fixed;
+            left: 0;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            background: #f9fbe7d5;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        #result-box {
+            background: #fff;
+            border: 2px solid #43a047;
+            border-radius: 16px;
+            padding: 42px 44px;
+            font-size: 23px;
+            color: #d84315;
+            box-shadow: 0 2px 40px #7ec85055;
+        }
+
+        #result-box button {
+            margin-top: 22px;
+            font-size: 20px;
+            background: #fff176;
+            border: 2px solid #fbc02d;
+            border-radius: 10px;
+            padding: 8px 34px;
+            color: #4e342e;
+            cursor: pointer;
+        }
+
+        @media (max-width:800px) {
+
+            #ui-bar,
+            #status-bar {
+                flex-direction: column;
+                gap: 8px;
             }
-          }
+
+            #game-container {
+                width: 99vw;
+            }
         }
-        // 污染上限
-        for(let n of nodes) n.pollution = Math.min(100, n.pollution);
-      }
-      // 污染總量計算
-      let total = nodes.reduce((s,n)=>s+n.pollution,0);
-      pollutionPct = Math.round(total/(nodes.length*100)*100);
-      if(pollutionPct>=POLLUTION_FAIL) endGame(false);
-    }
+    </style>
+</head>
 
-    // === 畫面更新 ===
-    function drawGame(){
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      // 畫連結
-      ctx.save();
-      ctx.strokeStyle = "#bdbdbd";
-      ctx.lineWidth = 5;
-      ctx.globalAlpha = 0.28;
-      for(let i=0; i<nodes.length; i++){
-        let n = nodes[i];
-        for(let idx of links[n.id]){
-          let n2 = nodes[idx];
-          ctx.beginPath();
-          ctx.moveTo(n.x,n.y);
-          ctx.lineTo(n2.x,n2.y);
-          ctx.stroke();
+<body>
+    <h1>媒體社群防衛戰</h1>
+    <div id="desc">
+        <b>2025 台灣資訊場危機</b>—— 假訊息、輿論攻擊、情緒煽動四處蔓延。守護媒體社群每一點理性，請善用公民技能防止紅色污染！<br>
+        <span style="color:#d84315;">總污染度過高即遊戲失敗，堅持下去才能贏得最後的資訊健康！</span>
+    </div>
+    <div id="status-bar">
+        <span>能量 <b id="energy">50</b></span>
+        <span>總污染度 <b id="pollution">0%</b></span>
+        <span id="timer-bar">
+            <div id="timer-inner"></div>
+        </span>
+        <span>剩餘 <b id="timeleft">60</b>s</span>
+    </div>
+    <div id="ui-bar">
+        <div id="skills">
+            <button class="skill-btn" id="btnCheck"><span>🔍</span>查證 <span class="skill-lv"
+                    id="lvCheck">1</span></button>
+            <button class="skill-btn" id="btnReply"><span>💬</span>留言 <span class="skill-lv"
+                    id="lvReply">1</span></button>
+            <button class="skill-btn" id="btnReport"><span>🚩</span>舉報 <span class="skill-lv"
+                    id="lvReport">1</span></button>
+            <button class="skill-btn" id="btnAI"><span>🤖</span>AI <span class="skill-lv" id="lvAI">1</span></button>
+        </div>
+        <div>
+            <button class="upgrade-btn" id="btnUpgrade">技能升級</button>
+        </div>
+    </div>
+    <div id="game-container">
+        <canvas id="gameCanvas" width="650" height="420"></canvas>
+    </div>
+    <div id="result-panel">
+        <div id="result-box"></div>
+    </div>
+    <script>
+        // === 遊戲參數 ===
+        const NODE_COUNT = 14;      // 社群節點數
+        const NODE_LINKS = 2;       // 每節點鄰居連結數
+        const GAME_TIME = 60;       // 遊戲時長(s)
+        const POLLUTION_FAIL = 55;  // 失敗閾值(%)
+        const ENERGY_INIT = 50;     // 初始能量
+
+        // === 技能參數與升級路徑 ===
+        const SKILL_PROPS = {
+            check: [{ name: "查證", icon: "🔍", cost: 8, cooldown: 1100, effect: 28 },
+            { cost: 7, cooldown: 900, effect: 35 },
+            { cost: 6, cooldown: 780, effect: 44 }],
+            reply: [{ name: "留言", icon: "💬", cost: 10, cooldown: 2100, effect: 22, range: 1 },
+            { cost: 9, cooldown: 1700, effect: 28, range: 1.2 },
+            { cost: 8, cooldown: 1350, effect: 38, range: 1.3 }],
+            report: [{ name: "舉報", icon: "🚩", cost: 14, cooldown: 4200, effect: 0, immune: 4000 },
+            { cost: 13, cooldown: 3200, effect: 0, immune: 6000 },
+            { cost: 11, cooldown: 2600, effect: 0, immune: 9000 }],
+            ai: [{ name: "AI", icon: "🤖", cost: 24, cooldown: 6800, effect: 0, auto: 3 },
+            { cost: 22, cooldown: 4800, effect: 0, auto: 5 },
+            { cost: 20, cooldown: 3400, effect: 0, auto: 7 }],
+        };
+        let skillLevel = { check: 1, reply: 1, report: 1, ai: 1 };
+        let skillCD = { check: 0, reply: 0, report: 0, ai: 0 };
+        let selectedSkill = null;
+        let energy = ENERGY_INIT;
+        let timeLeft = GAME_TIME;
+        let pollutionPct = 0;
+        let gameRunning = false;
+
+        // === 節點資料 ===
+        let nodes = [];
+        let links = [];
+        let lastAttack = 0;
+
+        // === 畫布 ===
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // === 初始化節點與關聯 ===
+        function resetNodes() {
+            nodes = [];
+            links = [];
+            let cx = 325, cy = 205, R = 165;
+            for (let i = 0; i < NODE_COUNT; i++) {
+                let angle = i * 2 * Math.PI / NODE_COUNT - Math.PI / 2 + Math.random() * 0.14;
+                nodes.push({
+                    x: cx + R * Math.cos(angle),
+                    y: cy + R * Math.sin(angle),
+                    pollution: 7 + Math.random() * 5,  // 初始污染
+                    immuneUntil: 0,                // 舉報免疫
+                    id: i,
+                });
+            }
+            // 隨機連結節點作為鄰居(便於連鎖)
+            for (let i = 0; i < NODE_COUNT; i++) {
+                let neighbors = [];
+                for (let j = 1; j <= NODE_LINKS; j++) {
+                    neighbors.push((i + j) % NODE_COUNT);
+                }
+                links[i] = neighbors;
+            }
         }
-      }
-      ctx.restore();
-      // 畫節點
-      for(let n of nodes){
-        let cval = Math.round(n.pollution);
-        let r = Math.min(65,cval*2.1), g = Math.max(80, 255-cval*1.6), b = Math.max(70,180-cval);
-        ctx.save();
-        // 污染狀態顏色
-        ctx.beginPath();
-        ctx.arc(n.x,n.y,23,0,2*Math.PI);
-        ctx.fillStyle = `rgb(${r},${g},${b})`;
-        ctx.shadowColor = "#d84315"; ctx.shadowBlur = n.pollution>55?14:0;
-        ctx.fill();
-        ctx.restore();
-        // 邊框
-        ctx.beginPath();
-        ctx.arc(n.x,n.y,23,0,2*Math.PI);
-        ctx.lineWidth = 2.5;
-        ctx.strokeStyle = n.immuneUntil>Date.now() ? "#81d4fa" : "#263238";
-        ctx.stroke();
-        // 污染度顯示
-        ctx.font = "14px Arial"; ctx.fillStyle="#263238"; ctx.textAlign="center";
-        ctx.fillText(Math.round(n.pollution),n.x,n.y+4);
-      }
-    }
 
-    function updateUI(){
-      document.getElementById("energy").innerText = Math.max(0,Math.round(energy));
-      document.getElementById("pollution").innerText = pollutionPct+"%";
-      setSkillBtnStates();
-    }
+        // === 技能操作 ===
+        function skillReady(key) {
+            return skillCD[key] <= 0 && energy >= SKILL_PROPS[key][skillLevel[key] - 1].cost && gameRunning;
+        }
+        function setSkillBtnStates() {
+            let idMap = { check: "btnCheck", reply: "btnReply", report: "btnReport", ai: "btnAI" };
+            let lvMap = { check: "lvCheck", reply: "lvReply", report: "lvReport", ai: "lvAI" };
+            for (let key of ["check", "reply", "report", "ai"]) {
+                let btn = document.getElementById(idMap[key]);
+                if (!btn) continue;  // 防呆
+                if (selectedSkill === key) btn.classList.add("selected"); else btn.classList.remove("selected");
+                btn.disabled = !skillReady(key);
+                document.getElementById(lvMap[key]).innerText = skillLevel[key];
+            }
+        }
 
-    // === 遊戲主回圈 ===
-    let prevTS = null;
-    function mainLoop(ts){
-      if(!gameRunning) return;
-      if(!prevTS) prevTS=ts;
-      let dt = ts-prevTS; prevTS=ts;
-      updateGame(dt);
-      drawGame();
-      updateUI();
-      // 時間
-      timeLeft -= dt/1000;
-      if(timeLeft<=0) endGame(true);
-      document.getElementById("timeleft").innerText = Math.max(0,Math.ceil(timeLeft));
-      let timerW = Math.max(0,Math.round(220*timeLeft/GAME_TIME));
-      document.getElementById("timer-inner").style.width = timerW+"px";
-      if(gameRunning) requestAnimationFrame(mainLoop);
-    }
+        // === 技能觸發 ===
+        canvas.onclick = function (e) {
+            if (!gameRunning || !selectedSkill) return;
+            const rect = canvas.getBoundingClientRect();
+            let x = (e.clientX - rect.left) / rect.width * canvas.width;
+            let y = (e.clientY - rect.top) / rect.height * canvas.height;
+            let hit = null;
+            for (let n of nodes) {
+                let d = Math.hypot(n.x - x, n.y - y);
+                if (d < 28) { hit = n; break; }
+            }
+            if (!hit) return;
+            const now = Date.now();
+            const lv = skillLevel[selectedSkill] - 1;
+            const prop = SKILL_PROPS[selectedSkill][lv];
+            if (selectedSkill === "check") {
+                if (skillCD.check > 0 || energy < prop.cost) return;
+                n = hit;
+                if (n.immuneUntil > now) return;
+                n.pollution = Math.max(0, n.pollution - prop.effect);
+                energy -= prop.cost;
+                skillCD.check = prop.cooldown;
+            }
+            else if (selectedSkill === "reply") {
+                if (skillCD.reply > 0 || energy < prop.cost) return;
+                // 消除中心與周圍節點
+                let affected = nodes.filter(m => Math.hypot(m.x - hit.x, m.y - hit.y) < 45 * prop.range);
+                for (let n of affected) {
+                    if (n.immuneUntil > now) continue;
+                    n.pollution = Math.max(0, n.pollution - prop.effect);
+                }
+                energy -= prop.cost;
+                skillCD.reply = prop.cooldown;
+            }
+            else if (selectedSkill === "report") {
+                if (skillCD.report > 0 || energy < prop.cost) return;
+                if (hit.immuneUntil > now) return;
+                hit.immuneUntil = now + prop.immune;
+                energy -= prop.cost;
+                skillCD.report = prop.cooldown;
+            }
+            setSkillBtnStates();
+            updateUI();
+        };
 
-    // === 遊戲結束 ===
-    function endGame(win){
-      gameRunning = false;
-      document.getElementById("result-panel").style.display = "flex";
-      document.getElementById("result-box").innerHTML = win ?
-        `<div>🎉 你成功守住了資訊輿論場！<br><b style="color:#43a047;">資訊健康達標</b>，台灣更安全！<br><br>
+        document.getElementById("btnCheck").onclick = () => { if (skillReady("check")) selectedSkill = "check"; setSkillBtnStates(); };
+        document.getElementById("btnReply").onclick = () => { if (skillReady("reply")) selectedSkill = "reply"; setSkillBtnStates(); };
+        document.getElementById("btnReport").onclick = () => { if (skillReady("report")) selectedSkill = "report"; setSkillBtnStates(); };
+        document.getElementById("btnAI").onclick = () => {
+            if (!skillReady("ai")) return;
+            const lv = skillLevel.ai - 1, prop = SKILL_PROPS.ai[lv];
+            // AI自動消除污染
+            let dirty = nodes.filter(n => n.pollution > 10 && n.immuneUntil < Date.now());
+            for (let i = 0; i < Math.min(prop.auto, dirty.length); i++) {
+                dirty[i].pollution = Math.max(0, dirty[i].pollution - 38 - 4 * lv);
+            }
+            energy -= prop.cost;
+            skillCD.ai = prop.cooldown;
+            setSkillBtnStates();
+            updateUI();
+        };
+
+        // === 技能升級 ===
+        document.getElementById("btnUpgrade").onclick = () => {
+            let upList = ["check", "reply", "report", "ai"].filter(k => skillLevel[k] < SKILL_PROPS[k].length);
+            if (upList.length == 0) return alert("已全數滿級！");
+            // 最低等技能優先
+            let minLv = Math.min(...upList.map(k => skillLevel[k]));
+            let key = upList.find(k => skillLevel[k] == minLv);
+            skillLevel[key]++;
+            updateUI();
+            setSkillBtnStates();
+        };
+
+        // === 遊戲主循環 ===
+        function updateGame(dt) {
+            // 技能冷卻倒數
+            for (let k in skillCD) { if (skillCD[k] > 0) skillCD[k] -= dt; if (skillCD[k] < 0) skillCD[k] = 0; }
+            // 攻擊/污染擴散
+            let now = Date.now();
+            if (now - lastAttack > 800) {
+                lastAttack = now;
+                let targets = [];
+                // 先隨機直接攻擊一個節點
+                for (let n of nodes) {
+                    if (Math.random() < 0.10 && n.immuneUntil < now) {
+                        n.pollution += 9 + Math.random() * 5;
+                        targets.push(n);
+                    }
+                }
+                // 擴散機會
+                for (let n of nodes) {
+                    if (n.pollution > 55 && Math.random() < 0.23 && n.immuneUntil < now) {
+                        for (let idx of links[n.id]) {
+                            let neighbor = nodes[idx];
+                            if (neighbor.immuneUntil < now) neighbor.pollution += 4 + Math.random() * 4;
+                        }
+                    }
+                }
+                // 污染上限
+                for (let n of nodes) n.pollution = Math.min(100, n.pollution);
+            }
+            // 污染總量計算
+            let total = nodes.reduce((s, n) => s + n.pollution, 0);
+            pollutionPct = Math.round(total / (nodes.length * 100) * 100);
+            if (pollutionPct >= POLLUTION_FAIL) endGame(false);
+        }
+
+        // === 畫面更新 ===
+        function drawGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // 畫連結
+            ctx.save();
+            ctx.strokeStyle = "#bdbdbd";
+            ctx.lineWidth = 5;
+            ctx.globalAlpha = 0.28;
+            for (let i = 0; i < nodes.length; i++) {
+                let n = nodes[i];
+                for (let idx of links[n.id]) {
+                    let n2 = nodes[idx];
+                    ctx.beginPath();
+                    ctx.moveTo(n.x, n.y);
+                    ctx.lineTo(n2.x, n2.y);
+                    ctx.stroke();
+                }
+            }
+            ctx.restore();
+            // 畫節點
+            for (let n of nodes) {
+                let cval = Math.round(n.pollution);
+                let r = Math.min(65, cval * 2.1), g = Math.max(80, 255 - cval * 1.6), b = Math.max(70, 180 - cval);
+                ctx.save();
+                // 污染狀態顏色
+                ctx.beginPath();
+                ctx.arc(n.x, n.y, 23, 0, 2 * Math.PI);
+                ctx.fillStyle = `rgb(${r},${g},${b})`;
+                ctx.shadowColor = "#d84315"; ctx.shadowBlur = n.pollution > 55 ? 14 : 0;
+                ctx.fill();
+                ctx.restore();
+                // 邊框
+                ctx.beginPath();
+                ctx.arc(n.x, n.y, 23, 0, 2 * Math.PI);
+                ctx.lineWidth = 2.5;
+                ctx.strokeStyle = n.immuneUntil > Date.now() ? "#81d4fa" : "#263238";
+                ctx.stroke();
+                // 污染度顯示
+                ctx.font = "14px Arial"; ctx.fillStyle = "#263238"; ctx.textAlign = "center";
+                ctx.fillText(Math.round(n.pollution), n.x, n.y + 4);
+            }
+        }
+
+        function updateUI() {
+            document.getElementById("energy").innerText = Math.max(0, Math.round(energy));
+            document.getElementById("pollution").innerText = pollutionPct + "%";
+            setSkillBtnStates();
+        }
+
+        // === 遊戲主回圈 ===
+        let prevTS = null;
+        function mainLoop(ts) {
+            if (!gameRunning) return;
+            if (!prevTS) prevTS = ts;
+            let dt = ts - prevTS; prevTS = ts;
+            updateGame(dt);
+            drawGame();
+            updateUI();
+            // 時間
+            timeLeft -= dt / 1000;
+            if (timeLeft <= 0) endGame(true);
+            document.getElementById("timeleft").innerText = Math.max(0, Math.ceil(timeLeft));
+            let timerW = Math.max(0, Math.round(220 * timeLeft / GAME_TIME));
+            document.getElementById("timer-inner").style.width = timerW + "px";
+            if (gameRunning) requestAnimationFrame(mainLoop);
+        }
+
+        // === 遊戲結束 ===
+        function endGame(win) {
+            gameRunning = false;
+            document.getElementById("result-panel").style.display = "flex";
+            document.getElementById("result-box").innerHTML = win ?
+                `<div>🎉 你成功守住了資訊輿論場！<br><b style="color:#43a047;">資訊健康達標</b>，台灣更安全！<br><br>
          <button onclick="restartGame()">再玩一次</button></div>` :
-        `<div>💥 資訊污染過高！<br><b style="color:#d84315;">台灣社群已陷入假訊息風暴…</b><br><br>
+                `<div>💥 資訊污染過高！<br><b style="color:#d84315;">台灣社群已陷入假訊息風暴…</b><br><br>
          <button onclick="restartGame()">再來一次</button></div>`;
-    }
-    window.restartGame = function(){
-      document.getElementById("result-panel").style.display = "none";
-      startGame();
-    };
+        }
+        window.restartGame = function () {
+            document.getElementById("result-panel").style.display = "none";
+            startGame();
+        };
 
-    // === 遊戲初始化 ===
-    function startGame(){
-      skillLevel = {check:1, reply:1, report:1, ai:1};
-      skillCD = {check:0, reply:0, report:0, ai:0};
-      selectedSkill = null;
-      energy = ENERGY_INIT;
-      timeLeft = GAME_TIME;
-      pollutionPct = 0;
-      gameRunning = true;
-      prevTS = null;
-      resetNodes();
-      setSkillBtnStates();
-      updateUI();
-      requestAnimationFrame(mainLoop);
-    }
+        // === 遊戲初始化 ===
+        function startGame() {
+            skillLevel = { check: 1, reply: 1, report: 1, ai: 1 };
+            skillCD = { check: 0, reply: 0, report: 0, ai: 0 };
+            selectedSkill = null;
+            energy = ENERGY_INIT;
+            timeLeft = GAME_TIME;
+            pollutionPct = 0;
+            gameRunning = true;
+            prevTS = null;
+            resetNodes();
+            setSkillBtnStates();
+            updateUI();
+            requestAnimationFrame(mainLoop);
+        }
 
-    // === 開始遊戲 ===
-    window.onload = function(){
-      startGame();
-    }
-  </script>
+        // === 開始遊戲 ===
+        window.onload = function () {
+            startGame();
+        }
+    </script>
 </body>
+
 </html>
