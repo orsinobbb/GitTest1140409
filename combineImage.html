@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>圖片自動合併</title>
+</head>
+<body>
+  <h2>自動合併圖片（含重疊判斷）</h2>
+  <input type="file" id="imageInput" multiple accept="image/*"><br><br>
+  <canvas id="canvas"></canvas>
+  <script>
+    const input = document.getElementById('imageInput');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    input.addEventListener('change', async function() {
+      const files = [...this.files];
+      if (files.length === 0) return;
+
+      const images = await Promise.all(files.map(loadImage));
+      let mergedHeight = images[0].height;
+      let mergedWidth = images[0].width;
+
+      // 預估最大大小
+      canvas.width = mergedWidth;
+      canvas.height = images.reduce((sum, img) => sum + img.height, 0);
+
+      let currentY = 0;
+      ctx.drawImage(images[0], 0, currentY);
+      currentY += images[0].height;
+
+      for (let i = 1; i < images.length; i++) {
+        const overlap = await detectOverlap(images[i - 1], images[i]);
+        currentY -= overlap; // 往上移除重疊高度
+        ctx.drawImage(images[i], 0, currentY);
+        currentY += images[i].height;
+      }
+
+      canvas.height = currentY; // 修正實際高度
+    });
+
+    function loadImage(file) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.src = URL.createObjectURL(file);
+      });
+    }
+
+    async function detectOverlap(imgA, imgB) {
+      const tempCanvasA = document.createElement('canvas');
+      const tempCanvasB = document.createElement('canvas');
+      const width = imgA.width;
+
+      tempCanvasA.width = width;
+      tempCanvasB.width = width;
+
+      const maxOverlap = Math.min(imgA.height, imgB.height, 200); // 最多判斷200px
+
+      for (let overlap = maxOverlap; overlap > 10; overlap--) {
+        tempCanvasA.height = overlap;
+        tempCanvasB.height = overlap;
+
+        const ctxA = tempCanvasA.getContext('2d');
+        const ctxB = tempCanvasB.getContext('2d');
+
+        // 擷取 imgA 最下面 overlap px
+        ctxA.clearRect(0, 0, width, overlap);
+        ctxA.drawImage(imgA, 0, imgA.height - overlap, width, overlap, 0, 0, width, overlap);
+        const dataA = ctxA.getImageData(0, 0, width, overlap).data;
+
+        // 擷取 imgB 最上面 overlap px
+        ctxB.clearRect(0, 0, width, overlap);
+        ctxB.drawImage(imgB, 0, 0, width, overlap, 0, 0, width, overlap);
+        const dataB = ctxB.getImageData(0, 0, width, overlap).data;
+
+        // 比較像素
+        let diff = 0;
+        for (let i = 0; i < dataA.length; i++) {
+          if (Math.abs(dataA[i] - dataB[i]) > 5) diff++;
+        }
+
+        const total = dataA.length;
+        const ratio = diff / total;
+
+        if (ratio < 0.01) {
+          return overlap; // 找到可接受的重疊
+        }
+      }
+
+      return 0; // 沒有重疊
+    }
+  </script>
+</body>
+</html>
