@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>圖片自動合併工具</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    canvas { border: 1px solid #ccc; margin-top: 10px; }
+    #status { margin-top: 10px; color: #336699; }
+  </style>
+</head>
+<body>
+  <h2>📷 圖片自動合併工具（含重疊判斷）</h2>
+
+  <input type="file" id="imageInput" multiple accept="image/*"><br><br>
+  <button id="mergeBtn">▶️ 開始合併</button>
+  <p id="status">🔔 請先選擇圖片...</p>
+
+  <canvas id="canvas"></canvas>
+
+  <script>
+    const input = document.getElementById('imageInput');
+    const mergeBtn = document.getElementById('mergeBtn');
+    const status = document.getElementById('status');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let loadedImages = [];
+
+    input.addEventListener('change', async function () {
+      const files = [...this.files];
+      if (files.length === 0) {
+        status.textContent = '⚠️ 沒有選擇圖片';
+        return;
+      }
+
+      status.textContent = '📥 載入圖片中...';
+      loadedImages = await Promise.all(files.map(loadImage));
+      status.textContent = `✅ 已成功載入 ${loadedImages.length} 張圖片，請點「開始合併」`;
+    });
+
+    mergeBtn.addEventListener('click', async function () {
+      if (loadedImages.length === 0) {
+        status.textContent = '⚠️ 尚未載入圖片';
+        return;
+      }
+
+      status.textContent = '🛠️ 正在合併圖片中...';
+      await mergeImages(loadedImages);
+      status.textContent = '🎉 合併完成！您可以另存圖片（右鍵）';
+    });
+
+    function loadImage(file) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.src = URL.createObjectURL(file);
+      });
+    }
+
+    async function mergeImages(images) {
+      const width = images[0].width;
+      canvas.width = width;
+      canvas.height = images.reduce((sum, img) => sum + img.height, 0);
+
+      let currentY = 0;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(images[0], 0, currentY);
+      currentY += images[0].height;
+
+      for (let i = 1; i < images.length; i++) {
+        const overlap = await detectOverlap(images[i - 1], images[i]);
+        currentY -= overlap;
+        ctx.drawImage(images[i], 0, currentY);
+        currentY += images[i].height;
+      }
+
+      canvas.height = currentY; // 修正實際高度
+    }
+
+    async function detectOverlap(imgA, imgB) {
+      const tempCanvasA = document.createElement('canvas');
+      const tempCanvasB = document.createElement('canvas');
+      const width = imgA.width;
+
+      tempCanvasA.width = width;
+      tempCanvasB.width = width;
+
+      const maxOverlap = Math.min(imgA.height, imgB.height, 200);
+
+      for (let overlap = maxOverlap; overlap > 10; overlap--) {
+        tempCanvasA.height = overlap;
+        tempCanvasB.height = overlap;
+
+        const ctxA = tempCanvasA.getContext('2d');
+        const ctxB = tempCanvasB.getContext('2d');
+
+        ctxA.clearRect(0, 0, width, overlap);
+        ctxA.drawImage(imgA, 0, imgA.height - overlap, width, overlap, 0, 0, width, overlap);
+        const dataA = ctxA.getImageData(0, 0, width, overlap).data;
+
+        ctxB.clearRect(0, 0, width, overlap);
+        ctxB.drawImage(imgB, 0, 0, width, overlap, 0, 0, width, overlap);
+        const dataB = ctxB.getImageData(0, 0, width, overlap).data;
+
+        let diff = 0;
+        for (let i = 0; i < dataA.length; i++) {
+          if (Math.abs(dataA[i] - dataB[i]) > 5) diff++;
+        }
+
+        if (diff / dataA.length < 0.01) return overlap;
+      }
+
+      return 0;
+    }
+  </script>
+</body>
+</html>
