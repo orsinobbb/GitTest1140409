@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🎼 多張樂譜接合工具</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    input[type="file"] {
+      display: block;
+      margin: 0 auto 15px;
+    }
+
+    .preview-section {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      justify-content: center;
+    }
+
+    .preview-box {
+      width: 200px;
+      text-align: center;
+    }
+
+    .preview-box img {
+      max-width: 100%;
+      max-height: 150px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+
+    .controls {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    select, input, button {
+      margin: 8px;
+      padding: 8px;
+      font-size: 16px;
+    }
+
+    canvas {
+      margin-top: 20px;
+      max-width: 100%;
+      border: 1px solid #ccc;
+      display: none;
+    }
+
+    #progressBar {
+      width: 0%;
+      height: 6px;
+      background: #007bff;
+      transition: width 0.3s;
+    }
+
+    #progressContainer {
+      width: 100%;
+      background: #e0e0e0;
+      border-radius: 3px;
+      overflow: hidden;
+      height: 6px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎼 多張樂譜接合工具</h1>
+
+  <input type="file" id="imageUpload" accept="image/*" multiple onchange="loadImages(this)">
+
+  <div class="preview-section" id="previewContainer"></div>
+
+  <div class="controls">
+    <label>接合方向：</label>
+    <select id="direction">
+      <option value="vertical">垂直</option>
+      <option value="horizontal">水平</option>
+    </select>
+    <label>容差：</label>
+    <input type="number" id="tolerance" value="10" min="1" max="50" />
+    <label>重疊範圍：</label>
+    <input type="number" id="overlap" value="50" min="10" max="300" />
+    <br/>
+    <button onclick="detectJoinPoint()">🔍 檢測並合併</button>
+  </div>
+
+  <div id="progressContainer"><div id="progressBar"></div></div>
+
+  <canvas id="resultCanvas"></canvas>
+  <div id="downloadArea" style="text-align: center; margin-top: 10px;"></div>
+
+<script>
+  let imageList = [];
+
+  function loadImages(input) {
+    const files = Array.from(input.files);
+    imageList = [];
+    const previewContainer = document.getElementById("previewContainer");
+    previewContainer.innerHTML = "";
+
+    files.forEach((file, index) => {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const img = new Image();
+        img.onload = function () {
+          imageList[index] = img;
+
+          const box = document.createElement("div");
+          box.classList.add("preview-box");
+          box.innerHTML = `<h4>第 ${index + 1} 張</h4><img src="${e.target.result}">`;
+          previewContainer.appendChild(box);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function getImageData(img) {
+    const canvas = document.createElement("canvas");
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0);
+    return ctx.getImageData(0, 0, canvas.width, canvas.height);
+  }
+
+  function calculatePixelDifference(data1, data2, x1, y1, x2, y2, tolerance) {
+    const idx1 = (y1 * data1.width + x1) * 4;
+    const idx2 = (y2 * data2.width + x2) * 4;
+
+    const diff =
+      Math.abs(data1.data[idx1] - data2.data[idx2]) +
+      Math.abs(data1.data[idx1 + 1] - data2.data[idx2 + 1]) +
+      Math.abs(data1.data[idx1 + 2] - data2.data[idx2 + 2]);
+
+    return diff <= tolerance * 3;
+  }
+
+  async function compareImages(img1, img2, data1, data2, direction, overlapRange, tolerance) {
+    let bestScore = 0;
+    let bestOffset = 0;
+    const total = direction === "vertical"
+      ? Math.min(overlapRange, img1.height, img2.height)
+      : Math.min(overlapRange, img1.width, img2.width);
+
+    for (let offset = 1; offset <= total; offset++) {
+      let match = 0, totalPixel = 0;
+
+      if (direction === "vertical") {
+        const width = Math.min(img1.width, img2.width);
+        for (let x = 0; x < width; x++) {
+          for (let y = 0; y < offset; y++) {
+            const y1 = img1.height - offset + y;
+            const y2 = y;
+            if (y1 < img1.height && y2 < img2.height)
+              if (calculatePixelDifference(data1, data2, x, y1, x, y2, tolerance)) match++;
+            totalPixel++;
+          }
+        }
+      } else {
+        const height = Math.min(img1.height, img2.height);
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < offset; x++) {
+            const x1 = img1.width - offset + x;
+            const x2 = x;
+            if (x1 < img1.width && x2 < img2.width)
+              if (calculatePixelDifference(data1, data2, x1, y, x2, y, tolerance)) match++;
+            totalPixel++;
+          }
+        }
+      }
+
+      const score = match / totalPixel;
+      if (score > bestScore) {
+        bestScore = score;
+        bestOffset = offset;
+      }
+
+      if (offset % 5 === 0) {
+        document.getElementById("progressBar").style.width = ((offset / total) * 100) + "%";
+        await new Promise(r => setTimeout(r, 1));
+      }
+    }
+
+    return { offset: bestOffset, score: bestScore };
+  }
+
+  async function detectJoinPoint() {
+    if (imageList.length < 2) return alert("請上傳至少兩張圖片");
+
+    const direction = document.getElementById("direction").value;
+    const overlapRange = parseInt(document.getElementById("overlap").value);
+    const tolerance = parseInt(document.getElementById("tolerance").value);
+
+    const dataList = imageList.map(img => getImageData(img));
+    const joinPoints = [];
+
+    for (let i = 0; i < imageList.length - 1; i++) {
+      const result = await compareImages(
+        imageList[i], imageList[i + 1],
+        dataList[i], dataList[i + 1],
+        direction, overlapRange, tolerance
+      );
+
+      if (result.score < 0.5) return alert(`第 ${i + 1} 與 ${i + 2} 張圖片接合度太低`);
+      joinPoints.push(result);
+    }
+
+    mergeImages(joinPoints, direction);
+  }
+
+  function mergeImages(joinPoints, direction) {
+    const canvas = document.getElementById("resultCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let width = 0, height = 0;
+
+    if (direction === "vertical") {
+      width = Math.max(...imageList.map(img => img.width));
+      height = imageList[0].height;
+      for (let i = 1; i < imageList.length; i++) {
+        height += imageList[i].height - joinPoints[i - 1].offset;
+      }
+    } else {
+      height = Math.max(...imageList.map(img => img.height));
+      width = imageList[0].width;
+      for (let i = 1; i < imageList.length; i++) {
+        width += imageList[i].width - joinPoints[i - 1].offset;
+      }
+    }
+
+    canvas.width = width;
+    canvas.height = height;
+
+    let x = 0, y = 0;
+    for (let i = 0; i < imageList.length; i++) {
+      ctx.drawImage(imageList[i], x, y);
+      if (i < joinPoints.length) {
+        if (direction === "horizontal") x += imageList[i].width - joinPoints[i].offset;
+        else y += imageList[i].height - joinPoints[i].offset;
+      }
+    }
+
+    canvas.style.display = "block";
+
+    const download = document.createElement("button");
+    download.innerText = "💾 下載合併圖片";
+    download.onclick = function () {
+      const link = document.createElement("a");
+      link.href = canvas.toDataURL();
+      link.download = "merged.png";
+      link.click();
+    };
+
+    const area = document.getElementById("downloadArea");
+    area.innerHTML = "";
+    area.appendChild(download);
+  }
+</script>
+</body>
+</html>
