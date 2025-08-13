@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>真實與焦慮：互動式分析系統</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+```
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        color: #333;
+    }
+
+    .container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .header {
+        text-align: center;
+        margin-bottom: 40px;
+        color: white;
+    }
+
+    .header h1 {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .header p {
+        font-size: 1.2em;
+        opacity: 0.9;
+    }
+
+    .card {
+        background: white;
+        border-radius: 20px;
+        padding: 30px;
+        margin-bottom: 30px;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .module-title {
+        font-size: 1.8em;
+        color: #4a5568;
+        margin-bottom: 20px;
+        text-align: center;
+        position: relative;
+    }
+
+    .module-title::after {
+        content: '';
+        position: absolute;
+        bottom: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 80px;
+        height: 3px;
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        border-radius: 2px;
+    }
+
+    .question {
+        margin-bottom: 25px;
+    }
+
+    .question-text {
+        font-size: 1.1em;
+        font-weight: 600;
+        margin-bottom: 15px;
+        color: #2d3748;
+        line-height: 1.6;
+    }
+
+    .options {
+        display: grid;
+        gap: 10px;
+    }
+
+    .option {
+        background: #f7fafc;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 15px 20px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .option::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.1), transparent);
+        transition: left 0.5s ease;
+    }
+
+    .option:hover {
+        border-color: #667eea;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+    }
+
+    .option:hover::before {
+        left: 100%;
+    }
+
+    .option.selected {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border-color: #5a67d8;
+        transform: scale(1.02);
+    }
+
+    .option-label {
+        font-weight: 500;
+        margin-bottom: 5px;
+    }
+
+    .option-desc {
+        font-size: 0.9em;
+        opacity: 0.8;
+        line-height: 1.4;
+    }
+
+    .progress-bar {
+        background: #e2e8f0;
+        height: 8px;
+        border-radius: 4px;
+        margin: 20px 0;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.3s ease;
+    }
+
+    .navigation {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 30px;
+    }
+
+    .btn {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 25px;
+        font-size: 1em;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .btn-primary {
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        color: white;
+    }
+
+    .btn-secondary {
+        background: #e2e8f0;
+        color: #4a5568;
+    }
+
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+
+    .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .result-card {
+        background: linear-gradient(135deg, #4fd1c7, #3182ce);
+        color: white;
+    }
+
+    .result-title {
+        font-size: 2em;
+        margin-bottom: 15px;
+        text-align: center;
+    }
+
+    .result-section {
+        margin-bottom: 25px;
+        padding: 20px;
+        background: rgba(255,255,255,0.1);
+        border-radius: 15px;
+        backdrop-filter: blur(10px);
+    }
+
+    .result-section h3 {
+        font-size: 1.3em;
+        margin-bottom: 10px;
+    }
+
+    .strategy-card {
+        background: rgba(255,255,255,0.1);
+        padding: 20px;
+        border-radius: 15px;
+        margin: 15px 0;
+        border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .hidden {
+        display: none;
+    }
+
+    .fade-in {
+        animation: fadeIn 0.5s ease-in;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .icon {
+        font-size: 1.5em;
+        margin-right: 10px;
+    }
+
+    .score-display {
+        font-size: 2em;
+        font-weight: bold;
+        color: #ffd700;
+        text-align: center;
+        margin: 15px 0;
+    }
+
+    .recommendation {
+        background: #f0fff4;
+        border-left: 4px solid #38a169;
+        padding: 15px;
+        margin: 15px 0;
+        border-radius: 0 10px 10px 0;
+        color: #2d3748;
+    }
+
+    .warning {
+        background: #fff5f5;
+        border-left: 4px solid #e53e3e;
+        padding: 15px;
+        margin: 15px 0;
+        border-radius: 0 10px 10px 0;
+        color: #2d3748;
+    }
+
+    @media (max-width: 768px) {
+        .container {
+            padding: 15px;
+        }
+        
+        .card {
+            padding: 20px;
+        }
+        
+        .header h1 {
+            font-size: 2em;
+        }
+        
+        .module-title {
+            font-size: 1.5em;
+        }
+    }
+</style>
+```
+
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧭 真實與焦慮分析系統</h1>
+            <p>深度探索內在真實，智慧應對焦慮挑戰</p>
+        </div>
+
+```
+    <!-- 進度條 -->
+    <div class="card">
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div style="text-align: center; color: #666;">
+            <span id="progressText">模組 1 / 4</span>
+        </div>
+    </div>
+
+    <!-- 模組一：現狀定位 -->
+    <div class="card module" id="module1">
+        <h2 class="module-title">📍 模組一：現狀定位診斷</h2>
+        
+        <div class="question">
+            <div class="question-text">當你想到那個讓你焦慮的議題時，你的第一反應是？</div>
+            <div class="options">
+                <div class="option" data-value="a" data-question="1A">
+                    <div class="option-label">🚫 想要立刻轉移注意力</div>
+                    <div class="option-desc">不願深想，儘量避免接觸相關話題</div>
+                </div>
+                <div class="option" data-value="b" data-question="1A">
+                    <div class="option-label">🔄 能夠思考但原地打轉</div>
+                    <div class="option-desc">會想，但感覺思緒在重複循環</div>
+                </div>
+                <div class="option" data-value="c" data-question="1A">
+                    <div class="option-label">🎯 清楚問題但不知道怎麼行動</div>
+                    <div class="option-desc">能看見狀況，但缺乏行動方向</div>
+                </div>
+                <div class="option" data-value="d" data-question="1A">
+                    <div class="option-label">✅ 有明確想法正在行動</div>
+                    <div class="option-desc">正在計劃或已經開始處理</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="question">
+            <div class="question-text">關於這個議題，你多久會主動思考一次？</div>
+            <div class="options">
+                <div class="option" data-value="a" data-question="1B">
+                    <div class="option-label">🙈 儘量避免思考</div>
+                    <div class="option-desc">除非被迫面對，否則不會主動想</div>
+                </div>
+                <div class="option" data-value="b" data-question="1B">
+                    <div class="option-label">🔁 經常反覆思考</div>
+                    <div class="option-desc">內容大同小異，沒有新進展</div>
+                </div>
+                <div class="option" data-value="c" data-question="1B">
+                    <div class="option-label">📅 定期檢視</div>
+                    <div class="option-desc">每次都有新的理解或發現</div>
+                </div>
+                <div class="option" data-value="d" data-question="1B">
+                    <div class="option-label">😌 已經不常想了</div>
+                    <div class="option-desc">因為正在處理中，不需要一直想</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="question">
+            <div class="question-text">當別人提到相關話題時，你的感受是？</div>
+            <div class="options">
+                <div class="option" data-value="a" data-question="1C">
+                    <div class="option-label">😰 不舒服想結束話題</div>
+                    <div class="option-desc">明顯感到不適，想要轉移話題</div>
+                </div>
+                <div class="option" data-value="b" data-question="1C">
+                    <div class="option-label">😟 焦慮但會參與討論</div>
+                    <div class="option-desc">有不安感但還是能夠對話</div>
+                </div>
+                <div class="option" data-value="c" data-question="1C">
+                    <div class="option-label">🤔 能開放討論雖有不安</div>
+                    <div class="option-desc">可以客觀討論，但仍有些緊張</div>
+                </div>
+                <div class="option" data-value="d" data-question="1C">
+                    <div class="option-label">😊 相對平靜客觀對話</div>
+                    <div class="option-desc">能夠冷靜理性地參與討論</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模組二：威脅等級評估 -->
+    <div class="card module hidden" id="module2">
+        <h2 class="module-title">⚡ 模組二：真相威脅等級評估</h2>
+        
+        <div class="question">
+            <div class="question-text">如果這個真相完全被確認，它會影響到你的？</div>
+            <div class="options">
+                <div class="option" data-value="a" data-question="2A">
+                    <div class="option-label">🏠 日常習慣或小決定</div>
+                    <div class="option-desc">生活調整，但不會根本改變什麼</div>
+                </div>
+                <div class="option" data-value="b" data-question="2A">
+                    <div class="option-label">💼 重要關係或工作表現</div>
+                    <div class="option-desc">會影響重要領域，但可以調整</div>
+                </div>
+                <div class="option" data-value="c" data-question="2A">
+                    <div class="option-label">🪞 核心身份認同或人生方向</div>
+                    <div class="option-desc">會挑戰我對自己的根本認知</div>
+                </div>
+                <div class="option" data-value="d" data-question="2A">
+                    <div class="option-label">🌍 生存安全感或存在意義</div>
+                    <div class="option-desc">會動搖我對世界和生命的基本信念</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="question">
+            <div class="question-text">承認這個真相，意味著你可能需要？</div>
+            <div class="options">
+                <div class="option" data-value="a" data-question="2B">
+                    <div class="option-label">🔧 調整一些行為模式</div>
+                    <div class="option-desc">改變習慣或處事方式</div>
+                </div>
+                <div class="option" data-value="b" data-question="2B">
+                    <div class="option-label">🔄 做出重要但可逆的改變</div>
+                    <div class="option-desc">重大決定，但仍有回頭路</div>
+                </div>
+                <div class="option" data-value="c" data-question="2B">
+                    <div class="option-label">🦋 徹底重新定義自己</div>
+                    <div class="option-desc">根本性地改變自我認知</div>
+                </div>
+                <div class="option" data-value="d" data-question="2B">
+                    <div class="option-label">💥 推翻過去多年的重要信念</div>
+                    <div class="option-desc">質疑過去的人生選擇和價值觀</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="question">
+            <div class="question-text">想到要面對這個真相時，你的身體反應是？</div>
+            <div class="options">
+                <div class="option" data-value="a" data-question="2C">
+                    <div class="option-label">😌 輕微不適但可承受</div>
+                    <div class="option-desc">有點緊張，但身體狀況正常</div>
+                </div>
+                <div class="option" data-value="b" data-question="2C">
+                    <div class="option-label">💓 明顯緊張心跳加速</div>
+                    <div class="option-desc">能感受到明確的生理反應</div>
+                </div>
+                <div class="option" data-value="c" data-question="2C">
+                    <div class="option-label">😵 強烈焦慮伴隨生理症狀</div>
+                    <div class="option-desc">頭暈、胸悶、冒汗等明顯症狀</div>
+                </div>
+                <div class="option" data-value="d" data-question="2C">
+                    <div class="option-label">🚨 恐慌或想要逃離的衝動</div>
+                    <div class="option-desc">強烈的逃避衝動，難以控制</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模組三：焦慮性質分析 -->
+    <div class="card module hidden" id="module3">
+        <h2 class="module-title">🧠 模組三：焦慮性質深度分析</h2>
+        
+        <div class="question">
+            <div class="question-text">你的焦慮主要集中在？</div>
+            <div class="options">
+                <div class="option" data-value="a" data-question="3A">
+                    <div class="option-label">🎯 具體的事件、情況或決定</div>
+                    <div class="option-desc">能明確指出焦慮的來源</div>
+                </div>
+                <div class="option" data-value="b" data-question="3A">
+                    <div class="option-label">🔮 對於未來的不確定感</div>
+                    <div class="option-desc">擔心未來可能發生的事情</div>
+                </div>
+                <div class="option" data-value="c" data-question="3A">
+                    <div class="option-label">🪞 對自己能力或價值的懷疑</div>
+                    <div class="option-desc">質疑自己是否足夠好</div>
+                </div>
+                <div class="option" data-value="d" data-question="3A">
+                    <div class="option-label">🌫️ 瀰漫性的不安</div>
+                    <div class="option-desc">說不清楚來源的整體不安感</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="question">
+            <div class="question-text">這個焦慮對你來說有什麼"好處"？</div>
+            <div class="options">
+                <div class="option" data-value="a" data-question="3B">
+                    <div class="option-label">⚠️ 提醒我注意重要風險</div>
+                    <div class="option-desc">幫助我察覺重要的問題或危險</div>
+                </div>
+                <div class="option" data-value="b" data-question="3B">
+                    <div class="option-label">🛡️ 促使我更加謹慎準備</div>
+                    <div class="option-desc">讓我做更充分的準備和計劃</div>
+                </div>
+                <div class="option" data-value="c" data-question="3B">
+                    <div class="option-label">⏸️ 暫時不用面對困難選擇</div>
+                    <div class="option-desc">延遲做困難決定的時間點</div>
+                </div>
+                <div class="option" data-value="d" data-question="3B">
+                    <div class="option-label">🏠 維持熟悉的心理狀態</div>
+                    <div class="option-desc">雖然不舒服，但至少是熟悉的</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="question">
+            <div class="question-text">如果這個焦慮突然消失，你會？</div>
+            <div class="options">
+                <div class="option" data-value="a" data-question="3C">
+                    <div class="option-label">😌 鬆一口氣立刻行動</div>
+                    <div class="option-desc">感到解脫，迅速採取行動</div>
+                </div>
+                <div class="option" data-value="b" data-question="3C">
+                    <div class="option-label">🆕 有點不習慣但很快適應</div>
+                    <div class="option-desc">需要一點時間適應新狀態</div>
+                </div>
+                <div class="option" data-value="c" data-question="3C">
+                    <div class="option-label">🕳️ 感到空虛或失去方向</div>
+                    <div class="option-desc">不知道該做什麼，感到迷茫</div>
+                </div>
+                <div class="option" data-value="d" data-question="3C">
+                    <div class="option-label">😟 擔心失去重要保護</div>
+                    <div class="option-desc">覺得失去了某種安全機制</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模組四：行動能力評估 -->
+    <div class="card module hidden" id="module4">
+        <h2 class="module-title">💪 模組四：行動能力評估</h2>
+        
+        <div class="question">
+            <div class="question-text">關於這個議題，你目前擁有的資源包括？（可多選）</div>
+            <div class="options">
+                <div class="option" data-value="a" data-question="4A" data-multiple="true">
+                    <div class="option-label">⏰ 充足的時間和精力</div>
+                    <div class="option-desc">有足夠的時間來處理這個問題</div>
+                </div>
+                <div class="option" data-value="b" data-question="4A" data-multiple="true">
+                    <div class="option-label">🧠 相關的知識、技能或經驗</div>
+                    <div class="option-desc">具備處理這類問題的能力</div>
+                </div>
+                <div class="option" data-value="c" data-question="4A" data-multiple="true">
+                    <div class="option-label">👥 支持性的人際關係</div>
+                    <div class="option-desc">有人可以提供情感或實質支持</div>
+                </div>
+                <div class="option" data-value="d" data-question="4A" data-multiple="true">
+                    <div class="option-label">💰 經濟或其他實質條件</div>
+                    <div class="option-desc">有足夠的物質基礎支持改變</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="question">
+            <div class="question-text">如果現在就要採取行動，你最擔心的是？</div>
+            <div class="options">
+                <div class="option" data-value="a" data-question="4B">
+                    <div class="option-label">❌ 可能做出錯誤的選擇</div>
+                    <div class="option-desc">擔心判斷失誤導致不好的後果</div>
+                </div>
+                <div class="option" data-value="b" data-question="4B">
+                    <div class="option-label">📚 沒有足夠的準備或能力</div>
+                    <div class="option-desc">覺得自己還不夠準備好</div>
+                </div>
+                <div class="option" data-value="c" data-question="4B">
+                    <div class="option-label">🏠 失去現有的安全感</div>
+                    <div class="option-desc">擔心改變會破壞現在的穩定</div>
+                </div>
+                <div class="option" data-value="d" data-question="4B">
+                    <div class="option-label">💔 無法承受失敗後果</div>
+                    <div class="option-desc">害怕失敗帶來無法挽回的傷害</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="question">
+            <div class="question-text">過去你處理類似挑戰的經驗？</div>
+            <div class="options">
+                <div class="option" data-value="a" data-question="4C">
+                    <div class="option-label">✅ 通常能成功應對</div>
+                    <div class="option-desc">雖然過程不輕鬆，但結果通常不錯</div>
+                </div>
+                <div class="option" data-value="b" data-question="4C">
+                    <div class="option-label">📈 有成功也有失敗</div>
+                    <div class="option-desc">結果各異，但都學到了東西</div>
+                </div>
+                <div class="option" data-value="c" data-question="4C">
+                    <div class="option-label">🙈 大多選擇迴避</div>
+                    <div class="option-desc">很少正面處理類似問題</div>
+                </div>
+                <div class="option" data-value="d" data-question="4C">
+                    <div class="option-label">🆕 缺乏相關經驗</div>
+                    <div class="option-desc">這是新的挑戰類型</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 結果頁面 -->
+    <div class="card result-card hidden" id="results">
+        <h2 class="result-title">🎯 你的個人化分析報告</h2>
+        
+        <div class="result-section" id="statusResult">
+            <h3>📍 當前心理狀態</h3>
+            <div id="statusDescription"></div>
+        </div>
+
+        <div class="result-section" id="threatResult">
+            <h3>⚡ 真相威脅等級</h3>
+            <div id="threatDescription"></div>
+        </div>
+
+        <div class="result-section" id="anxietyResult">
+            <h3>🧠 焦慮性質分析</h3>
+            <div id="anxietyDescription"></div>
+        </div>
+
+        <div class="result-section" id="capacityResult">
+            <h3>💪 行動準備度</h3>
+            <div class="score-display" id="capacityScore"></div>
+            <div id="capacityDescription"></div>
+        </div>
+
+        <div class="result-section" id="strategyResult">
+            <h3>🎮 個人化策略建議</h3>
+            <div id="strategyDescription"></div>
+        </div>
+
+        <div class="result-section" id="toolsResult">
+            <h3>🛠️ 推薦工具包</h3>
+            <div id="toolsDescription"></div>
+        </div>
+
+        <div class="result-section" id="actionResult">
+            <h3>📋 具體行動計劃</h3>
+            <div id="actionDescription"></div>
+        </div>
+    </div>
+
+    <!-- 導航按鈕 -->
+    <div class="navigation">
+        <button class="btn btn-secondary" id="prevBtn" onclick="previousModule()">上一步</button>
+        <button class="btn btn-primary" id="nextBtn" onclick="nextModule()" disabled>下一步</button>
+        <button class="btn btn-primary hidden" id="analyzeBtn" onclick="showResults()">查看分析結果</button>
+        <button class="btn btn-secondary hidden" id="restartBtn" onclick="restart()">重新開始</button>
+    </div>
+</div>
+
+<script>
+    let currentModule = 1;
+    const totalModules = 4;
+    let answers = {};
+
+    // 初始化
+    function init() {
+        updateProgress();
+        updateNavigation();
+        addEventListeners();
+    }
+
+    // 添加事件監聽器
+    function addEventListeners() {
+        document.querySelectorAll('.option').forEach(option => {
+            option.addEventListener('click', function() {
+                const question = this.dataset.question;
+                const value = this.dataset.value;
+                const isMultiple = this.dataset.multiple === 'true';
+
+                if (isMultiple) {
+                    // 多選題處理
+                    this.classList.toggle('selected');
+                    if (!answers[question]) answers[question] = [];
+                    
+                    if (this.classList.contains('selected')) {
+                        if (!answers[question].includes(value)) {
+                            answers[question].push(value);
+                        }
+                    } else {
+                        answers[question] = answers[question].filter(v => v !== value);
+                    }
+                } else {
+                    // 單選題處理
+                    document.querySelectorAll(`[data-question="${question}"]`).forEach(opt => {
+                        opt.classList.remove('selected');
+                    });
+                    this.classList.add('selected');
+                    answers[question] = value;
+                }
+
+                updateNavigation();
+            });
+        });
+    }
+
+    // 更新進度條
+    function updateProgress() {
+        const progress = (currentModule / totalModules) * 100;
+        document.getElementById('progressFill').style.width = progress + '%';
+        document.getElementById('progressText').textContent = `模組 ${currentModule} / ${totalModules}`;
+    }
+
+    // 更新導航狀態
+    function updateNavigation() {
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+
+        // 檢查當前模組是否已完成
+        const currentModuleCompleted = checkCurrentModuleCompleted();
+        
+        prevBtn.disabled = currentModule === 1;
+        
+        if (currentModule === totalModules) {
+            nextBtn.classList.add('hidden');
+            analyzeBtn.classList.remove('hidden');
+            analyzeBtn.disabled = !currentModuleCompleted;
+        } else {
+            nextBtn.classList.remove('hidden');
+            analyzeBtn.classList.add('hidden');
+            nextBtn.disabled = !currentModuleCompleted;
+        }
+    }
+
+    // 檢查當前模組是否完成
+    function checkCurrentModuleCompleted() {
+        const requiredQuestions = getRequiredQuestionsForModule(currentModule);
+        return requiredQuestions.every(q => answers[q] !== undefined);
+    }
+
+    // 獲取模組所需問題
+    function getRequiredQuestionsForModule(module) {
+        const questionMap = {
+            1: ['1A', '1B', '1C'],
+            2: ['2A', '2B', '2C'],
+            3: ['3A', '3B', '3C'],
+            4: ['4A', '4B', '4C']
+        };
+        return questionMap[module] || [];
+    }
+
+    // 下一個模組
+    function nextModule() {
+        if (currentModule < totalModules) {
+            document.getElementById(`module${currentModule}`).classList.add('hidden');
+            currentModule++;
+            document.getElementById(`module${currentModule}`).classList.remove('hidden');
+            document.getElementById(`module${currentModule}`).classList.add('fade-in');
+            updateProgress();
+            updateNavigation();
+        }
+    }
+
+    // 上一個模組
+    function previousModule() {
+        if (currentModule > 1) {
+            document.getElementById(`module${currentModule}`).classList.add('hidden');
+            currentModule--;
+            document.getElementById(`module${currentModule}`).classList.remove('hidden');
+            document.getElementById(`module${currentModule}`).classList.add('fade-in');
+            updateProgress();
+            updateNavigation();
+        }
+    }
+
+    // 顯示結果
+    function showResults() {
+        // 隱藏所有模組
+        document.querySelectorAll('.module').forEach(module => {
+            module.classList.add('hidden');
+        });
+        
+        // 分析結果
+        const analysis = analyzeAnswers();
+        
+        // 顯示結果
+        displayResults(analysis);
+        
+        // 顯示結果頁面
+        document.getElementById('results').classList.remove('hidden');
+        document.getElementById('results').classList.add('fade-in');
+        
+        // 更新導航
+        document.getElementById('nextBtn').classList.add('hidden');
+        document.getElementById('analyzeBtn').classList.add('hidden');
+        document.getElementById('prevBtn').classList.add('hidden');
+        document.getElementById('restartBtn').classList.remove('hidden');
+        
+        // 隱藏進度條
+        document.querySelector('.progress-bar').parentElement.classList.add('hidden');
+    }
+
+    // 分析答案
+    function analyzeAnswers() {
+        // 分析心理狀態
+        const statusCount = countAnswers(['1A', '1B', '1C']);
+        const status = getMostFrequent(statusCount);
+        
+        // 分析威脅等級
+        const threatCount = countAnswers(['2A', '2B', '2C']);
+        const threat = getMostFrequent(threatCount);
+        
+        // 分析焦慮性質
+        const anxietyCount = countAnswers(['3A', '3B', '3C']);
+        const anxiety = getMostFrequent(anxietyCount);
+        
+        // 計算行動準備度
+        const capacity = calculateCapacity();
+        
+        return {
+            status,
+            threat,
+            anxiety,
+            capacity
+        };
+    }
+
+    // 計算答案分布
+    function countAnswers(questions) {
+        const count = { a: 0, b: 0, c: 0, d: 0 };
+        questions.forEach(q => {
+            if (answers[q]) {
+                count[answers[q]]++;
+            }
+        });
+        return count;
+    }
+
+    // 獲取最頻繁的答案
+    function getMostFrequent(count) {
+        return Object.keys(count).reduce((a, b) => count[a] > count[b] ? a : b);
+    }
+
+    // 計算行動準備度
+    function calculateCapacity() {
+        let score = 0;
+        
+        // 資源評分 (4A 多選題)
+        if (answers['4A']) {
+            score += answers['4A'].length * 3;
+        }
+        
+        // 擔憂評分 (4B)
+        const worryScore = { a: 3, b: 2, c: 1, d: 0 };
+        score += worryScore[answers['4B']] || 0;
+        
+        // 經驗評分 (4C)
+        const expScore = { a: 3, b: 2, c: 1, d: 0 };
+        score += expScore[answers['4C']] || 0;
+        
+        return Math.min(score, 9); // 最高9分
+    }
+
+    // 顯示結果
+    function displayResults(analysis) {
+        displayStatus(analysis.status);
+        displayThreat(analysis.threat);
+        displayAnxiety(analysis.anxiety);
+        displayCapacity(analysis.capacity);
+        displayStrategy(analysis);
+        displayTools(analysis);
+        displayActionPlan(analysis);
+    }
+
+    // 顯示心理狀態結果
+    function displayStatus(status) {
+        const descriptions = {
+            a: {
+                title: '🌫️ 焦慮迷霧階段',
+                desc: '你目前處於迴避狀態，傾向於不去深入思考讓你焦慮的議題。這是自我保護機制，但也可能阻礙了解決問題的進展。',
+                advice: '建議從最小的、安全的角度開始接觸問題，不要給自己太大壓力。'
+            },
+            b: {
+                title: '🔄 假性陪伴階段',
+                desc: '你會思考問題，但容易陷入重複性的思維循環中，沒有實質性的進展。這種狀態給了「在處理問題」的假象。',
+                advice: '需要設定具體的行動指標，打破純思考的循環，加入實際的行動元素。'
+            },
+            c: {
+                title: '🎯 真正陪伴階段',
+                desc: '你能夠清晰地看見問題，並且持續有新的理解和洞察。你正在建設性地為行動做準備。',
+                advice: '這是很好的狀態！現在可以開始規劃具體的行動策略。'
+            },
+            d: {
+                title: '✅ 行動準備/執行階段',
+                desc: '你已經有明確的想法並且正在付諸行動。你的焦慮已經轉化為建設性的動力。',
+                advice: '繼續保持現在的動力，注意在過程中調整策略，保持彈性。'
+            }
+        };
+        
+        const result = descriptions[status];
+        document.getElementById('statusDescription').innerHTML = `
+            <h4>${result.title}</h4>
+            <p>${result.desc}</p>
+            <div class="recommendation">${result.advice}</div>
+        `;
+    }
+
+    // 顯示威脅等級結果
+    function displayThreat(threat) {
+        const descriptions = {
+            a: {
+                title: '🟢 低威脅等級',
+                desc: '這個真相主要影響日常層面的決定，不會對你的核心身份造成重大衝擊。',
+                strategy: '可以直接面對，或使用輕度的遊戲化方式來處理。'
+            },
+            b: {
+                title: '🟡 中等威脅等級',
+                desc: '這個真相會影響重要的生活領域，但變化是可管理和可調整的。',
+                strategy: '建議使用漸進式的方法，搭配適當的支援系統。'
+            },
+            c: {
+                title: '🟠 高威脅等級',
+                desc: '這個真相會挑戰你的核心身份認同，需要深層的心理調整。',
+                strategy: '需要儀式化的處理方式，確保有足夠的情感支援和時間緩衝。'
+            },
+            d: {
+                title: '🔴 極高威脅等級',
+                desc: '這個真相涉及存在性的挑戰，可能動搖你對生命和世界的基本信念。',
+                strategy: '強烈建議尋求專業協助，不要獨自承擔這個挑戰。'
+            }
+        };
+        
+        const result = descriptions[threat];
+        document.getElementById('threatDescription').innerHTML = `
+            <h4>${result.title}</h4>
+            <p>${result.desc}</p>
+            <div class="recommendation">${result.strategy}</div>
+        `;
+    }
+
+    // 顯示焦慮性質結果
+    function displayAnxiety(anxiety) {
+        const descriptions = {
+            a: {
+                title: '🧭 導航型焦慮',
+                desc: '你的焦慮是集中式的，指向具體的問題或決定。這種焦慮實際上是有用的信號。',
+                function: '它在提醒你注意重要的事情，可以作為行動的指南針。'
+            },
+            b: {
+                title: '🛡️ 準備型焦慮',
+                desc: '你的焦慮推動你做更充分的準備和規劃，這是一種積極的自我保護機制。',
+                function: '它幫助你降低風險，但要注意不要陷入過度準備的延遲陷阱。'
+            },
+            c: {
+                title: '⏸️ 迴避型焦慮',
+                desc: '你的焦慮主要在幫助你延遲困難的決定，維持現狀的穩定感。',
+                function: '它保護你免受變化的衝擊，但也可能阻止必要的成長。'
+            },
+            d: {
+                title: '🏠 習慣型焦慮',
+                desc: '你的焦慮已經成為一種熟悉的心理狀態，提供某種安全感。',
+                function: '它維持心理的穩定性，但可能已經失去了原本的保護功能。'
+            }
+        };
+        
+        const result = descriptions[anxiety];
+        document.getElementById('anxietyDescription').innerHTML = `
+            <h4>${result.title}</h4>
+            <p>${result.desc}</p>
+            <div class="recommendation">${result.function}</div>
+        `;
+    }
+
+    // 顯示行動準備度結果
+    function displayCapacity(capacity) {
+        let level, desc, advice;
+        
+        if (capacity >= 7) {
+            level = '🚀 高準備度';
+            desc = '你擁有充足的資源和能力來處理這個挑戰，可以考慮積極的行動策略。';
+            advice = '現在是行動的好時機！制定具體計劃並開始執行。';
+        } else if (capacity >= 4) {
+            level = '⚖️ 中等準備度';
+            desc = '你有一定的資源和能力，但可能需要在某些方面加強準備。';
+            advice = '可以開始小規模的實驗性行動，同時繼續建設能力。';
+        } else if (capacity >= 1) {
+            level = '📚 低準備度';
+            desc = '你目前的資源和能力可能不足以支持大幅度的改變。';
+            advice = '建議先專注於能力建設和資源累積，不要急於行動。';
+        } else {
+            level = '🔧 需要大量準備';
+            desc = '你可能需要從基礎開始建設應對能力和支援系統。';
+            advice = '這不是缺點！認清現狀是明智的第一步，慢慢來。';
+        }
+        
+        document.getElementById('capacityScore').textContent = `${capacity}/9 分`;
+        document.getElementById('capacityDescription').innerHTML = `
+            <h4>${level}</h4>
+            <p>${desc}</p>
+            <div class="recommendation">${advice}</div>
+        `;
+    }
+
+    // 顯示策略建議
+    function displayStrategy(analysis) {
+        const strategy = getStrategy(analysis);
+        document.getElementById('strategyDescription').innerHTML = `
+            <div class="strategy-card">
+                <h4>${strategy.title}</h4>
+                <p>${strategy.description}</p>
+                <h5>具體步驟：</h5>
+                <ol>
+                    ${strategy.steps.map(step => `<li>${step}</li>`).join('')}
+                </ol>
+            </div>
+        `;
+    }
+
+    // 獲取策略建議
+    function getStrategy(analysis) {
+        const { status, threat, anxiety, capacity } = analysis;
+        
+        // 根據不同組合提供策略
+        if (status === 'a' && (threat === 'a' || threat === 'b') && anxiety === 'a') {
+            return {
+                title: '🎯 直接面對策略',
+                description: '你的情況適合直接處理問題，焦慮是有用的導航信號。',
+                steps: [
+                    '設定24-48小時內的小實驗或對話',
+                    '收集具體的事實和資料',
+                    '基於結果做出明確的決定',
+                    '快速行動，避免過度思考'
+                ]
+            };
+        } else if (status === 'a' && (threat === 'c' || threat === 'd') && anxiety === 'c') {
+            return {
+                title: '🌊 溫和穿透策略',
+                description: '你需要逐步接近真相，避免一次性的衝擊。',
+                steps: [
+                    '從邊緣、較安全的議題開始探索',
+                    '使用遊戲化的方式降低威脅感',
+                    '確保有情緒支援資源可用',
+                    '設定2-4週的漸進接觸計劃'
+                ]
+            };
+        } else if (status === 'b' && anxiety === 'd') {
+            return {
+                title: '💥 破慣性干預策略',
+                description: '你需要打破思維循環，從假性陪伴轉向真實行動。',
+                steps: [
+                    '設定明確的「停滯警報」指標',
+                    '主動尋求外界的反馈和挑戰',
+                    '強制性安排小規模的行動實驗',
+                    '記錄每天的實際行動而非思考'
+                ]
+            };
+        } else if (status === 'c' && capacity >= 4) {
+            return {
+                title: '🎮 分階段突破策略',
+                description: '你已經準備好進入行動階段，需要系統性的推進。',
+                steps: [
+                    '針對性地補強仍需改進的能力',
+                    '設計可逆的實驗來測試水溫',
+                    '等待外在機會與內在準備的匹配',
+                    '建立進展追蹤和調整機制'
+                ]
+            };
+        } else if (threat === 'd' || capacity <= 1) {
+            return {
+                title: '🏛️ 儀式化承接策略',
+                description: '這個挑戰需要深層的意義框架和完整的支援系統。',
+                steps: [
+                    '為這個重大轉變創造深層意義',
+                    '建立完整的情感和實質支援網絡',
+                    '考慮尋求專業諮商協助',
+                    '允許過程有起伏，不強求線性進展'
+                ]
+            };
+        } else {
+            return {
+                title: '🧭 綜合調適策略',
+                description: '根據你的具體情況，需要結合多種方法。',
+                steps: [
+                    '先穩定情緒狀態，建立安全感',
+                    '逐步提升行動能力和資源',
+                    '在適當時機採取漸進式行動',
+                    '保持彈性，隨時調整策略'
+                ]
+            };
+        }
+    }
+
+    // 顯示工具包
+    function displayTools(analysis) {
+        const tools = getRecommendedTools(analysis);
+        document.getElementById('toolsDescription').innerHTML = `
+            <div class="strategy-card">
+                <h4>🎮 遊戲化工具</h4>
+                <ul>
+                    ${tools.gamification.map(tool => `<li>${tool}</li>`).join('')}
+                </ul>
+            </div>
+            <div class="strategy-card">
+                <h4>🏛️ 儀式化工具</h4>
+                <ul>
+                    ${tools.ritualization.map(tool => `<li>${tool}</li>`).join('')}
+                </ul>
+            </div>
+            <div class="strategy-card">
+                <h4>🤝 陪伴維持工具</h4>
+                <ul>
+                    ${tools.companionship.map(tool => `<li>${tool}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    }
+
+    // 獲取推薦工具
+    function getRecommendedTools(analysis) {
+        return {
+            gamification: [
+                '📊 數據追蹤挑戰：連續7天記錄相關感受變化',
+                '🎯 小實驗設計：每週設定一個小假設並驗證',
+                '🏆 進度可視化：製作個人改變的視覺進度圖',
+                '🎲 隨機行動骰：讓機會決定今天嘗試什麼'
+            ],
+            ritualization: [
+                '🕯️ 真相陪伴儀式：每週固定時間的深度自省',
+                '📜 意義重寫練習：將挑戰重新敘述為成長故事',
+                '👥 見證分享：邀請信任的人見證你的轉變過程',
+                '🎭 身份過渡典禮：為新舊身份做正式的交接'
+            ],
+            companionship: [
+                '📅 定期檢視：每週固定時間回顧真相與感受',
+                '💪 能力日誌：記錄每天為未來行動做的準備',
+                '🚨 破平衡信號：設定明確的行動觸發條件',
+                '🔍 機會雷達：保持對外在窗口的敏感度'
+            ]
+        };
+    }
+
+    // 顯示行動計劃
+    function displayActionPlan(analysis) {
+        const plan = generateActionPlan(analysis);
+        document.getElementById('actionDescription').innerHTML = `
+            <div class="strategy-card">
+                <h4>📅 本週行動</h4>
+                <ol>
+                    ${plan.weekly.map(action => `<li>${action}</li>`).join('')}
+                </ol>
+            </div>
+            <div class="strategy-card">
+                <h4>🗓️ 本月目標</h4>
+                <p><strong>主要目標：</strong>${plan.monthly.goal}</p>
+                <p><strong>檢視指標：</strong>${plan.monthly.metrics}</p>
+            </div>
+            <div class="strategy-card">
+                <h4>🔮 三個月願景</h4>
+                <p>${plan.quarterly}</p>
+            </div>
+            ${analysis.threat === 'd' || analysis.capacity <= 1 ? 
+                '<div class="warning"><strong>⚠️ 重要提醒：</strong>考慮到你的情況複雜度較高，強烈建議尋求專業心理諮商師的協助。</div>' : ''
+            }
+        `;
+    }
+
+    // 生成行動計劃
+    function generateActionPlan(analysis) {
+        const { status, threat, anxiety, capacity } = analysis;
+        
+        const plans = {
+            weekly: [],
+            monthly: { goal: '', metrics: '' },
+            quarterly: ''
+        };
+        
+        // 根據分析結果生成計劃
+        if (capacity >= 7) {
+            plans.weekly = [
+                '選擇一個具體的小行動並執行',
+                '記錄行動後的感受和結果',
+                '與信任的人分享你的進展'
+            ];
+            plans.monthly.goal = '完成第一階段的重要行動，建立正向循環';
+            plans.monthly.metrics = '每週至少執行2個具體行動，記錄情緒變化';
+            plans.quarterly = '實現關鍵突破，建立新的生活模式，並協助其他面臨類似挑戰的人';
+        } else if (capacity >= 4) {
+            plans.weekly = [
+                '進行一次小規模的試探性行動',
+                '評估當前資源，找出需要加強的領域',
+                '與一位信任的人討論你的想法'
+            ];
+            plans.monthly.goal = '提升行動能力，準備更大規模的改變';
+            plans.monthly.metrics = '能力建設活動參與度，支援網絡的完善程度';
+            plans.quarterly = '準備好迎接重大變化，擁有足夠的資源和信心採取行動';
+        } else {
+            plans.weekly = [
+                '專注於一項能力建設活動',
+                '尋找一個可以提供支援的人或資源',
+                '進行簡單的自我照顧活動'
+            ];
+            plans.monthly.goal = '建立基礎的應對能力和支援系統';
+            plans.monthly.metrics = '情緒穩定度，支援資源的獲得情況';
+            plans.quarterly = '建立穩固的基礎，為未來的真相探索做好準備';
+        }
+        
+        return plans;
+    }
+
+    // 重新開始
+    function restart() {
+        currentModule = 1;
+        answers = {};
+        
+        // 重置所有選項
+        document.querySelectorAll('.option').forEach(option => {
+            option.classList.remove('selected');
+        });
+        
+        // 顯示第一個模組
+        document.querySelectorAll('.module').forEach(module => {
+            module.classList.add('hidden');
+        });
+        document.getElementById('module1').classList.remove('hidden');
+        
+        // 隱藏結果
+        document.getElementById('results').classList.add('hidden');
+        
+        // 重置導航
+        document.getElementById('prevBtn').classList.remove('hidden');
+        document.getElementById('nextBtn').classList.remove('hidden');
+        document.getElementById('analyzeBtn').classList.add('hidden');
+        document.getElementById('restartBtn').classList.add('hidden');
+        
+        // 顯示進度條
+        document.querySelector('.progress-bar').parentElement.classList.remove('hidden');
+        
+        updateProgress();
+        updateNavigation();
+    }
+
+    // 頁面加載完成後初始化
+    document.addEventListener('DOMContentLoaded', init);
+</script>
+```
+
+</body>
+</html>
