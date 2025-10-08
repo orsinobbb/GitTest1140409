@@ -1,0 +1,244 @@
+import React, { useState } from ‘react’;
+import { BookOpen, Upload, Plus, Calendar, FileText, File, ChevronRight } from ‘lucide-react’;
+
+export default function NotebookApp() {
+const [books, setBooks] = useState([
+{ id: ‘P9’, name: ‘小王子’, notes: 3, date: ‘2023.3.15’ },
+{ id: ‘P11’, name: ‘表演’, notes: 5, date: ‘2023.3.1’ },
+{ id: ‘P4’, name: ‘感恩’, notes: 2, date: ‘2023.2.20’ },
+]);
+
+const [uploadedFiles, setUploadedFiles] = useState([]);
+const [activeTab, setActiveTab] = useState(‘books’);
+const [selectedBook, setSelectedBook] = useState(null);
+
+const handleFileUpload = (event) => {
+const files = Array.from(event.target.files);
+const newFiles = files.map(file => ({
+id: Date.now() + Math.random(),
+name: file.name,
+size: (file.size / 1024 / 1024).toFixed(2) + ’ MB’,
+type: file.type,
+uploadDate: new Date().toLocaleDateString(‘zh-TW’),
+file: file
+}));
+setUploadedFiles([…uploadedFiles, …newFiles]);
+};
+
+const createNewBook = () => {
+const bookId = `P${books.length + 1}`;
+const newBook = {
+id: bookId,
+name: `新筆記本 ${books.length + 1}`,
+notes: 0,
+date: new Date().toLocaleDateString(‘zh-TW’)
+};
+setBooks([…books, newBook]);
+};
+
+return (
+<div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
+{/* Header */}
+<header className="bg-white shadow-sm border-b border-amber-200">
+<div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
+<div className="flex items-center justify-between">
+<div className="flex items-center space-x-3">
+<BookOpen className="w-8 h-8 text-amber-600" />
+<h1 className="text-2xl font-bold text-gray-800">筆記系統</h1>
+</div>
+<div className="flex items-center space-x-2">
+<Calendar className="w-5 h-5 text-gray-500" />
+<span className="text-sm text-gray-600">2023.3.15</span>
+</div>
+</div>
+</div>
+</header>
+
+```
+  {/* Navigation Tabs */}
+  <div className="bg-white border-b border-gray-200">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <nav className="flex space-x-8">
+        <button
+          onClick={() => setActiveTab('books')}
+          className={`py-4 px-1 border-b-2 font-medium text-sm ${
+            activeTab === 'books'
+              ? 'border-amber-500 text-amber-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          }`}
+        >
+          📚 筆記本
+        </button>
+        <button
+          onClick={() => setActiveTab('upload')}
+          className={`py-4 px-1 border-b-2 font-medium text-sm ${
+            activeTab === 'upload'
+              ? 'border-amber-500 text-amber-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          }`}
+        >
+          📤 匯入檔案
+        </button>
+        <button
+          onClick={() => setActiveTab('timeline')}
+          className={`py-4 px-1 border-b-2 font-medium text-sm ${
+            activeTab === 'timeline'
+              ? 'border-amber-500 text-amber-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          }`}
+        >
+          📅 時間軸
+        </button>
+      </nav>
+    </div>
+  </div>
+
+  {/* Main Content */}
+  <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+    {/* Books Tab */}
+    {activeTab === 'books' && (
+      <div>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-semibold text-gray-800">我的筆記本</h2>
+          <button
+            onClick={createNewBook}
+            className="flex items-center space-x-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            <span>新增筆記本</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {books.map((book) => (
+            <div
+              key={book.id}
+              onClick={() => setSelectedBook(book)}
+              className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden cursor-pointer border-2 border-transparent hover:border-amber-300"
+            >
+              <div className="bg-gradient-to-br from-amber-400 to-orange-400 p-6">
+                <div className="flex items-center justify-between text-white">
+                  <span className="text-3xl font-bold">{book.id}</span>
+                  <BookOpen className="w-8 h-8" />
+                </div>
+              </div>
+              <div className="p-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">{book.name}</h3>
+                <div className="flex items-center justify-between text-sm text-gray-500">
+                  <span>{book.notes} 則筆記</span>
+                  <span>{book.date}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {selectedBook && (
+          <div className="mt-8 bg-white rounded-xl shadow-lg p-8">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-gray-800">{selectedBook.name}</h3>
+              <span className="text-sm text-gray-500">#{selectedBook.id}</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[1, 2, 3].map((note) => (
+                <div key={note} className="border-2 border-amber-200 rounded-lg p-4 hover:border-amber-400 transition-colors">
+                  <div className="aspect-video bg-gradient-to-br from-amber-50 to-orange-50 rounded mb-3 flex items-center justify-center">
+                    <FileText className="w-12 h-12 text-amber-300" />
+                  </div>
+                  <div className="text-sm text-gray-600">筆記 {note}</div>
+                  <div className="text-xs text-gray-400 mt-1">{selectedBook.date}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    )}
+
+    {/* Upload Tab */}
+    {activeTab === 'upload' && (
+      <div>
+        <h2 className="text-xl font-semibold text-gray-800 mb-6">匯入電子書與相本</h2>
+        
+        {/* Upload Area */}
+        <div className="bg-white rounded-xl shadow-md p-8 mb-8">
+          <label className="flex flex-col items-center justify-center w-full h-64 border-3 border-dashed border-amber-300 rounded-xl cursor-pointer bg-gradient-to-br from-amber-50 to-orange-50 hover:bg-amber-100 transition-colors">
+            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+              <Upload className="w-16 h-16 text-amber-500 mb-4" />
+              <p className="mb-2 text-lg font-semibold text-gray-700">
+                點擊上傳 PDF 或圖片
+              </p>
+              <p className="text-sm text-gray-500">支援 PDF、JPG、PNG 格式</p>
+            </div>
+            <input
+              type="file"
+              className="hidden"
+              accept=".pdf,.jpg,.jpeg,.png"
+              multiple
+              onChange={handleFileUpload}
+            />
+          </label>
+        </div>
+
+        {/* Uploaded Files List */}
+        {uploadedFiles.length > 0 && (
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">已上傳檔案</h3>
+            <div className="space-y-3">
+              {uploadedFiles.map((file) => (
+                <div
+                  key={file.id}
+                  className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-amber-300 transition-colors"
+                >
+                  <div className="flex items-center space-x-4">
+                    {file.type.includes('pdf') ? (
+                      <FileText className="w-8 h-8 text-red-500" />
+                    ) : (
+                      <File className="w-8 h-8 text-blue-500" />
+                    )}
+                    <div>
+                      <p className="font-medium text-gray-800">{file.name}</p>
+                      <p className="text-sm text-gray-500">{file.size} · {file.uploadDate}</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-gray-400" />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    )}
+
+    {/* Timeline Tab */}
+    {activeTab === 'timeline' && (
+      <div>
+        <h2 className="text-xl font-semibold text-gray-800 mb-6">時間軸</h2>
+        <div className="bg-white rounded-xl shadow-md p-8">
+          <div className="space-y-6">
+            {books.slice(0, 3).map((book, index) => (
+              <div key={book.id} className="flex items-start space-x-4">
+                <div className="flex-shrink-0 w-12 h-12 bg-amber-500 rounded-full flex items-center justify-center text-white font-bold">
+                  {index + 1}
+                </div>
+                <div className="flex-1 border-l-2 border-amber-200 pl-6 pb-6">
+                  <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-semibold text-gray-800">{book.name}</h3>
+                      <span className="text-sm text-gray-500">{book.date}</span>
+                    </div>
+                    <p className="text-sm text-gray-600">{book.notes} 則筆記 · #{book.id}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )}
+  </main>
+</div>
+```
+
+);
+}
