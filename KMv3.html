@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>知識圖譜互動系統 v3 - 拓樸視圖</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      color: white;
+      margin-bottom: 20px;
+    }
+    h1 {
+      font-size: 2em;
+      margin-bottom: 10px;
+    }
+    .controls {
+      max-width: 1200px;
+      margin: 0 auto 20px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .controls input {
+      flex: 1;
+      min-width: 200px;
+      padding: 12px 15px;
+      border: 2px solid #ddd;
+      border-radius: 10px;
+      font-size: 1em;
+    }
+    .controls button {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 0.9em;
+    }
+    .btn-search {
+      background: white;
+      color: #667eea;
+    }
+    .btn-view {
+      background: #9c27b0;
+      color: white;
+    }
+    .btn-export {
+      background: #28a745;
+      color: white;
+    }
+    .btn-import {
+      background: #17a2b8;
+      color: white;
+    }
+    .controls button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    .graph-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      min-height: 600px;
+      position: relative;
+    }
+    .topology {
+      width: 100%;
+      height: 600px;
+      position: relative;
+    }
+    .node {
+      position: absolute;
+      padding: 12px 20px;
+      border-radius: 25px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      user-select: none;
+      z-index: 10;
+    }
+    .node:hover {
+      transform: scale(1.1);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+      z-index: 20;
+    }
+    .node.current {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      font-size: 1.3em;
+      padding: 18px 30px;
+      z-index: 15;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    .node.upstream {
+      background: #ffc107;
+      color: #000;
+      border: 3px solid #ff9800;
+    }
+    .node.downstream {
+      background: #e3f2fd;
+      color: #1976d2;
+      border: 2px solid #64b5f6;
+    }
+    .node.exists {
+      background: #c8e6c9;
+      border-color: #66bb6a;
+    }
+    .node.generating {
+      background: #ffe0b2;
+      border: 2px dashed #ff9800;
+      animation: blink 1s infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .connection {
+      position: absolute;
+      height: 2px;
+      background: #ddd;
+      transform-origin: left center;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .connection.upstream {
+      background: #ffc107;
+      height: 3px;
+      z-index: 0;
+    }
+    .tooltip {
+      position: fixed;
+      background: rgba(0, 0, 0, 0.95);
+      color: white;
+      padding: 15px 20px;
+      border-radius: 10px;
+      max-width: 400px;
+      z-index: 100;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+      line-height: 1.6;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      border: 2px solid rgba(255, 193, 7, 0.3);
+    }
+    .tooltip.show {
+      opacity: 1;
+    }
+    .tooltip-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-size: 1.1em;
+      color: #ffc107;
+    }
+    .stats {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      font-size: 0.85em;
+    }
+    .stat-item {
+      margin-bottom: 5px;
+    }
+    .stat-value {
+      font-weight: 600;
+      color: #667eea;
+    }
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      display: none;
+    }
+    .loading-overlay.show {
+      display: flex;
+    }
+    .loading-content {
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      text-align: center;
+    }
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid #f3f3f3;
+      border-top: 5px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    input[type="file"] {
+      display: none;
+    }
+    
+    /* 完整拓樸視圖樣式 */
+    .full-view-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      z-index: 2000;
+      display: none;
+      overflow: hidden;
+    }
+    .full-view-overlay.show {
+      display: block;
+    }
+    .full-view-wrapper {
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      cursor: grab;
+      position: relative;
+    }
+    .full-view-wrapper.dragging {
+      cursor: grabbing;
+    }
+    .full-view-container {
+      min-width: 2000px;
+      min-height: 1500px;
+      position: relative;
+      padding: 100px;
+      transform-origin: 0 0;
+    }
+    .full-view-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: rgba(102, 126, 234, 0.95);
+      padding: 15px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 2001;
+      backdrop-filter: blur(10px);
+    }
+    .full-view-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .zoom-btn {
+      background: white;
+      color: #667eea;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 1em;
+    }
+    .zoom-btn:hover {
+      background: #f0f0f0;
+    }
+    .zoom-level {
+      color: white;
+      font-weight: 600;
+      min-width: 60px;
+      text-align: center;
+    }
+    .full-view-title {
+      color: white;
+      font-size: 1.3em;
+      font-weight: 600;
+    }
+    .full-view-close {
+      background: white;
+      color: #667eea;
+      border: none;
+      padding: 10px 25px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 1em;
+    }
+    .full-view-close:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+    }
+    .full-view-node {
+      position: absolute;
+      padding: 10px 18px;
+      border-radius: 20px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      font-size: 0.9em;
+      z-index: 10;
+    }
+    .full-view-node:hover {
+      transform: scale(1.15);
+      z-index: 20;
+    }
+    .full-view-node.local {
+      background: #c8e6c9;
+      color: #1b5e20;
+      border: 2px solid #66bb6a;
+    }
+    .full-view-node.ai {
+      background: #e3f2fd;
+      color: #0d47a1;
+      border: 2px solid #64b5f6;
+    }
+    .full-view-connection {
+      position: absolute;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.3);
+      transform-origin: left center;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .full-view-legend {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 15px 20px;
+      border-radius: 10px;
+      z-index: 2001;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+      font-size: 0.85em;
+    }
+    .legend-color {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+    }
+    .api-status {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: white;
+      padding: 10px 15px;
+      border-radius: 8px;
+      font-size: 0.85em;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    .api-status.ready {
+      border-left: 4px solid #28a745;
+    }
+    .api-status.missing {
+      border-left: 4px solid #dc3545;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🧠 知識圖譜互動系統</h1>
+    <div>v3.0 - 拓樸視覺化 | 點擊節點切換視圖 | 滑鼠移過顯示說明</div>
+  </div>
+
+  <div class="controls">
+    <input type="text" id="apiKey" placeholder="Google Gemini API Key (AIza...)">
+    <input type="text" id="searchInput" placeholder="搜尋節點或輸入新概念...">
+    <button class="btn-search" onclick="searchNode()">🔍 搜尋</button>
+    <button class="btn-view" onclick="toggleFullView()">🗺️ 完整拓樸</button>
+    <button class="btn-export" onclick="exportGraph()">💾 匯出</button>
+    <button class="btn-import" onclick="document.getElementById('importFile').click()">📂 匯入</button>
+  </div>
+  <input type="file" id="importFile" accept=".json" onchange="importGraph(event)">
+
+  <div class="graph-container">
+    <div class="api-status" id="apiStatus">
+      <span id="apiStatusText">⚠️ 請設定 API Key</span>
+    </div>
+    
+    <div class="stats">
+      <div class="stat-item">節點總數: <span class="stat-value" id="totalNodes">6</span></div>
+      <div class="stat-item">本地: <span class="stat-value" id="localNodes">6</span></div>
+      <div class="stat-item">AI生成: <span class="stat-value" id="aiNodes">0</span></div>
+    </div>
+
+    <div class="topology" id="topology"></div>
+    <div class="tooltip" id="tooltip">
+      <div class="tooltip-title" id="tooltipTitle"></div>
+      <div id="tooltipContent"></div>
+    </div>
+  </div>
+
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-content">
+      <div class="loading-spinner"></div>
+      <div>正在呼叫 AI 生成節點...</div>
+    </div>
+  </div>
+
+  <!-- 完整拓樸視圖 -->
+  <div class="full-view-overlay" id="fullViewOverlay">
+    <div class="full-view-header">
+      <div class="full-view-title">🗺️ 完整知識圖譜拓樸</div>
+      <div class="full-view-controls">
+        <button class="zoom-btn" onclick="zoomFullView(-0.1)">🔍−</button>
+        <div class="zoom-level" id="zoomLevel">100%</div>
+        <button class="zoom-btn" onclick="zoomFullView(0.1)">🔍+</button>
+        <button class="zoom-btn" onclick="resetFullView()">🔄 重置</button>
+        <button class="full-view-close" onclick="toggleFullView()">✕ 關閉</button>
+      </div>
+    </div>
+    <div class="full-view-wrapper" id="fullViewWrapper">
+      <div class="full-view-container" id="fullViewContainer"></div>
+    </div>
+    <div class="full-view-legend">
+      <div style="font-weight: 600; margin-bottom: 10px;">圖例</div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #c8e6c9; border: 2px solid #66bb6a;"></div>
+        <span>本地節點</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #e3f2fd; border: 2px solid #64b5f6;"></div>
+        <span>AI 生成節點</span>
+      </div>
+      <div style="margin-top: 10px; font-size: 0.8em; color: #666;">
+        💡 可拖曳移動<br>
+        💡 滾輪縮放
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== 知識圖譜資料 =====
+    let knowledgeGraph = {
+      "人工智慧": {
+        content: "人工智慧（AI）是讓機器展現智慧行為的技術，包括學習、推理、自我修正等能力。機器學習是實現 AI 的重要方法之一。",
+        downstream: ["機器學習", "專家系統", "電腦視覺"],
+        upstream: [],
+        source: "local"
+      },
+      "機器學習": {
+        content: "機器學習是人工智慧的一個分支，透過演算法讓電腦從資料中學習規律，無需明確編程。常見應用包括影像辨識、語音辨識、推薦系統等。",
+        downstream: ["深度學習", "監督式學習", "非監督式學習"],
+        upstream: ["人工智慧"],
+        source: "local"
+      },
+      "深度學習": {
+        content: "深度學習是機器學習的子領域，使用多層神經網路模擬人腦運作。特別擅長處理影像、語音、自然語言等非結構化資料。",
+        downstream: ["神經網路", "卷積神經網路", "循環神經網路"],
+        upstream: ["機器學習"],
+        source: "local"
+      },
+      "神經網路": {
+        content: "神經網路由多個互相連接的神經元組成，透過權重調整來學習資料特徵。是深度學習的基礎架構。",
+        downstream: ["感知器", "啟動函數", "反向傳播"],
+        upstream: ["深度學習"],
+        source: "local"
+      },
+      "監督式學習": {
+        content: "監督式學習使用標記好的訓練資料，讓模型學習輸入與輸出之間的對應關係。常見演算法包括線性迴歸、決策樹、支援向量機等。",
+        downstream: ["線性迴歸", "決策樹", "支援向量機"],
+        upstream: ["機器學習"],
+        source: "local"
+      },
+      "非監督式學習": {
+        content: "非監督式學習處理未標記的資料，目標是發現資料中的隱藏結構或模式。常見方法包括聚類分析、降維等。",
+        downstream: ["K-means", "主成分分析"],
+        upstream: ["機器學習"],
+        source: "local"
+      }
+    };
+
+    let currentNode = "機器學習";
+    const apiKeyInput = document.getElementById('apiKey');
+    const tooltip = document.getElementById('tooltip');
+
+    // ===== 更新統計 =====
+    function updateStats() {
+      const total = Object.keys(knowledgeGraph).length;
+      const local = Object.values(knowledgeGraph).filter(n => n.source === 'local').length;
+      document.getElementById('totalNodes').textContent = total;
+      document.getElementById('localNodes').textContent = local;
+      document.getElementById('aiNodes').textContent = total - local;
+      
+      // 更新 API 狀態
+      const apiStatus = document.getElementById('apiStatus');
+      const apiStatusText = document.getElementById('apiStatusText');
+      if (apiKeyInput.value.trim()) {
+        apiStatus.className = 'api-status ready';
+        apiStatusText.textContent = '✅ API 已設定';
+      } else {
+        apiStatus.className = 'api-status missing';
+        apiStatusText.textContent = '⚠️ 請設定 API Key';
+      }
+    }
+
+    // ===== 呼叫 LLM API =====
+    async function callLLM(concept) {
+      const apiKey = apiKeyInput.value.trim();
+      if (!apiKey) {
+        throw new Error('請先設定 API Key');
+      }
+
+      const prompt = `請用繁體中文介紹「${concept}」這個概念，並提供：
+1. 簡短說明（2-3句話）
+2. 3個相關的下游概念（更具體的子概念）
+3. 1個上游概念（更抽象的父概念，如果這已經是最頂層概念則留空陣列）
+4. 每個下游概念的簡短說明（1-2句話）
+
+請以 JSON 格式回應：
+{
+  "content": "說明文字",
+  "downstream": [
+    {"name": "概念1", "content": "概念1的說明"},
+    {"name": "概念2", "content": "概念2的說明"},
+    {"name": "概念3", "content": "概念3的說明"}
+  ],
+  "upstream": ["概念A"]
+}`;
+
+      const model = "gemini-2.5-flash";
+      const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 2048 }
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok || data.error) {
+        throw new Error(data.error?.message || 'API 呼叫失敗');
+      }
+
+      if (data.candidates && data.candidates.length > 0) {
+        const text = data.candidates[0].content.parts[0].text;
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          return JSON.parse(jsonMatch[0]);
+        }
+      }
+      throw new Error('無法解析 AI 回應');
+    }
+
+    // ===== 繪製連接線 =====
+    function drawConnection(fromX, fromY, toX, toY, isUpstream = false) {
+      const dx = toX - fromX;
+      const dy = toY - fromY;
+      const length = Math.sqrt(dx * dx + dy * dy);
+      const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+      const line = document.createElement('div');
+      line.className = isUpstream ? 'connection upstream' : 'connection';
+      line.style.width = length + 'px';
+      line.style.left = fromX + 'px';
+      line.style.top = fromY + 'px';
+      line.style.transform = `rotate(${angle}deg)`;
+      
+      return line;
+    }
+
+    // ===== 渲染拓樸圖 =====
+    function renderTopology() {
+      const topology = document.getElementById('topology');
+      topology.innerHTML = '';
+
+      const nodeData = knowledgeGraph[currentNode];
+      if (!nodeData) {
+        topology.innerHTML = '<div style="text-align: center; padding: 50px; color: #999;">節點不存在</div>';
+        return;
+      }
+
+      const centerX = 600;
+      const centerY = 300;
+
+      // 繪製當前節點（中心）
+      const currentEl = createNode(currentNode, centerX, centerY, 'current');
+      topology.appendChild(currentEl);
+
+      // 繪製上游節點（左上）- 必定已存在
+      const upstream = nodeData.upstream || [];
+      if (upstream.length > 0) {
+        upstream.forEach((name, i) => {
+          // 檢查上游節點是否存在
+          if (!knowledgeGraph[name]) {
+            console.warn(`⚠️ 上游節點「${name}」不存在於圖譜中，請檢查資料完整性`);
+            return; // 跳過不存在的上游節點
+          }
+          
+          const x = centerX - 280;
+          const y = centerY - 100 + (i * 70);
+          const node = createNode(name, x, y, 'upstream');
+          topology.appendChild(node);
+          
+          // 繪製連接線（從上游指向當前節點）
+          topology.appendChild(drawConnection(x + 80, y + 20, centerX - 30, centerY + 20, true));
+        });
+      }
+
+      // 繪製下游節點（環繞）
+      const downstream = nodeData.downstream || [];
+      if (downstream.length > 0) {
+        const radius = 220;
+        const angleStep = (2 * Math.PI) / downstream.length;
+        const startAngle = -Math.PI / 2; // 從上方開始
+
+        downstream.forEach((name, i) => {
+          const angle = startAngle + angleStep * i;
+          const x = centerX + radius * Math.cos(angle);
+          const y = centerY + radius * Math.sin(angle);
+          
+          // 判斷節點是否已存在
+          const className = knowledgeGraph[name] ? 'exists' : 'downstream';
+          const node = createNode(name, x, y, className);
+          topology.appendChild(node);
+          
+          // 繪製連接線（從當前節點指向下游）
+          topology.appendChild(drawConnection(centerX + 30, centerY + 20, x, y + 20));
+        });
+      }
+
+      updateStats();
+    }
+
+    // ===== 建立節點元素 =====
+    function createNode(name, x, y, className) {
+      const node = document.createElement('div');
+      node.className = `node ${className}`;
+      node.textContent = name;
+      node.style.left = (x - 50) + 'px';
+      node.style.top = (y - 20) + 'px';
+
+      // 點擊事件 - 傳遞來源節點資訊
+      node.addEventListener('click', () => {
+        // 如果點擊的是下游節點，傳遞當前節點作為來源
+        const isDownstream = knowledgeGraph[currentNode]?.downstream?.includes(name);
+        handleNodeClick(name, isDownstream ? currentNode : null);
+      });
+
+      // 滑鼠移入顯示說明
+      node.addEventListener('mouseenter', (e) => {
+        if (knowledgeGraph[name]) {
+          const rect = node.getBoundingClientRect();
+          
+          tooltip.querySelector('#tooltipTitle').textContent = name;
+          tooltip.querySelector('#tooltipContent').textContent = knowledgeGraph[name].content;
+          
+          // 計算 tooltip 位置：優先顯示在節點右側，如果超出視窗則顯示在左側
+          const tooltipWidth = 400; // tooltip 的最大寬度
+          const showOnRight = (rect.right + tooltipWidth + 20) < window.innerWidth;
+          
+          if (showOnRight) {
+            // 顯示在右側
+            tooltip.style.left = (rect.right + 10) + 'px';
+          } else {
+            // 顯示在左側
+            tooltip.style.left = (rect.left - tooltipWidth - 10) + 'px';
+          }
+          
+          // 垂直位置：與節點頂部對齊
+          tooltip.style.top = rect.top + 'px';
+          tooltip.classList.add('show');
+        }
+      });
+
+      node.addEventListener('mouseleave', () => {
+        tooltip.classList.remove('show');
+      });
+
+      return node;
+    }
+
+    // ===== 處理節點點擊 =====
+    async function handleNodeClick(name, sourceNode = null) {
+      // 檢查節點是否存在
+      const nodeExists = knowledgeGraph[name];
+      
+      if (!nodeExists) {
+        // 節點不存在，呼叫 API 生成
+        document.getElementById('loadingOverlay').classList.add('show');
+        
+        try {
+          const data = await callLLM(name);
+          
+          // 強制使用來源節點作為上游
+          const correctUpstream = sourceNode ? [sourceNode] : (data.upstream || []);
+          
+          // 處理下游資料格式
+          let downstreamNames = [];
+          if (data.downstream && data.downstream.length > 0) {
+            if (typeof data.downstream[0] === 'string') {
+              downstreamNames = data.downstream;
+            } else if (typeof data.downstream[0] === 'object') {
+              downstreamNames = data.downstream.map(d => d.name);
+              
+              // 預先生成下游節點
+              data.downstream.forEach(downstreamNode => {
+                if (!knowledgeGraph[downstreamNode.name]) {
+                  knowledgeGraph[downstreamNode.name] = {
+                    content: downstreamNode.content,
+                    downstream: [],  // 先設為空，點擊時再生成
+                    upstream: [name],
+                    source: 'ai'
+                  };
+                  console.log(`  ✅ 預先生成下游節點: ${downstreamNode.name}`);
+                }
+              });
+            }
+          }
+          
+          // 儲存當前節點
+          knowledgeGraph[name] = {
+            content: data.content,
+            downstream: downstreamNames,
+            upstream: correctUpstream,
+            source: 'ai'
+          };
+          
+          console.log(`✅ AI 生成新節點: ${name}`);
+          console.log(`📍 上游設定為: ${correctUpstream.join(', ') || '(頂層節點)'}`);
+          console.log(`📦 下游節點: ${downstreamNames.join(', ')}`);
+          
+        } catch (error) {
+          alert('❌ 生成失敗：' + error.message);
+          document.getElementById('loadingOverlay').classList.remove('show');
+          return;
+        }
+        
+        document.getElementById('loadingOverlay').classList.remove('show');
+      } else {
+        // 節點已存在
+        console.log(`✅ 讀取已存在節點: ${name}`);
+        
+        // 🔧 關鍵修正：檢查是否需要展開下游
+        const node = knowledgeGraph[name];
+        if (node.downstream && node.downstream.length === 0 && node.source === 'ai') {
+          // 這是一個 AI 生成的葉節點，詢問是否要展開
+          const shouldExpand = confirm(`「${name}」目前沒有下游節點，是否使用 AI 生成下游概念？`);
+          if (shouldExpand) {
+            document.getElementById('loadingOverlay').classList.add('show');
+            
+            try {
+              const data = await callLLM(name);
+              
+              // 更新下游
+              let downstreamNames = [];
+              if (data.downstream && data.downstream.length > 0) {
+                if (typeof data.downstream[0] === 'string') {
+                  downstreamNames = data.downstream;
+                } else if (typeof data.downstream[0] === 'object') {
+                  downstreamNames = data.downstream.map(d => d.name);
+                  
+                  data.downstream.forEach(downstreamNode => {
+                    if (!knowledgeGraph[downstreamNode.name]) {
+                      knowledgeGraph[downstreamNode.name] = {
+                        content: downstreamNode.content,
+                        downstream: [],
+                        upstream: [name],
+                        source: 'ai'
+                      };
+                      console.log(`  ✅ 預先生成下游節點: ${downstreamNode.name}`);
+                    }
+                  });
+                }
+              }
+              
+              // 更新當前節點的下游
+              knowledgeGraph[name].downstream = downstreamNames;
+              console.log(`✅ 展開節點: ${name}`);
+              console.log(`📦 新增下游: ${downstreamNames.join(', ')}`);
+              
+            } catch (error) {
+              alert('❌ 展開失敗：' + error.message);
+            }
+            
+            document.getElementById('loadingOverlay').classList.remove('show');
+          }
+        }
+      }
+
+      // 切換到新節點
+      currentNode = name;
+      renderTopology();
+      updateStats();
+    }
+
+    // ===== 搜尋節點 =====
+    function searchNode() {
+      const query = document.getElementById('searchInput').value.trim();
+      if (!query) return;
+
+      if (knowledgeGraph[query]) {
+        currentNode = query;
+        renderTopology();
+      } else {
+        if (confirm(`「${query}」不存在，是否使用 AI 生成？`)) {
+          handleNodeClick(query, null);  // 沒有來源節點
+        }
+      }
+    }
+
+    // ===== 匯出圖譜 =====
+    function exportGraph() {
+      const dataStr = JSON.stringify(knowledgeGraph, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `knowledge_graph_${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // ===== 匯入圖譜 =====
+    function importGraph(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          knowledgeGraph = JSON.parse(e.target.result);
+          renderTopology();
+          alert('✅ 圖譜已匯入');
+        } catch {
+          alert('❌ 匯入失敗');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // 監聽 API Key 變化
+    apiKeyInput.addEventListener('input', updateStats);
+
+    // ===== 資料完整性檢查與自動修正 =====
+    function validateAndFixGraph() {
+      const issues = [];
+      const fixes = [];
+      
+      Object.keys(knowledgeGraph).forEach(nodeName => {
+        const node = knowledgeGraph[nodeName];
+        
+        // 檢查並修正上游節點
+        if (node.upstream && node.upstream.length > 0) {
+          const validUpstream = [];
+          
+          node.upstream.forEach(upstreamName => {
+            if (!knowledgeGraph[upstreamName]) {
+              issues.push(`❌ 節點「${nodeName}」的上游「${upstreamName}」不存在`);
+              
+              // 嘗試自動修正：從所有節點中找出包含此節點作為下游的節點
+              let found = false;
+              Object.keys(knowledgeGraph).forEach(candidateName => {
+                const candidate = knowledgeGraph[candidateName];
+                if (candidate.downstream && candidate.downstream.includes(nodeName)) {
+                  validUpstream.push(candidateName);
+                  fixes.push(`✅ 自動修正：「${nodeName}」的上游改為「${candidateName}」`);
+                  found = true;
+                }
+              });
+              
+              if (!found) {
+                console.warn(`⚠️ 無法自動修正「${nodeName}」的上游，已移除「${upstreamName}」`);
+              }
+            } else {
+              validUpstream.push(upstreamName);
+            }
+          });
+          
+          // 更新為有效的上游列表
+          node.upstream = validUpstream;
+        }
+      });
+      
+      if (fixes.length > 0) {
+        console.log('🔧 自動修正完成：');
+        fixes.forEach(fix => console.log(fix));
+      }
+      
+      if (issues.length > 0) {
+        console.warn('⚠️ 資料完整性問題（已修正）：');
+        issues.forEach(issue => console.warn(issue));
+        return false;
+      } else {
+        console.log('✅ 資料完整性檢查通過');
+        return true;
+      }
+    }
+
+    // 初始化
+    validateAndFixGraph();
+    renderTopology();
+
+    // ===== 完整拓樸視圖 =====
+    let fullViewScale = 1;
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let scrollStartX = 0;
+    let scrollStartY = 0;
+
+    function toggleFullView() {
+      const overlay = document.getElementById('fullViewOverlay');
+      const isShowing = overlay.classList.contains('show');
+      
+      if (isShowing) {
+        overlay.classList.remove('show');
+      } else {
+        renderFullTopology();
+        overlay.classList.add('show');
+        setupFullViewDrag();
+      }
+    }
+
+    // 設定拖曳功能
+    function setupFullViewDrag() {
+      const wrapper = document.getElementById('fullViewWrapper');
+      
+      wrapper.addEventListener('mousedown', (e) => {
+        if (e.target.classList.contains('full-view-node')) return; // 不影響節點點擊
+        isDragging = true;
+        dragStartX = e.clientX;
+        dragStartY = e.clientY;
+        scrollStartX = wrapper.scrollLeft;
+        scrollStartY = wrapper.scrollTop;
+        wrapper.classList.add('dragging');
+        e.preventDefault();
+      });
+
+      wrapper.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - dragStartX;
+        const dy = e.clientY - dragStartY;
+        wrapper.scrollLeft = scrollStartX - dx;
+        wrapper.scrollTop = scrollStartY - dy;
+      });
+
+      wrapper.addEventListener('mouseup', () => {
+        isDragging = false;
+        wrapper.classList.remove('dragging');
+      });
+
+      wrapper.addEventListener('mouseleave', () => {
+        isDragging = false;
+        wrapper.classList.remove('dragging');
+      });
+
+      // 滾輪縮放
+      wrapper.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -0.05 : 0.05;
+        zoomFullView(delta);
+      }, { passive: false });
+
+      // 觸控支援
+      let touchStartDist = 0;
+      wrapper.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+          const dx = e.touches[0].clientX - e.touches[1].clientX;
+          const dy = e.touches[0].clientY - e.touches[1].clientY;
+          touchStartDist = Math.sqrt(dx * dx + dy * dy);
+        } else if (e.touches.length === 1) {
+          dragStartX = e.touches[0].clientX;
+          dragStartY = e.touches[0].clientY;
+          scrollStartX = wrapper.scrollLeft;
+          scrollStartY = wrapper.scrollTop;
+          isDragging = true;
+        }
+      });
+
+      wrapper.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 2) {
+          const dx = e.touches[0].clientX - e.touches[1].clientX;
+          const dy = e.touches[0].clientY - e.touches[1].clientY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const delta = (dist - touchStartDist) * 0.01;
+          zoomFullView(delta);
+          touchStartDist = dist;
+          e.preventDefault();
+        } else if (isDragging && e.touches.length === 1) {
+          const dx = e.touches[0].clientX - dragStartX;
+          const dy = e.touches[0].clientY - dragStartY;
+          wrapper.scrollLeft = scrollStartX - dx;
+          wrapper.scrollTop = scrollStartY - dy;
+          e.preventDefault();
+        }
+      }, { passive: false });
+
+      wrapper.addEventListener('touchend', () => {
+        isDragging = false;
+        touchStartDist = 0;
+      });
+    }
+
+    // 縮放功能
+    function zoomFullView(delta) {
+      fullViewScale = Math.max(0.3, Math.min(2, fullViewScale + delta));
+      const container = document.getElementById('fullViewContainer');
+      container.style.transform = `scale(${fullViewScale})`;
+      document.getElementById('zoomLevel').textContent = Math.round(fullViewScale * 100) + '%';
+    }
+
+    // 重置視圖
+    function resetFullView() {
+      fullViewScale = 1;
+      const container = document.getElementById('fullViewContainer');
+      const wrapper = document.getElementById('fullViewWrapper');
+      container.style.transform = 'scale(1)';
+      wrapper.scrollLeft = 0;
+      wrapper.scrollTop = 0;
+      document.getElementById('zoomLevel').textContent = '100%';
+    }
+
+    function renderFullTopology() {
+      const container = document.getElementById('fullViewContainer');
+      container.innerHTML = '';
+
+      const allNodes = Object.keys(knowledgeGraph);
+      const visited = new Set();
+      
+      // 找出所有頂層節點（沒有上游的）
+      const topNodes = allNodes.filter(name => {
+        const node = knowledgeGraph[name];
+        return !node.upstream || node.upstream.length === 0;
+      });
+
+      // 為每個頂層節點建立獨立的拓樸體系
+      const topologies = [];
+      
+      // BFS 建立每個體系的層級結構
+      function buildTopology(rootName) {
+        const topology = {
+          root: rootName,
+          levels: {}
+        };
+        const localVisited = new Set();
+        
+        function assignLevel(nodeName, level) {
+          if (localVisited.has(nodeName) || visited.has(nodeName)) return;
+          localVisited.add(nodeName);
+          visited.add(nodeName);
+          
+          if (!topology.levels[level]) topology.levels[level] = [];
+          topology.levels[level].push(nodeName);
+          
+          const node = knowledgeGraph[nodeName];
+          if (node.downstream) {
+            node.downstream.forEach(downstreamName => {
+              if (knowledgeGraph[downstreamName]) {
+                assignLevel(downstreamName, level + 1);
+              }
+            });
+          }
+        }
+        
+        assignLevel(rootName, 0);
+        return topology;
+      }
+
+      // 為每個頂層節點建立拓樸
+      topNodes.forEach(topNode => {
+        const topology = buildTopology(topNode);
+        topologies.push(topology);
+      });
+
+      // 處理孤立節點
+      const unvisitedNodes = allNodes.filter(name => !visited.has(name));
+      if (unvisitedNodes.length > 0) {
+        console.log(`ℹ️ 發現 ${unvisitedNodes.length} 個孤立節點:`, unvisitedNodes);
+        const orphanTopology = {
+          root: '(孤立節點)',
+          levels: { 0: unvisitedNodes }
+        };
+        topologies.push(orphanTopology);
+        unvisitedNodes.forEach(name => visited.add(name));
+      }
+
+      // 計算佈局參數
+      const nodeSpacing = 180;
+      const levelHeight = 150;
+      const topologyGap = 300;  // 體系之間的垂直間距
+      
+      let currentY = 100;
+      const nodePositions = {};
+
+      // 繪製每個拓樸體系
+      topologies.forEach((topology, topologyIndex) => {
+        // 計算此體系的寬度（取最寬的那一層）
+        const maxNodesInLevel = Math.max(...Object.values(topology.levels).map(nodes => nodes.length));
+        const topologyWidth = Math.max(1000, maxNodesInLevel * nodeSpacing);
+        
+        // 計算此體系的高度
+        const levelCount = Object.keys(topology.levels).length;
+        const topologyHeight = levelCount * levelHeight;
+        
+        // 更新容器尺寸
+        const currentWidth = parseInt(container.style.minWidth) || 2000;
+        container.style.minWidth = Math.max(currentWidth, topologyWidth + 200) + 'px';
+        
+        // 繪製體系標題（如果有多個體系）
+        if (topologies.length > 1) {
+          const titleEl = document.createElement('div');
+          titleEl.style.position = 'absolute';
+          titleEl.style.left = '50px';
+          titleEl.style.top = (currentY - 30) + 'px';
+          titleEl.style.color = '#ffc107';
+          titleEl.style.fontSize = '1.2em';
+          titleEl.style.fontWeight = '600';
+          titleEl.textContent = `📊 體系 ${topologyIndex + 1}: ${topology.root}`;
+          container.appendChild(titleEl);
+        }
+        
+        // 繪製此體系的每一層
+        Object.keys(topology.levels).forEach(level => {
+          const nodes = topology.levels[level];
+          const levelWidth = nodes.length * nodeSpacing;
+          const startX = (topologyWidth - levelWidth) / 2 + 100;
+          const y = currentY + parseInt(level) * levelHeight;
+          
+          nodes.forEach((nodeName, i) => {
+            const x = startX + i * nodeSpacing;
+            nodePositions[nodeName] = { x, y };
+            
+            // 繪製節點
+            const node = knowledgeGraph[nodeName];
+            const nodeEl = document.createElement('div');
+            nodeEl.className = `full-view-node ${node.source}`;
+            nodeEl.textContent = nodeName;
+            nodeEl.style.left = x + 'px';
+            nodeEl.style.top = y + 'px';
+            
+            // 點擊跳轉
+            nodeEl.addEventListener('click', () => {
+              currentNode = nodeName;
+              toggleFullView();
+              renderTopology();
+            });
+            
+            nodeEl.title = node.content;
+            container.appendChild(nodeEl);
+          });
+        });
+        
+        // 繪製此體系的連接線
+        Object.keys(topology.levels).forEach(level => {
+          topology.levels[level].forEach(nodeName => {
+            const node = knowledgeGraph[nodeName];
+            const fromPos = nodePositions[nodeName];
+            
+            if (fromPos && node.downstream) {
+              node.downstream.forEach(downstreamName => {
+                const toPos = nodePositions[downstreamName];
+                if (toPos) {
+                  const line = document.createElement('div');
+                  line.className = 'full-view-connection';
+                  
+                  const fromCenterX = fromPos.x + 50;
+                  const fromCenterY = fromPos.y + 20;
+                  const toCenterX = toPos.x + 50;
+                  const toCenterY = toPos.y + 20;
+                  
+                  const dx = toCenterX - fromCenterX;
+                  const dy = toCenterY - fromCenterY;
+                  const length = Math.sqrt(dx * dx + dy * dy);
+                  const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                  
+                  line.style.width = length + 'px';
+                  line.style.left = fromCenterX + 'px';
+                  line.style.top = fromCenterY + 'px';
+                  line.style.transform = `rotate(${angle}deg)`;
+                  
+                  container.appendChild(line);
+                }
+              });
+            }
+          });
+        });
+        
+        // 移動到下一個體系的起始位置
+        currentY += topologyHeight + topologyGap;
+      });
+
+      // 更新容器高度
+      container.style.minHeight = currentY + 'px';
+
+      // 顯示統計資訊
+      console.log('📊 完整拓樸統計:');
+      console.log(`  總節點數: ${allNodes.length}`);
+      console.log(`  拓樸體系數: ${topologies.length}`);
+      topologies.forEach((topology, i) => {
+        const nodeCount = Object.values(topology.levels).flat().length;
+        const levelCount = Object.keys(topology.levels).length;
+        console.log(`  體系 ${i + 1} [${topology.root}]: ${nodeCount} 個節點，${levelCount} 層`);
+      });
+    }
+  </script>
+</body>
+</html>
