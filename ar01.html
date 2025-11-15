@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <title>Orsino WebAR 測試</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- A-Frame -->
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <!-- MindAR：影像追蹤 WebAR 引擎 -->
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      #ui-overlay {
+        position: fixed;
+        left: 0;
+        right: 0;
+        top: 0;
+        z-index: 10;
+        padding: 8px 12px;
+        background: rgba(0, 0, 0, 0.35);
+        color: #fff;
+        font-size: 14px;
+        line-height: 1.4;
+      }
+      #hint {
+        font-weight: 600;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- 上方簡單提示文字 -->
+    <div id="ui-overlay">
+      <div>📱 WebAR 測試頁（Orsino）</div>
+      <div id="hint">請把鏡頭對準測試圖片（藍底 MIND 卡片）。</div>
+    </div>
+
+    <!-- AR 場景 -->
+    <a-scene
+      mindar-image="imageTargetSrc: https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/card.mind;"
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: false"
+      renderer="colorManagement: true, physicallyCorrectLights: true"
+    >
+      <!-- 相機（由 MindAR 控制） -->
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <!-- 當偵測到 targetIndex: 0 這張圖時，就會在上面顯示以下內容 -->
+      <a-entity mindar-image-target="targetIndex: 0">
+        <!-- 半透明藍色平面 -->
+        <a-plane
+          position="0 0 0"
+          height="0.55"
+          width="1"
+          rotation="0 0 0"
+          color="#007bff"
+          opacity="0.6"
+        ></a-plane>
+
+        <!-- 漂浮在上面的文字 -->
+        <a-text
+          value="Hello Orsino 👋"
+          align="center"
+          position="0 0.3 0.01"
+          color="#ffffff"
+          width="1.8"
+        ></a-text>
+
+        <a-text
+          value="這是 WebAR / 影像標籤測試"
+          align="center"
+          position="0 0.05 0.01"
+          color="#ffee88"
+          width="1.8"
+        ></a-text>
+
+        <a-text
+          value="之後可以換成設備SOP或自學內容"
+          align="center"
+          position="0 -0.2 0.01"
+          color="#ffffff"
+          width="1.8"
+        ></a-text>
+      </a-entity>
+    </a-scene>
+  </body>
+</html>
