@@ -1,110 +1,122 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="utf-8">
-  <title>Face AR (iPhone16 Pro版)</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta charset="utf-8">
+<title>iPhone16 Pro Camera WebGL</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <style>
-    body { margin:0; overflow:hidden; background:black; }
-    #video { display:none; }
-    #canvas { position:fixed; top:0; left:0; }
-    #debug { position:fixed; top:0; left:0; color:#0f0; padding:8px;
-             background:rgba(0,0,0,0.4); font-size:14px; }
-  </style>
-
-  <!-- Mediapipe：新版 FaceMesh -->
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/face_mesh.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3/drawing_utils.js"></script>
+<style>
+  body { margin:0; overflow:hidden; background:black; }
+  #debug { 
+    position:fixed; top:0; left:0; padding:8px;
+    background:rgba(0,0,0,0.5); color:#0f0; font-size:14px;
+  }
+</style>
 </head>
 
 <body>
-  <div id="debug">啟動中…請稍等</div>
-
-  <video id="video" playsinline></video>
-  <canvas id="canvas"></canvas>
+<div id="debug">初始化中…</div>
+<canvas id="glcanvas"></canvas>
 
 <script>
-  const video = document.getElementById("video");
-  const canvas = document.getElementById("canvas");
-  const ctx = canvas.getContext("2d");
-  const debug = document.getElementById("debug");
+const debug = msg => document.getElementById("debug").innerText = msg;
+const canvas = document.getElementById("glcanvas");
+const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
 
-  async function startCamera(){
-    // iPhone 需要 EXACT facingMode + 正確寬高
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio:false,
-      video:{
-        facingMode: "user",
-        width: {ideal: 1280},
-        height: {ideal: 720}
-      }
-    });
-    video.srcObject = stream;
-    await video.play();
+function resize(){
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.onresize = resize;
+
+// ------ WebGL shader ------
+const vs = `
+attribute vec2 aPos;
+attribute vec2 aTex;
+varying vec2 vTex;
+void main(){
+  gl_Position = vec4(aPos, 0.0, 1.0);
+  vTex = aTex;
+}`;
+const fs = `
+precision mediump float;
+varying vec2 vTex;
+uniform sampler2D uTex;
+void main(){
+  gl_FragColor = texture2D(uTex, vTex);
+}`;
+
+function createShader(type, src){
+  let s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  return s;
+}
+function createProgram(vsSrc, fsSrc){
+  let p = gl.createProgram();
+  gl.attachShader(p, createShader(gl.VERTEX_SHADER, vsSrc));
+  gl.attachShader(p, createShader(gl.FRAGMENT_SHADER, fsSrc));
+  gl.linkProgram(p);
+  return p;
+}
+
+const program = createProgram(vs, fs);
+gl.useProgram(program);
+
+// full screen quad
+const verts = new Float32Array([
+  -1, -1,   0, 0,
+   1, -1,   1, 0,
+  -1,  1,   0, 1,
+   1,  1,   1, 1,
+]);
+const buf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
+
+const aPos = gl.getAttribLocation(program, "aPos");
+const aTex = gl.getAttribLocation(program, "aTex");
+gl.enableVertexAttribArray(aPos);
+gl.enableVertexAttribArray(aTex);
+gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 16, 0);
+gl.vertexAttribPointer(aTex, 2, gl.FLOAT, false, 16, 8);
+
+// texture
+const tex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, tex);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+(async function(){
+  debug("請允許相機…");
+
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video:{ facingMode:"user" },
+    audio:false
+  });
+
+  const video = document.createElement("video");
+  video.srcObject = stream;
+  video.playsinline = true;
+  await video.play();
+
+  debug("相機開啟成功（WebGL 模式）");
+
+  function draw(){
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(
+      gl.TEXTURE_2D, 0, gl.RGB,
+      gl.RGB, gl.UNSIGNED_BYTE, video
+    );
+
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    requestAnimationFrame(draw);
   }
-
-  function resize(){
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-  }
-  window.onresize = resize;
-
-  async function main(){
-    resize();
-    await startCamera();
-    debug.innerHTML = "相機啟動成功，載入 FaceMesh…";
-
-    const faceMesh = new FaceMesh.FaceMesh({
-      locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/${file}`
-    });
-
-    faceMesh.setOptions({
-      maxNumFaces: 1,
-      refineLandmarks: true,
-      minDetectionConfidence: 0.5,
-      minTrackingConfidence: 0.5
-    });
-
-    faceMesh.onResults(results => {
-      // 畫相機畫面
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      // 沒臉 → 顯示提示
-      if (!results.multiFaceLandmarks || !results.multiFaceLandmarks[0]) {
-        debug.innerHTML = "❗ 找不到臉，請把臉靠近鏡頭";
-        return;
-      }
-
-      debug.innerHTML = "✔ 臉已偵測";
-
-      const face = results.multiFaceLandmarks[0];
-
-      // Example: 眼睛間畫一條線 (測試定位)
-      const left = face[33];
-      const right = face[263];
-
-      ctx.strokeStyle = "#00ffff";
-      ctx.lineWidth = 6;
-      ctx.beginPath();
-      ctx.moveTo(left.x * canvas.width, left.y * canvas.height);
-      ctx.lineTo(right.x * canvas.width, right.y * canvas.height);
-      ctx.stroke();
-    });
-
-    const camera = new Camera(video, {
-      onFrame: async () => {
-        await faceMesh.send({image: video});
-      },
-      width: 1280,
-      height: 720
-    });
-    camera.start();
-  }
-
-  main();
+  draw();
+})();
 </script>
-
 </body>
 </html>
