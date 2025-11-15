@@ -1,70 +1,75 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
-  <head>
-    <meta charset="utf-8" />
-    <title>Orsino Face AR 測試</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+<head>
+  <meta charset="utf-8">
+  <title>Orsino FaceMesh AR (iPhone 16 Pro OK)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <!-- A-Frame -->
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <!-- MindAR：人臉追蹤 -->
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-aframe.prod.js"></script>
+  <!-- Three.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.min.js"></script>
 
-    <style>
-      body {
-        margin: 0;
-        overflow: hidden;
-        background: black;
-        font-family: -apple-system;
-      }
-      #ui {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        padding: 6px 12px;
-        background: rgba(0,0,0,0.4);
-        color: #fff;
-        z-index: 10;
-        font-size: 14px;
-      }
-    </style>
-  </head>
+  <!-- Mediapipe FaceMesh -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/facemesh/facemesh.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+</head>
 
-  <body>
-    <div id="ui">😎 Face AR 啟動中…把臉放進鏡頭裡</div>
+<body style="margin: 0; overflow: hidden;">
+  <video id="video" playsinline style="display:none;"></video>
+  <canvas id="canvas" style="position: fixed; left:0; top:0;"></canvas>
 
-    <a-scene
-      mindar-face
-      embedded
-      color-space="sRGB"
-      renderer="colorManagement: true"
-      vr-mode-ui="enabled: false"
-      device-orientation-permission-ui="enabled: false"
-    >
-      <a-camera position="0 0 0"></a-camera>
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
 
-      <!-- 模型會貼在臉的中心 -->
-      <a-entity mindar-face-target="anchorIndex: 1">
-        <!-- 漂浮眼鏡 -->
-        <a-entity 
-          gltf-model="https://cdn.jsdelivr.net/gh/OrsinoAI/assets@main/3d/cool_glasses.glb"
-          scale="0.015 0.015 0.015"
-          position="0 0.05 0.1"
-        ></a-entity>
-      </a-entity>
+    async function start() {
+      video.width = window.innerWidth;
+      video.height = window.innerHeight;
 
-      <!-- 臉旁邊的動態文字氣泡 -->
-      <a-entity mindar-face-target="anchorIndex: 168">
-        <a-plane position="0.2 0.1 0.05" width="0.4" height="0.2" color="#222" opacity="0.7"></a-plane>
-        <a-text
-          value="Hello Orsino!"
-          width="1.5"
-          color="#00ffcc"
-          position="0.2 0.1 0.06"
-          align="center"
-        ></a-text>
-      </a-entity>
-    </a-scene>
-  </body>
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user" }
+      });
+      video.srcObject = stream;
+      await video.play();
+
+      const facemesh = new facemesh.FaceMesh({
+        maxFaces: 1,
+        refineLandmarks: true
+      });
+
+      facemesh.onResults(results => {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        if (!results.multiFaceLandmarks[0]) return;
+
+        const face = results.multiFaceLandmarks[0];
+
+        // example: draw glasses (simple)
+        const leftEye = face[33];
+        const rightEye = face[263];
+
+        ctx.strokeStyle = "cyan";
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(leftEye.x * canvas.width, leftEye.y * canvas.height);
+        ctx.lineTo(rightEye.x * canvas.width, rightEye.y * canvas.height);
+        ctx.stroke();
+      });
+
+      const camera = new Camera(video, {
+        onFrame: async () => {
+          await facemesh.send({image: video});
+        },
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
+      camera.start();
+    }
+
+    start();
+  </script>
+</body>
 </html>
