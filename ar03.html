@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <title>Face AR (iPhone16 Pro + MediaPipe Tasks)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: black;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    #debug {
+      position: fixed;
+      top: 0;
+      left: 0;
+      padding: 8px 12px;
+      background: rgba(0, 0, 0, 0.5);
+      color: #00ff00;
+      font-size: 14px;
+      z-index: 20;
+    }
+    #videoWrap {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      z-index: 0;
+    }
+    #video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1); /* 自拍鏡像 */
+    }
+    #overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="debug">初始化中…</div>
+
+  <!-- 直接顯示前鏡頭畫面 -->
+  <div id="videoWrap">
+    <video id="video" playsinline autoplay muted></video>
+  </div>
+
+  <!-- 在上面畫臉部線條 -->
+  <canvas id="overlay"></canvas>
+
+  <!-- MediaPipe Tasks for Web -->
+  <script type="module">
+    import {
+      FaceLandmarker,
+      FilesetResolver,
+      DrawingUtils,
+    } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.15/vision_bundle.mjs";
+
+    const debug = (msg) => (document.getElementById("debug").innerText = msg);
+
+    const video = document.getElementById("video");
+    const overlay = document.getElementById("overlay");
+    const ctx = overlay.getContext("2d");
+
+    function resizeCanvas() {
+      overlay.width = window.innerWidth;
+      overlay.height = window.innerHeight;
+    }
+    window.addEventListener("resize", resizeCanvas);
+
+    async function setupCamera() {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: "user",
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+      });
+      video.srcObject = stream;
+
+      return new Promise((resolve) => {
+        video.onloadedmetadata = () => {
+          video.play();
+          resizeCanvas();
+          resolve();
+        };
+      });
+    }
+
+    let faceLandmarker;
+    let running = false;
+
+    async function setupFaceLandmarker() {
+      debug("相機正常，載入人臉模型…");
+
+      const vision = await FilesetResolver.forVisionTasks(
+        // 這是 tasks-vision 的 wasm 位置（官方建議）
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.15/wasm"
+      );
+
+      faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+        baseOptions: {
+          // 🔥 這一行是「正確的官方模型網址」
+          // 注意路徑：mediapipe-models / face_landmarker / face_landmarker / float16 / 1 / face_landmarker.task
+          modelAssetPath:
+            "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+        },
+        runningMode: "VIDEO",
+        numFaces: 1,
+      });
+
+      debug("人臉模型載入完成 ✔");
+    }
+
+    function drawFaceLandmarks(result) {
+      ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+      if (!result.faceLandmarks || !result.faceLandmarks[0]) {
+        debug("相機正常，找不到臉，請把臉靠近一點");
+        return;
+      }
+
+      debug("✔ 已偵測到臉");
+
+      const landmarks = result.faceLandmarks[0];
+
+      // 以「左眼外角(33)」到「右眼外角(263)」畫一條線當示範
+      const leftEye = landmarks[33];
+      const rightEye = landmarks[263];
+
+      const x1 = leftEye.x * overlay.width;
+      const y1 = leftEye.y * overlay.height;
+      const x2 = rightEye.x * overlay.width;
+      const y2 = rightEye.y * overlay.height;
+
+      ctx.strokeStyle = "#00ff00";
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    }
+
+    async function startLoop() {
+      if (!faceLandmarker) return;
+      running = true;
+
+      const loop = () => {
+        if (!running) return;
+
+        const nowMs = performance.now();
+        const result = faceLandmarker.detectForVideo(video, nowMs);
+        if (result) {
+          drawFaceLandmarks(result);
+        }
+
+        requestAnimationFrame(loop);
+      };
+      loop();
+    }
+
+    (async () => {
+      try {
+        debug("請允許使用相機…");
+        await setupCamera();
+        await setupFaceLandmarker();
+        await startLoop();
+      } catch (err) {
+        console.error(err);
+        debug("❌ 發生錯誤：" + err);
+      }
+    })();
+  </script>
+</body>
+</html>
