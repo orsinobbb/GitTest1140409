@@ -2,14 +2,15 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<title>iPhone16 Pro Camera WebGL</title>
+<title>Face AR for iPhone16 Pro</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
   body { margin:0; overflow:hidden; background:black; }
-  #debug { 
+  #debug {
     position:fixed; top:0; left:0; padding:8px;
-    background:rgba(0,0,0,0.5); color:#0f0; font-size:14px;
+    background:rgba(0,0,0,0.4); color:#0f0; font-size:14px;
+    z-index:10;
   }
 </style>
 </head>
@@ -18,11 +19,17 @@
 <div id="debug">初始化中…</div>
 <canvas id="glcanvas"></canvas>
 
-<script>
-const debug = msg => document.getElementById("debug").innerText = msg;
-const canvas = document.getElementById("glcanvas");
-const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+<!-- Mediapipe (最新 FaceLandmarker v3) -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/vision_bundle.mjs" type="module"></script>
 
+<script type="module">
+import {FaceLandmarker, FilesetResolver} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/vision_bundle.mjs";
+
+const debug = msg => document.getElementById("debug").innerText = msg;
+
+// ---------- WebGL ----------
+const canvas = document.getElementById("glcanvas");
+let gl = canvas.getContext("webgl");
 function resize(){
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
@@ -30,14 +37,15 @@ function resize(){
 resize();
 window.onresize = resize;
 
-// ------ WebGL shader ------
+// vertex shader
 const vs = `
 attribute vec2 aPos;
 attribute vec2 aTex;
 varying vec2 vTex;
 void main(){
   gl_Position = vec4(aPos, 0.0, 1.0);
-  vTex = aTex;
+  // 修正上下翻轉
+  vTex = vec2(aTex.x, 1.0 - aTex.y);
 }`;
 const fs = `
 precision mediump float;
@@ -47,36 +55,36 @@ void main(){
   gl_FragColor = texture2D(uTex, vTex);
 }`;
 
-function createShader(type, src){
+function shader(type, src){
   let s = gl.createShader(type);
   gl.shaderSource(s, src);
   gl.compileShader(s);
   return s;
 }
-function createProgram(vsSrc, fsSrc){
+function program(vs, fs){
   let p = gl.createProgram();
-  gl.attachShader(p, createShader(gl.VERTEX_SHADER, vsSrc));
-  gl.attachShader(p, createShader(gl.FRAGMENT_SHADER, fsSrc));
+  gl.attachShader(p, shader(gl.VERTEX_SHADER, vs));
+  gl.attachShader(p, shader(gl.FRAGMENT_SHADER, fs));
   gl.linkProgram(p);
   return p;
 }
 
-const program = createProgram(vs, fs);
-gl.useProgram(program);
+const prog = program(vs, fs);
+gl.useProgram(prog);
 
-// full screen quad
+// quad
 const verts = new Float32Array([
-  -1, -1,   0, 0,
-   1, -1,   1, 0,
-  -1,  1,   0, 1,
-   1,  1,   1, 1,
+  -1,-1, 0,0,
+   1,-1, 1,0,
+  -1, 1, 0,1,
+   1, 1, 1,1
 ]);
 const buf = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, buf);
 gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
 
-const aPos = gl.getAttribLocation(program, "aPos");
-const aTex = gl.getAttribLocation(program, "aTex");
+const aPos = gl.getAttribLocation(prog, "aPos");
+const aTex = gl.getAttribLocation(prog, "aTex");
 gl.enableVertexAttribArray(aPos);
 gl.enableVertexAttribArray(aTex);
 gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 16, 0);
@@ -90,33 +98,66 @@ gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
-(async function(){
-  debug("請允許相機…");
+// ---------- Start camera ----------
+const video = document.createElement("video");
+video.playsinline = true;
 
+async function startCamera(){
   const stream = await navigator.mediaDevices.getUserMedia({
     video:{ facingMode:"user" },
     audio:false
   });
-
-  const video = document.createElement("video");
   video.srcObject = stream;
-  video.playsinline = true;
   await video.play();
+  debug("相機正常，載入人臉模型…");
+}
+await startCamera();
 
-  debug("相機開啟成功（WebGL 模式）");
+// ---------- Init FaceLandmarker ----------
+const vision = await FilesetResolver.forVisionTasks(
+  "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
+);
 
-  function draw(){
-    gl.bindTexture(gl.TEXTURE_2D, tex);
-    gl.texImage2D(
-      gl.TEXTURE_2D, 0, gl.RGB,
-      gl.RGB, gl.UNSIGNED_BYTE, video
-    );
+const landmarker = await FaceLandmarker.createFromOptions(vision, {
+  baseOptions: {
+    modelAssetPath: `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/models/face_landmarker.task`
+  },
+  runningMode: "video",
+  numFaces: 1
+});
 
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-    requestAnimationFrame(draw);
+debug("臉部追蹤載入成功");
+
+// ---------- Render Loop ----------
+function render(){
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, video);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+  // 顯示臉部追蹤
+  const res = landmarker.detectForVideo(video, performance.now());
+  if (res.faceLandmarks && res.faceLandmarks[0]) {
+    debug("✔ 偵測到臉");
+    const face = res.faceLandmarks[0];
+
+    // landmark 1(左眼角) 到 4(鼻樑)
+    const A = face[1];
+    const B = face[4];
+
+    // 用 Canvas overlay 畫線
+    const g = canvas.getContext("2d");
+    g.strokeStyle = "#00ff00";
+    g.lineWidth = 5;
+    g.beginPath();
+    g.moveTo(A.x * canvas.width, A.y * canvas.height);
+    g.lineTo(B.x * canvas.width, B.y * canvas.height);
+    g.stroke();
   }
-  draw();
-})();
+
+  requestAnimationFrame(render);
+}
+render();
 </script>
+
 </body>
 </html>
