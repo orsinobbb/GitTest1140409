@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <title>HoloLens2 年齡偵測疊加 Demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: black;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    #debug {
+      position: fixed;
+      top: 0;
+      left: 0;
+      padding: 6px 10px;
+      background: rgba(0, 0, 0, 0.6);
+      color: #00ff00;
+      font-size: 12px;
+      z-index: 20;
+      border-bottom-right-radius: 8px;
+    }
+    #videoWrap {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      z-index: 0;
+    }
+    #video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;  /* 填滿視野 */
+      /* HoloLens 看外面，不需要鏡像 */
+    }
+    #overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="debug">初始化中…</div>
+
+  <!-- 背景：HoloLens 前方世界鏡頭畫面 -->
+  <div id="videoWrap">
+    <video id="video" playsinline autoplay muted></video>
+  </div>
+
+  <!-- 前景：年齡標籤與框線 -->
+  <canvas id="overlay"></canvas>
+
+  <!-- Human.js：含 age/gender/face 模型（在瀏覽器本地跑） -->
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/human/dist/human.js"></script>
+
+  <script>
+    const debug = (msg) => {
+      document.getElementById("debug").innerText = msg;
+    };
+
+    const video = document.getElementById("video");
+    const overlay = document.getElementById("overlay");
+    const ctx = overlay.getContext("2d");
+
+    // 讓 canvas 和 video 的實際像素對齊
+    function resizeCanvasToVideo() {
+      const vw = video.videoWidth || window.innerWidth;
+      const vh = video.videoHeight || window.innerHeight;
+      overlay.width = vw;
+      overlay.height = vh;
+
+      // CSS 填滿視窗
+      overlay.style.width = "100%";
+      overlay.style.height = "100%";
+    }
+
+    // ===== 1. Human.js 設定：只開臉 + 年齡（性別可視需要再開） =====
+    const humanConfig = {
+      backend: "webgl",
+      modelBasePath: "https://cdn.jsdelivr.net/npm/@vladmandic/human/models",
+      cacheSensitivity: 0,
+      face: { enabled: true, detector: { rotation: true }, mesh: false, iris: false },
+      body: { enabled: false },
+      hand: { enabled: false },
+      object: { enabled: false },
+      segmentation: { enabled: false },
+      gesture: { enabled: false },
+      age: { enabled: true },
+      gender: { enabled: false },   // 目前先關掉，只顯示年齡
+      emotion: { enabled: false },
+    };
+
+    const human = new Human.Human(humanConfig);
+
+    // ===== 2. 啟動 HoloLens 相機（世界鏡頭） =====
+    async function setupCamera() {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: "environment",  // HoloLens 往外看
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+      });
+      video.srcObject = stream;
+
+      return new Promise((resolve) => {
+        video.onloadedmetadata = () => {
+          video.play();
+          resizeCanvasToVideo();
+          resolve();
+        };
+      });
+    }
+
+    // ===== 3. 繪圖：在每個人的頭上方畫「約 XX 歲」 =====
+    function drawDetections(result) {
+      const faces = result.face || [];
+      ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+      if (faces.length === 0) {
+        debug("相機正常，畫面中沒有偵測到人臉");
+        return;
+      }
+
+      debug(`偵測到 ${faces.length} 張臉，正在估計年齡…`);
+
+      for (const f of faces) {
+        if (!f.box) continue;
+
+        const box = f.box; // { x, y, width, height }：以 video 的像素為座標
+        const age = f.age || null;
+
+        // 畫一個臉框
+        ctx.strokeStyle = "rgba(0, 255, 0, 0.9)";
+        ctx.lineWidth = 3;
+        ctx.strokeRect(box.x, box.y, box.width, box.height);
+
+        if (age) {
+          const ageRound = Math.round(age);
+          const label = `約 ${ageRound} 歲`;
+
+          ctx.font = "18px -apple-system, BlinkMacSystemFont, 'Segoe UI'";
+          const textWidth = ctx.measureText(label).width;
+          const paddingX = 8;
+          const paddingY = 6;
+
+          const cx = box.x + box.width / 2;
+          const cy = Math.max(box.y - 10, 20); // 在頭上方一點
+
+          const rectX = cx - textWidth / 2 - paddingX;
+          const rectY = cy - 20 - paddingY;
+          const rectW = textWidth + paddingX * 2;
+          const rectH = 24 + paddingY * 2;
+
+          // 黑底框
+          ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+          ctx.fillRect(rectX, rectY, rectW, rectH);
+
+          // 外框
+          ctx.strokeStyle = "#00ff00";
+          ctx.lineWidth = 2;
+          ctx.strokeRect(rectX, rectY, rectW, rectH);
+
+          // 文字
+          ctx.fillStyle = "#00ff00";
+          ctx.fillText(label, cx - textWidth / 2, cy);
+        }
+      }
+    }
+
+    // ===== 4. 主迴圈：持續偵測 + 繪圖 =====
+    let running = false;
+
+    async function loop() {
+      if (!running) return;
+
+      try {
+        const result = await human.detect(video);
+        drawDetections(result);
+      } catch (e) {
+        console.error(e);
+        debug("偵測時發生錯誤：" + e);
+      }
+
+      // HoloLens 效能有限，不需要每幀都跑，稍微慢一點
+      setTimeout(() => requestAnimationFrame(loop), 80); // 約 12 FPS
+    }
+
+    // ===== 5. 初始化流程 =====
+    (async () => {
+      try {
+        debug("載入模型中…（HoloLens 可能需要幾秒）");
+        await human.load();
+        debug("模型載入完成，啟動相機…");
+        await setupCamera();
+        debug("相機正常，開始偵測人臉與年齡…");
+        running = true;
+        loop();
+      } catch (err) {
+        console.error(err);
+        debug("❌ 發生錯誤：" + err);
+      }
+    })();
+  </script>
+</body>
+</html>
