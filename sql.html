@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MySQL資料庫筆試考卷</title>
+    <style>
+        @media print {
+            .no-print { display: none; }
+            body { margin: 0; }
+        }
+
+```
+    body {
+        font-family: 'Microsoft JhengHei', Arial, sans-serif;
+        max-width: 210mm;
+        margin: 0 auto;
+        padding: 20mm;
+        background: white;
+        line-height: 1.6;
+    }
+    
+    .header {
+        text-align: center;
+        border-bottom: 3px solid #333;
+        padding-bottom: 15px;
+        margin-bottom: 30px;
+    }
+    
+    .header h1 {
+        margin: 0;
+        font-size: 28px;
+        color: #2c3e50;
+    }
+    
+    .info-box {
+        display: flex;
+        justify-content: space-between;
+        margin: 20px 0;
+        padding: 15px;
+        border: 2px solid #ddd;
+        background: #f9f9f9;
+    }
+    
+    .info-item {
+        flex: 1;
+    }
+    
+    .section {
+        margin: 30px 0;
+    }
+    
+    .section-title {
+        background: #e67e22;
+        color: white;
+        padding: 10px 15px;
+        font-size: 18px;
+        font-weight: bold;
+        margin-bottom: 20px;
+    }
+    
+    .question {
+        margin: 25px 0;
+        page-break-inside: avoid;
+    }
+    
+    .question-number {
+        font-weight: bold;
+        color: #2c3e50;
+        margin-bottom: 8px;
+    }
+    
+    .code-block {
+        background: #f5f5f5;
+        border-left: 4px solid #e67e22;
+        padding: 15px;
+        margin: 10px 0;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 13px;
+        overflow-x: auto;
+        white-space: pre;
+    }
+    
+    .table-schema {
+        background: #fff3cd;
+        border: 2px solid #ffc107;
+        padding: 12px;
+        margin: 10px 0;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 12px;
+    }
+    
+    .options {
+        margin: 10px 0 10px 20px;
+    }
+    
+    .option {
+        margin: 8px 0;
+        padding: 5px;
+    }
+    
+    .answer-space {
+        border-bottom: 1px solid #333;
+        min-height: 80px;
+        margin: 15px 0;
+    }
+    
+    .answer-space-large {
+        border: 1px solid #ddd;
+        min-height: 120px;
+        margin: 15px 0;
+        padding: 10px;
+    }
+    
+    .footer {
+        text-align: center;
+        margin-top: 50px;
+        padding-top: 20px;
+        border-top: 2px solid #ddd;
+        color: #666;
+        font-size: 12px;
+    }
+    
+    .print-button {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 24px;
+        background: #e67e22;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    
+    .print-button:hover {
+        background: #d35400;
+    }
+    
+    .highlight {
+        background: #ffffcc;
+        padding: 2px 4px;
+    }
+</style>
+```
+
+</head>
+<body>
+    <button class="print-button no-print" onclick="window.print()">🖨️ 列印/存成PDF</button>
+
+```
+<div class="header">
+    <h1>MySQL 資料庫觀念筆試</h1>
+    <p style="margin: 10px 0; color: #666;">測驗時間：60 分鐘 | 總分：100 分</p>
+</div>
+
+<div class="info-box">
+    <div class="info-item">
+        <strong>姓名：</strong>__________________
+    </div>
+    <div class="info-item">
+        <strong>日期：</strong>__________________
+    </div>
+    <div class="info-item">
+        <strong>分數：</strong>__________________
+    </div>
+</div>
+
+<!-- 第一部分：選擇題 -->
+<div class="section">
+    <div class="section-title">第一部分：選擇題（每題 4 分，共 40 分）</div>
+    
+    <div class="question">
+        <div class="question-number">1. 以下哪個不是 MySQL 的儲存引擎？（4分）</div>
+        <div class="options">
+            <div class="option">A) InnoDB</div>
+            <div class="option">B) MyISAM</div>
+            <div class="option">C) PostgreSQL</div>
+            <div class="option">D) Memory</div>
+        </div>
+        <div><strong>答案：</strong>_______</div>
+    </div>
+
+    <div class="question">
+        <div class="question-number">2. InnoDB 和 MyISAM 的主要差異是什麼？（4分）</div>
+        <div class="options">
+            <div class="option">A) InnoDB 支援交易(Transaction)，MyISAM 不支援</div>
+            <div class="option">B) MyISAM 支援外鍵(Foreign Key)，InnoDB 不支援</div>
+            <div class="option">C) InnoDB 比 MyISAM 查詢速度快</div>
+            <div class="option">D) MyISAM 支援行級鎖定(Row-level Locking)</div>
+        </div>
+        <div><strong>答案：</strong>_______</div>
+    </div>
+
+    <div class="question">
+        <div class="question-number">3. 以下關於索引(Index)的敘述，何者正確？（4分）</div>
+        <div class="options">
+            <div class="option">A) 索引越多越好，可以加快所有查詢速度</div>
+            <div class="option">B) 索引會加快 SELECT 速度，但會降低 INSERT/UPDATE/DELETE 速度</div>
+            <div class="option">C) PRIMARY KEY 不會自動建立索引</div>
+            <div class="option">D) 索引不佔用磁碟空間</div>
+        </div>
+        <div><strong>答案：</strong>_______</div>
+    </div>
+
+    <div class="question">
+        <div class="question-number">4. 以下哪個 SQL 語句可以查看資料表結構？（4分）</div>
+        <div class="options">
+            <div class="option">A) SHOW TABLE students;</div>
+            <div class="option">B) DESCRIBE students;</div>
+            <div class="option">C) VIEW students;</div>
+            <div class="option">D) DISPLAY students;</div>
+        </div>
+        <div><strong>答案：</strong>_______</div>
+    </div>
+
+    <div class="question">
+        <div class="question-number">5. 在 MySQL 中，NULL 和空字串 '' 的差異是什麼？（4分）</div>
+        <div class="options">
+            <div class="option">A) 完全相同</div>
+            <div class="option">B) NULL 表示未知或不存在，空字串是已知的空值</div>
+            <div class="option">C) NULL 佔用更多儲存空間</div>
+            <div class="option">D) 只有數字欄位可以使用 NULL</div>
+        </div>
+        <div><strong>答案：</strong>_______</div>
+    </div>
+
+    <div class="question">
+        <div class="question-number">6. 以下哪個不是 JOIN 的類型？（4分）</div>
+        <div class="options">
+            <div class="option">A) INNER JOIN</div>
+            <div class="option">B) LEFT JOIN</div>
+            <div class="option">C) OUTER JOIN</div>
+            <div class="option">D) MIDDLE JOIN</div>
+        </div>
+        <div><strong>答案：</strong>_______</div>
+    </div>
+
+    <div class="question">
+        <div class="question-number">7. 以下關於 ACID 特性的敘述，何者錯誤？（4分）</div>
+        <div class="options">
+            <div class="option">A) A 代表 Atomicity（原子性）</div>
+            <div class="option">B) C 代表 Consistency（一致性）</div>
+            <div class="option">C) I 代表 Isolation（隔離性）</div>
+            <div class="option">D) D 代表 Distribution（分散性）</div>
+        </div>
+        <div><strong>答案：</strong>_______</div>
+    </div>
+
+    <div class="question">
+        <div class="question-number">8. 以下哪個語句可以開始一個交易(Transaction)？（4分）</div>
+        <div class="options">
+            <div class="option">A) BEGIN TRANSACTION;</div>
+            <div class="option">B) START TRANSACTION;</div>
+            <div class="option">C) INIT TRANSACTION;</div>
+            <div class="option">D) CREATE TRANSACTION;</div>
+        </div>
+        <div><strong>答案：</strong>_______</div>
+    </div>
+
+    <div class="question">
+        <div class="question-number">9. 在 MySQL 中，以下哪個函數可以取得目前日期和時間？（4分）</div>
+        <div class="options">
+            <div class="option">A) GETDATE()</div>
+            <div class="option">B) CURRENT_TIMESTAMP()</div>
+            <div class="option">C) SYSDATE()</div>
+            <div class="option">D) 以上皆可</div>
+        </div>
+        <div><strong>答案：</strong>_______</div>
+    </div>
+
+    <div class="question">
+        <div class="question-number">10. 以下關於 GROUP BY 的敘述，何者正確？（4分）</div>
+        <div class="options">
+            <div class="option">A) GROUP BY 必須和 ORDER BY 一起使用</div>
+            <div class="option">B) SELECT 子句中的非聚合欄位必須出現在 GROUP BY 中</div>
+            <div class="option">C) GROUP BY 只能用於數字欄位</div>
+            <div class="option">D) 不能在 GROUP BY 後使用 WHERE</div>
+        </div>
+        <div><strong>答案：</strong>_______</div>
+    </div>
+</div>
+
+<!-- 第二部分：SQL 查詢題 -->
+<div class="section" style="page-break-before: always;">
+    <div class="section-title">第二部分：SQL 查詢題（每題 6 分，共 30 分）</div>
+    
+    <div class="table-schema">
+```
+
+<strong>資料表結構：</strong>
+
+students (學生表)
+
+- student_id (INT, PRIMARY KEY)
+- name (VARCHAR)
+- age (INT)
+- class_id (INT)
+
+classes (班級表)
+
+- class_id (INT, PRIMARY KEY)
+- class_name (VARCHAR)
+- teacher (VARCHAR)
+
+scores (成績表)
+
+- score_id (INT, PRIMARY KEY)
+- student_id (INT)
+- subject (VARCHAR)
+- score (INT)
+  </div>
+  
+  ```
+    <div class="question">
+        <div class="question-number">11. 撰寫 SQL 查詢：查詢所有年齡大於 18 歲的學生姓名和年齡，按年齡降冪排序。（6分）</div>
+        <div class="answer-space-large"></div>
+    </div>
+  
+    <div class="question">
+        <div class="question-number">12. 撰寫 SQL 查詢：查詢每個班級的學生人數，顯示班級名稱和人數。（6分）</div>
+        <div class="answer-space-large"></div>
+    </div>
+  
+    <div class="question">
+        <div class="question-number">13. 撰寫 SQL 查詢：查詢「數學」科目平均分數大於 80 分的學生姓名和平均分數。（6分）</div>
+        <div class="answer-space-large"></div>
+    </div>
+  
+    <div class="question">
+        <div class="question-number">14. 撰寫 SQL 查詢：查詢沒有任何成績記錄的學生姓名。（使用 LEFT JOIN）（6分）</div>
+        <div class="answer-space-large"></div>
+    </div>
+  
+    <div class="question">
+        <div class="question-number">15. 撰寫 SQL 查詢：查詢每個科目的最高分、最低分和平均分。（6分）</div>
+        <div class="answer-space-large"></div>
+    </div>
+  ```
+  
+    </div>
+  
+    <!-- 第三部分：觀念問答題 -->
+  
+    <div class="section" style="page-break-before: always;">
+        <div class="section-title">第三部分：觀念問答題（每題 10 分，共 30 分）</div>
+  
+  ```
+    <div class="question">
+        <div class="question-number">16. 解釋什麼是「資料庫正規化(Normalization)」？並說明第一正規化(1NF)、第二正規化(2NF)、第三正規化(3NF)的基本概念。（10分）</div>
+        <div class="answer-space"></div>
+        <div class="answer-space"></div>
+    </div>
+  
+    <div class="question">
+        <div class="question-number">17. 什麼是 SQL Injection（SQL 注入攻擊）？如何防範？請列舉至少三種防範方法。（10分）</div>
+        <div class="answer-space"></div>
+        <div class="answer-space"></div>
+    </div>
+  
+    <div class="question">
+        <div class="question-number">18. 解釋 WHERE 和 HAVING 的差異，並舉例說明各自的使用時機。（10分）</div>
+        <div class="answer-space"></div>
+        <div class="answer-space"></div>
+    </div>
+  ```
+  
+    </div>
+  
+    <div class="footer no-print">
+        <p>請確認所有答案填寫完整 | 祝考試順利！</p>
+    </div>
+
+</body>
+</html>
