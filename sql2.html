@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MySQL資料庫筆試考卷</title>
+    <style>
+        @media print {
+            .no-print { display: none; }
+            body { margin: 0; }
+        }
+
+```
+    body {
+        font-family: 'Microsoft JhengHei', Arial, sans-serif;
+        max-width: 210mm;
+        margin: 0 auto;
+        padding: 20mm;
+        background: white;
+        line-height: 1.6;
+    }
+    
+    .header {
+        text-align: center;
+        border-bottom: 3px solid #333;
+        padding-bottom: 15px;
+        margin-bottom: 30px;
+    }
+    
+    .header h1 {
+        margin: 0;
+        font-size: 28px;
+        color: #2c3e50;
+    }
+    
+    .info-box {
+        display: flex;
+        justify-content: space-between;
+        margin: 20px 0;
+        padding: 15px;
+        border: 2px solid #ddd;
+        background: #f9f9f9;
+    }
+    
+    .info-item {
+        flex: 1;
+    }
+    
+    .section {
+        margin: 30px 0;
+    }
+    
+    .section-title {
+        background: #e67e22;
+        color: white;
+        padding: 10px 15px;
+        font-size: 18px;
+        font-weight: bold;
+        margin-bottom: 20px;
+    }
+    
+    .question {
+        margin: 25px 0;
+        page-break-inside: avoid;
+    }
+    
+    .question-number {
+        font-weight: bold;
+        color: #2c3e50;
+        margin-bottom: 8px;
+        font-size: 16px;
+    }
+    
+    .code-block {
+        background: #f5f5f5;
+        border-left: 4px solid #e67e22;
+        padding: 15px;
+        margin: 10px 0;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 13px;
+        overflow-x: auto;
+        white-space: pre;
+    }
+    
+    .table-schema {
+        background: #e8f5e9;
+        border: 3px solid #4caf50;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 8px;
+    }
+    
+    .table-schema h3 {
+        color: #2e7d32;
+        margin-top: 0;
+        margin-bottom: 15px;
+        font-size: 18px;
+        border-bottom: 2px solid #4caf50;
+        padding-bottom: 8px;
+    }
+    
+    .table-info {
+        background: white;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 5px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .table-name {
+        font-weight: bold;
+        color: #1565c0;
+        font-size: 16px;
+        margin-bottom: 10px;
+    }
+    
+    .column-list {
+        margin-left: 20px;
+        line-height: 1.8;
+    }
+    
+    .column-item {
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 14px;
+        color: #333;
+    }
+    
+    .pk {
+        color: #d32f2f;
+        font-weight: bold;
+    }
+    
+    .fk {
+        color: #f57c00;
+    }
+    
+    .options {
+        margin: 10px 0 10px 20px;
+    }
+    
+    .option {
+        margin: 8px 0;
+        padding: 5px;
+    }
+    
+    .answer-space-large {
+        border: 1px solid #ddd;
+        min-height: 120px;
+        margin: 15px 0;
+        padding: 10px;
+        background: #fafafa;
+    }
+    
+    .footer {
+        text-align: center;
+        margin-top: 50px;
+        padding-top: 20px;
+        border-top: 2px solid #ddd;
+        color: #666;
+        font-size: 12px;
+    }
+    
+    .print-button {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 24px;
+        background: #e67e22;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        z-index: 1000;
+    }
+    
+    .print-button:hover {
+        background: #d35400;
+    }
+</style>
+```
+
+</head>
+<body>
+    <button class="print-button no-print" onclick="window.print()">🖨️ 列印/存成PDF</button>
+
+```
+<div class="header">
+    <h1>MySQL 資料庫觀念筆試</h1>
+    <p style="margin: 10px 0; color: #666;">測驗時間：40 分鐘 | 總分：100 分</p>
+</div>
+
+<div class="info-box">
+    <div class="info-item">
+        <strong>姓名：</strong>__________________
+    </div>
+    <div class="info-item">
+        <strong>日期：</strong>__________________
+    </div>
+    <div class="info-item">
+        <strong>分數：</strong>__________________
+    </div>
+</div>
+
+<!-- 第一部分：選擇題 -->
+<div class="section">
+    <div class="section-title">第一部分：選擇題（每題 10 分，共 40 分）</div>
+    
+    <div class="question">
+        <div class="question-number">1. 在 MySQL 中，NULL 和空字串 '' 的差異是什麼？（10分）</div>
+        <div class="options">
+            <div class="option">A) 完全相同</div>
+            <div class="option">B) NULL 表示未知或不存在，空字串是已知的空值</div>
+            <div class="option">C) NULL 佔用更多儲存空間</div>
+            <div class="option">D) 只有數字欄位可以使用 NULL</div>
+        </div>
+        <div><strong>答案：</strong>_______</div>
+    </div>
+
+    <div class="question">
+        <div class="question-number">2. 以下哪個不是 JOIN 的類型？（10分）</div>
+        <div class="options">
+            <div class="option">A) INNER JOIN</div>
+            <div class="option">B) LEFT JOIN</div>
+            <div class="option">C) OUTER JOIN</div>
+            <div class="option">D) MIDDLE JOIN</div>
+        </div>
+        <div><strong>答案：</strong>_______</div>
+    </div>
+
+    <div class="question">
+        <div class="question-number">3. 在 MySQL 中，以下哪個函數可以取得目前日期和時間？（10分）</div>
+        <div class="options">
+            <div class="option">A) GETDATE()</div>
+            <div class="option">B) CURRENT_TIMESTAMP()</div>
+            <div class="option">C) SYSDATE()</div>
+            <div class="option">D) 以上皆可</div>
+        </div>
+        <div><strong>答案：</strong>_______</div>
+    </div>
+
+    <div class="question">
+        <div class="question-number">4. 以下關於 GROUP BY 的敘述，何者正確？（10分）</div>
+        <div class="options">
+            <div class="option">A) GROUP BY 必須和 ORDER BY 一起使用</div>
+            <div class="option">B) SELECT 子句中的非聚合欄位必須出現在 GROUP BY 中</div>
+            <div class="option">C) GROUP BY 只能用於數字欄位</div>
+            <div class="option">D) 不能在 GROUP BY 後使用 WHERE</div>
+        </div>
+        <div><strong>答案：</strong>_______</div>
+    </div>
+</div>
+
+<!-- 第二部分：SQL 查詢題 -->
+<div class="section" style="page-break-before: always;">
+    <div class="section-title">第二部分：SQL 查詢題（每題 20 分，共 60 分）</div>
+    
+    <div class="table-schema">
+        <h3>📊 資料表結構說明</h3>
+        
+        <div class="table-info">
+            <div class="table-name">📋 students（學生資料表）</div>
+            <div class="column-list">
+                <div class="column-item">• <span class="pk">student_id</span> INT PRIMARY KEY - 學生編號</div>
+                <div class="column-item">• name VARCHAR(50) - 學生姓名</div>
+                <div class="column-item">• age INT - 年齡</div>
+                <div class="column-item">• <span class="fk">class_id</span> INT - 班級編號（外鍵）</div>
+            </div>
+        </div>
+
+        <div class="table-info">
+            <div class="table-name">📋 classes（班級資料表）</div>
+            <div class="column-list">
+                <div class="column-item">• <span class="pk">class_id</span> INT PRIMARY KEY - 班級編號</div>
+                <div class="column-item">• class_name VARCHAR(50) - 班級名稱</div>
+                <div class="column-item">• teacher VARCHAR(50) - 導師姓名</div>
+            </div>
+        </div>
+
+        <div class="table-info">
+            <div class="table-name">📋 scores（成績資料表）</div>
+            <div class="column-list">
+                <div class="column-item">• <span class="pk">score_id</span> INT PRIMARY KEY - 成績編號</div>
+                <div class="column-item">• <span class="fk">student_id</span> INT - 學生編號（外鍵）</div>
+                <div class="column-item">• subject VARCHAR(30) - 科目名稱</div>
+                <div class="column-item">• score INT - 分數（0-100）</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="question">
+        <div class="question-number">5. 撰寫 SQL 查詢：查詢所有年齡大於 18 歲的學生姓名和年齡，按年齡降冪排序。（20分）</div>
+        <div class="answer-space-large"></div>
+    </div>
+
+    <div class="question">
+        <div class="question-number">6. 撰寫 SQL 查詢：查詢每個班級的學生人數，顯示班級名稱和人數。（20分）</div>
+        <div class="answer-space-large"></div>
+    </div>
+
+    <div class="question">
+        <div class="question-number">7. 撰寫 SQL 查詢：查詢每個科目的最高分、最低分和平均分。（20分）</div>
+        <div class="answer-space-large"></div>
+    </div>
+</div>
+
+<div class="footer no-print">
+    <p>請確認所有答案填寫完整 | 祝考試順利！</p>
+</div>
+```
+
+</body>
+</html>
