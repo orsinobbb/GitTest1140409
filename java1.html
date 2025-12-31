@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java邏輯筆試考卷</title>
+    <style>
+        @media print {
+            .no-print { display: none; }
+            body { margin: 0; }
+        }
+
+```
+    body {
+        font-family: 'Microsoft JhengHei', Arial, sans-serif;
+        max-width: 210mm;
+        margin: 0 auto;
+        padding: 20mm;
+        background: white;
+        line-height: 1.6;
+    }
+    
+    .header {
+        text-align: center;
+        border-bottom: 3px solid #333;
+        padding-bottom: 15px;
+        margin-bottom: 30px;
+    }
+    
+    .header h1 {
+        margin: 0;
+        font-size: 28px;
+        color: #2c3e50;
+    }
+    
+    .info-box {
+        display: flex;
+        justify-content: space-between;
+        margin: 20px 0;
+        padding: 15px;
+        border: 2px solid #ddd;
+        background: #f9f9f9;
+    }
+    
+    .info-item {
+        flex: 1;
+    }
+    
+    .section {
+        margin: 30px 0;
+    }
+    
+    .section-title {
+        background: #2c3e50;
+        color: white;
+        padding: 10px 15px;
+        font-size: 18px;
+        font-weight: bold;
+        margin-bottom: 20px;
+    }
+    
+    .question {
+        margin: 25px 0;
+        page-break-inside: avoid;
+    }
+    
+    .question-number {
+        font-weight: bold;
+        color: #2c3e50;
+        margin-bottom: 8px;
+    }
+    
+    .code-block {
+        background: #f5f5f5;
+        border-left: 4px solid #3498db;
+        padding: 15px;
+        margin: 10px 0;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 13px;
+        overflow-x: auto;
+        white-space: pre;
+    }
+    
+    .options {
+        margin: 10px 0 10px 20px;
+    }
+    
+    .option {
+        margin: 8px 0;
+        padding: 5px;
+    }
+    
+    .footer {
+        text-align: center;
+        margin-top: 50px;
+        padding-top: 20px;
+        border-top: 2px solid #ddd;
+        color: #666;
+        font-size: 12px;
+    }
+    
+    .print-button {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 24px;
+        background: #3498db;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    
+    .print-button:hover {
+        background: #2980b9;
+    }
+</style>
+```
+
+</head>
+<body>
+    <button class="print-button no-print" onclick="window.print()">🖨️ 列印/存成PDF</button>
+
+```
+<div class="header">
+    <h1>Java 程式設計邏輯筆試</h1>
+    <p style="margin: 10px 0; color: #666;">測驗時間：50 分鐘 | 總分：100 分</p>
+</div>
+
+<div class="info-box">
+    <div class="info-item">
+        <strong>姓名：</strong>__________________
+    </div>
+    <div class="info-item">
+        <strong>日期：</strong>__________________
+    </div>
+    <div class="info-item">
+        <strong>分數：</strong>__________________
+    </div>
+</div>
+
+<!-- 第一部分：選擇題 -->
+<div class="section">
+    <div class="section-title">第一部分：選擇題（每題 5 分，共 35 分）</div>
+    
+    <div class="question">
+        <div class="question-number">1. 以下程式碼的輸出結果是什麼？（5分）</div>
+        <div class="code-block">int x = 5;
+```
+
+int y = ++x + x++;
+System.out.println(“x=” + x + “, y=” + y);</div>
+<div class="options">
+<div class="option">A) x=6, y=11</div>
+<div class="option">B) x=7, y=12</div>
+<div class="option">C) x=7, y=13</div>
+<div class="option">D) x=6, y=12</div>
+</div>
+<div><strong>答案：</strong>_______</div>
+</div>
+
+```
+    <div class="question">
+        <div class="question-number">2. 以下關於 String 的敘述，哪個是正確的？（5分）</div>
+        <div class="code-block">String s1 = "Hello";
+```
+
+String s2 = “Hello”;
+String s3 = new String(“Hello”);</div>
+<div class="options">
+<div class="option">A) s1 == s2 為 true，s1 == s3 為 true</div>
+<div class="option">B) s1 == s2 為 false，s1 == s3 為 false</div>
+<div class="option">C) s1 == s2 為 true，s1 == s3 為 false</div>
+<div class="option">D) s1 == s2 為 false，s1 == s3 為 true</div>
+</div>
+<div><strong>答案：</strong>_______</div>
+</div>
+
+```
+    <div class="question">
+        <div class="question-number">3. 以下程式碼的輸出結果是什麼？（5分）</div>
+        <div class="code-block">for(int i = 0; i < 3; i++) {
+for(int j = 0; j < 2; j++) {
+    if(i == j) continue;
+    System.out.print(i + "" + j + " ");
+}
+```
+
+}</div>
+<div class="options">
+<div class="option">A) 01 10 12 20 21</div>
+<div class="option">B) 00 01 10 11 20 21</div>
+<div class="option">C) 01 10 12 21</div>
+<div class="option">D) 01 10 20 21</div>
+</div>
+<div><strong>答案：</strong>_______</div>
+</div>
+
+```
+    <div class="question">
+        <div class="question-number">4. 呼叫 mystery(5) 的輸出結果是什麼？（5分）</div>
+        <div class="code-block">public static int mystery(int n) {
+if(n <= 1) return 1;
+return n + mystery(n - 1);
+```
+
+}</div>
+<div class="options">
+<div class="option">A) 5</div>
+<div class="option">B) 10</div>
+<div class="option">C) 15</div>
+<div class="option">D) 25</div>
+</div>
+<div><strong>答案：</strong>_______</div>
+</div>
+
+```
+    <div class="question">
+        <div class="question-number">5. 以下程式碼的輸出結果是什麼？（5分）</div>
+        <div class="code-block">public class Test {
+static int count = 0;
+
+public Test() {
+    count++;
+}
+
+public static void main(String[] args) {
+    Test t1 = new Test();
+    Test t2 = new Test();
+    Test t3 = new Test();
+    System.out.println(count);
+}
+```
+
+}</div>
+<div class="options">
+<div class="option">A) 0</div>
+<div class="option">B) 1</div>
+<div class="option">C) 3</div>
+<div class="option">D) 編譯錯誤</div>
+</div>
+<div><strong>答案：</strong>_______</div>
+</div>
+
+```
+    <div class="question">
+        <div class="question-number">6. 以下程式碼會發生什麼問題？（5分）</div>
+        <div class="code-block">int[] arr = {1, 2, 3, 4, 5};
+```
+
+for(int i = 0; i <= arr.length; i++) {
+System.out.println(arr[i]);
+}</div>
+<div class="options">
+<div class="option">A) 正常執行</div>
+<div class="option">B) 編譯錯誤</div>
+<div class="option">C) ArrayIndexOutOfBoundsException</div>
+<div class="option">D) NullPointerException</div>
+</div>
+<div><strong>答案：</strong>_______</div>
+</div>
+
+```
+    <div class="question">
+        <div class="question-number">7. 以下程式碼的輸出是什麼？（5分）</div>
+        <div class="code-block">String str = "Hello";
+```
+
+str.concat(” World”);
+System.out.println(str);</div>
+<div class="options">
+<div class="option">A) Hello</div>
+<div class="option">B) Hello World</div>
+<div class="option">C) World</div>
+<div class="option">D) 編譯錯誤</div>
+</div>
+<div><strong>答案：</strong>_______</div>
+</div>
+</div>
+
+```
+<!-- 第二部分：程式設計題 -->
+<div class="section" style="page-break-before: always;">
+    <div class="section-title">第二部分：程式設計題（每題 15 分，共 30 分）</div>
+    
+    <div class="question">
+        <div class="question-number">8. 撰寫一個方法 findSecondLargest(int[] arr)，找出陣列中第二大的數字。如果陣列長度小於2，回傳 -1。（15分）</div>
+        <div class="code-block">public static int findSecondLargest(int[] arr) {
+// 請在此處撰寫程式碼
+```
+
+}</div>
+</div>
+
+```
+    <div class="question">
+        <div class="question-number">9. 撰寫一個方法 isPalindrome(String str)，判斷字串是否為迴文。需要忽略大小寫、空格和標點符號。例如："A man, a plan, a canal: Panama" 應回傳 true。（15分）</div>
+        <div class="code-block">public static boolean isPalindrome(String str) {
+// 請在此處撰寫程式碼
+```
+
+}</div>
+</div>
+</div>
+
+```
+<div class="footer no-print">
+    <p>請確認所有答案填寫完整 | 祝考試順利！</p>
+</div>
+```
+
+</body>
+</html>
