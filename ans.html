@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>考卷標準答案</title>
+    <style>
+        @media print {
+            .no-print { display: none; }
+            body { margin: 0; }
+        }
+
+```
+    body {
+        font-family: 'Microsoft JhengHei', Arial, sans-serif;
+        max-width: 210mm;
+        margin: 0 auto;
+        padding: 20mm;
+        background: white;
+        line-height: 1.6;
+    }
+    
+    .header {
+        text-align: center;
+        border-bottom: 3px solid #27ae60;
+        padding-bottom: 15px;
+        margin-bottom: 30px;
+    }
+    
+    .header h1 {
+        margin: 0;
+        font-size: 28px;
+        color: #27ae60;
+    }
+    
+    .section {
+        margin: 30px 0;
+    }
+    
+    .section-title {
+        background: #27ae60;
+        color: white;
+        padding: 10px 15px;
+        font-size: 20px;
+        font-weight: bold;
+        margin-bottom: 20px;
+    }
+    
+    .subsection-title {
+        background: #3498db;
+        color: white;
+        padding: 8px 12px;
+        font-size: 16px;
+        font-weight: bold;
+        margin: 20px 0 15px 0;
+    }
+    
+    .question {
+        margin: 25px 0;
+        padding: 15px;
+        background: #f8f9fa;
+        border-left: 4px solid #27ae60;
+        page-break-inside: avoid;
+    }
+    
+    .question-number {
+        font-weight: bold;
+        color: #2c3e50;
+        margin-bottom: 8px;
+        font-size: 16px;
+    }
+    
+    .answer {
+        background: #d4edda;
+        padding: 12px;
+        margin: 10px 0;
+        border-radius: 5px;
+        border: 2px solid #28a745;
+    }
+    
+    .answer-label {
+        font-weight: bold;
+        color: #155724;
+        margin-bottom: 5px;
+    }
+    
+    .code-block {
+        background: #2c3e50;
+        color: #ecf0f1;
+        border-left: 4px solid #3498db;
+        padding: 15px;
+        margin: 10px 0;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 13px;
+        overflow-x: auto;
+        white-space: pre;
+        border-radius: 5px;
+    }
+    
+    .explanation {
+        background: #fff3cd;
+        padding: 12px;
+        margin: 10px 0;
+        border-left: 4px solid #ffc107;
+        border-radius: 5px;
+    }
+    
+    .explanation-title {
+        font-weight: bold;
+        color: #856404;
+        margin-bottom: 5px;
+    }
+    
+    .print-button {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 24px;
+        background: #27ae60;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    
+    .print-button:hover {
+        background: #229954;
+    }
+    
+    .score {
+        color: #e74c3c;
+        font-weight: bold;
+    }
+</style>
+```
+
+</head>
+<body>
+    <button class="print-button no-print" onclick="window.print()">🖨️ 列印答案卷</button>
+
+```
+<div class="header">
+    <h1>📝 Java & MySQL 筆試標準答案</h1>
+    <p style="margin: 10px 0; color: #666;">完整解答與評分標準</p>
+</div>
+
+<!-- Java 考卷答案 -->
+<div class="section">
+    <div class="section-title">Java 程式設計邏輯筆試 - 標準答案</div>
+    
+    <div class="subsection-title">第一部分：選擇題（每題 5 分，共 35 分）</div>
+    
+    <div class="question">
+        <div class="question-number">1. 前置與後置遞增運算子</div>
+        <div class="answer">
+            <div class="answer-label">✅ 正確答案：B) x=7, y=12</div>
+        </div>
+        <div class="explanation">
+            <div class="explanation-title">📖 詳細解析：</div>
+            <strong>執行步驟：</strong><br>
+            1. int x = 5;<br>
+            2. ++x：先遞增，x變成6，使用值6<br>
+            3. x++：先使用值6，再遞增，x變成7<br>
+            4. y = 6 + 6 = 12<br>
+            5. 最終：x=7, y=12
+        </div>
+    </div>
+
+    <div class="question">
+        <div class="question-number">2. String 物件比較</div>
+        <div class="answer">
+            <div class="answer-label">✅ 正確答案：C) s1 == s2 為 true，s1 == s3 為 false</div>
+        </div>
+        <div class="explanation">
+            <div class="explanation-title">📖 詳細解析：</div>
+            • s1 和 s2：使用字串常量池(String Pool)，指向同一個物件，== 比較為 true<br>
+            • s3：使用 new 關鍵字創建新物件，在堆積(Heap)中分配記憶體<br>
+            • s1 == s3：比較記憶體位址不同，為 false<br>
+            • 若要比較內容，應使用 s1.equals(s3)，結果為 true
+        </div>
+    </div>
+
+    <div class="question">
+        <div class="question-number">3. 巢狀迴圈與 continue</div>
+        <div class="answer">
+            <div class="answer-label">✅ 正確答案：A) 01 10 12 20 21</div>
+        </div>
+        <div class="explanation">
+            <div class="explanation-title">📖 詳細解析：</div>
+            • i=0, j=0：i==j，continue 跳過<br>
+            • i=0, j=1：印出 "01"<br>
+            • i=1, j=0：印出 "10"<br>
+            • i=1, j=1：i==j，continue 跳過<br>
+            • i=2, j=0：印出 "20"<br>
+            • i=2, j=1：印出 "21"<br>
+            <strong>結果：01 10 20 21</strong>
+        </div>
+    </div>
+
+    <div class="question">
+        <div class="question-number">4. 遞迴函數</div>
+        <div class="answer">
+            <div class="answer-label">✅ 正確答案：C) 15</div>
+        </div>
+        <div class="explanation">
+            <div class="explanation-title">📖 詳細解析：</div>
+            遞迴計算過程：<br>
+            • mystery(5) = 5 + mystery(4)<br>
+            • mystery(4) = 4 + mystery(3)<br>
+            • mystery(3) = 3 + mystery(2)<br>
+            • mystery(2) = 2 + mystery(1)<br>
+            • mystery(1) = 1 (基礎情況)<br>
+            <strong>回推：1 + 2 + 3 + 4 + 5 = 15</strong>
+        </div>
+    </div>
+
+    <div class="question">
+        <div class="question-number">5. 靜態變數</div>
+        <div class="answer">
+            <div class="answer-label">✅ 正確答案：C) 3</div>
+        </div>
+        <div class="explanation">
+            <div class="explanation-title">📖 詳細解析：</div>
+            • count 是 static 變數，所有實例共享同一個變數<br>
+            • 每次建構子被呼叫時 count++<br>
+            • 創建 3 個 Test 物件 → 建構子執行 3 次<br>
+            • count = 0 → 1 → 2 → 3<br>
+            <strong>最終輸出：3</strong>
+        </div>
+    </div>
+
+    <div class="question">
+        <div class="question-number">6. 陣列越界</div>
+        <div class="answer">
+            <div class="answer-label">✅ 正確答案：C) ArrayIndexOutOfBoundsException</div>
+        </div>
+        <div class="explanation">
+            <div class="explanation-title">📖 詳細解析：</div>
+            • 陣列長度為 5，索引範圍是 0-4<br>
+            • 迴圈條件 i <= arr.length 會執行到 i=5<br>
+            • arr[5] 超出範圍，拋出 ArrayIndexOutOfBoundsException<br>
+            <strong>正確寫法：i < arr.length</strong>
+        </div>
+    </div>
+
+    <div class="question">
+        <div class="question-number">7. String 不可變性</div>
+        <div class="answer">
+            <div class="answer-label">✅ 正確答案：A) Hello</div>
+        </div>
+        <div class="explanation">
+            <div class="explanation-title">📖 詳細解析：</div>
+            • String 是不可變的(Immutable)<br>
+            • concat() 方法會回傳一個新的 String 物件<br>
+            • 原始的 str 物件不會被改變<br>
+            • 沒有將 concat() 的結果指派給變數<br>
+            <strong>正確寫法：str = str.concat(" World");</strong>
+        </div>
+    </div>
+
+    <div class="subsection-title">第二部分：程式設計題（每題 15 分，共 30 分）</div>
+
+    <div class="question">
+        <div class="question-number">8. 找出第二大的數字 <span class="score">(15分)</span></div>
+        <div class="answer">
+            <div class="answer-label">✅ 標準答案：</div>
+            <div class="code-block">public static int findSecondLargest(int[] arr) {
+// 檢查陣列長度
+if (arr == null || arr.length < 2) {
+    return -1;
+}
+
+// 初始化最大值和第二大值
+int max = Integer.MIN_VALUE;
+int secondMax = Integer.MIN_VALUE;
+
+// 遍歷陣列
+for (int num : arr) {
+    if (num > max) {
+        secondMax = max;  // 更新第二大
+        max = num;        // 更新最大
+    } else if (num > secondMax && num != max) {
+        secondMax = num;  // 更新第二大
+    }
+}
+
+// 檢查是否找到第二大的數
+if (secondMax == Integer.MIN_VALUE) {
+    return -1;  // 所有數字都相同
+}
+
+return secondMax;
+```
+
+}</div>
+</div>
+<div class="explanation">
+<div class="explanation-title">📖 評分標準：</div>
+• 檢查邊界條件（陣列為空或長度<2）：<strong>3分</strong><br>
+• 正確初始化變數：<strong>2分</strong><br>
+• 遍歷陣列邏輯正確：<strong>5分</strong><br>
+• 正確處理重複數字：<strong>3分</strong><br>
+• 回傳正確結果：<strong>2分</strong>
+</div>
+</div>
+
+```
+    <div class="question">
+        <div class="question-number">9. 迴文判斷 <span class="score">(15分)</span></div>
+        <div class="answer">
+            <div class="answer-label">✅ 標準答案：</div>
+            <div class="code-block">public static boolean isPalindrome(String str) {
+// 處理空值
+if (str == null || str.isEmpty()) {
+    return true;
+}
+
+// 移除非字母數字字元並轉小寫
+String cleaned = str.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
+
+// 雙指標法檢查迴文
+int left = 0;
+int right = cleaned.length() - 1;
+
+while (left < right) {
+    if (cleaned.charAt(left) != cleaned.charAt(right)) {
+        return false;
+    }
+    left++;
+    right--;
+}
+
+return true;
+```
+
+}
+
+// 或使用 StringBuilder 反轉比較法
+public static boolean isPalindrome(String str) {
+if (str == null || str.isEmpty()) {
+return true;
+}
+
+```
+String cleaned = str.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
+String reversed = new StringBuilder(cleaned).reverse().toString();
+
+return cleaned.equals(reversed);
+```
+
+}</div>
+</div>
+<div class="explanation">
+<div class="explanation-title">📖 評分標準：</div>
+• 處理邊界條件（null/空字串）：<strong>2分</strong><br>
+• 移除空格和標點符號：<strong>4分</strong><br>
+• 忽略大小寫：<strong>3分</strong><br>
+• 正確的迴文判斷邏輯：<strong>5分</strong><br>
+• 回傳正確結果：<strong>1分</strong>
+</div>
+</div>
+</div>
+
+```
+<!-- MySQL 考卷答案 -->
+<div class="section" style="page-break-before: always;">
+    <div class="section-title">MySQL 資料庫觀念筆試 - 標準答案</div>
+    
+    <div class="subsection-title">第一部分：選擇題（每題 10 分，共 40 分）</div>
+    
+    <div class="question">
+        <div class="question-number">1. NULL vs 空字串</div>
+        <div class="answer">
+            <div class="answer-label">✅ 正確答案：B) NULL 表示未知或不存在，空字串是已知的空值</div>
+        </div>
+        <div class="explanation">
+            <div class="explanation-title">📖 詳細解析：</div>
+            • <strong>NULL</strong>：表示「不知道」、「未定義」或「不適用」<br>
+            • <strong>空字串 ''</strong>：表示「已知的空白值」<br>
+            • NULL 不等於任何值，包括它自己（NULL = NULL 為 false）<br>
+            • 比較 NULL 必須使用 IS NULL 或 IS NOT NULL<br>
+            • 空字串可以用 = '' 比較
+        </div>
+    </div>
+
+    <div class="question">
+        <div class="question-number">2. JOIN 類型</div>
+        <div class="answer">
+            <div class="answer-label">✅ 正確答案：D) MIDDLE JOIN</div>
+        </div>
+        <div class="explanation">
+            <div class="explanation-title">📖 詳細解析：</div>
+            MySQL 支援的 JOIN 類型：<br>
+            • <strong>INNER JOIN</strong>：只返回兩表匹配的記錄<br>
+            • <strong>LEFT JOIN</strong>：返回左表所有記錄+右表匹配記錄<br>
+            • <strong>RIGHT JOIN</strong>：返回右表所有記錄+左表匹配記錄<br>
+            • <strong>CROSS JOIN</strong>：笛卡爾積<br>
+            • OUTER JOIN 是標準 SQL 語法（MySQL 中使用 LEFT/RIGHT JOIN）<br>
+            <strong>MIDDLE JOIN 不存在！</strong>
+        </div>
+    </div>
+
+    <div class="question">
+        <div class="question-number">3. 日期時間函數</div>
+        <div class="answer">
+            <div class="answer-label">✅ 正確答案：D) 以上皆可</div>
+        </div>
+        <div class="explanation">
+            <div class="explanation-title">📖 詳細解析：</div>
+            MySQL 中可以取得當前日期時間的函數：<br>
+            • <strong>NOW()</strong>：返回當前日期和時間<br>
+            • <strong>CURRENT_TIMESTAMP()</strong>：與 NOW() 相同<br>
+            • <strong>SYSDATE()</strong>：返回執行時的系統時間<br>
+            • <strong>CURDATE()</strong>：只返回日期<br>
+            • <strong>CURTIME()</strong>：只返回時間<br>
+            註：GETDATE() 是 SQL Server 的函數，不是 MySQL
+        </div>
+    </div>
+
+    <div class="question">
+        <div class="question-number">4. GROUP BY 觀念</div>
+        <div class="answer">
+            <div class="answer-label">✅ 正確答案：B) SELECT 子句中的非聚合欄位必須出現在 GROUP BY 中</div>
+        </div>
+        <div class="explanation">
+            <div class="explanation-title">📖 詳細解析：</div>
+            • SELECT 的非聚合欄位必須在 GROUP BY 中列出<br>
+            • 聚合函數：COUNT(), SUM(), AVG(), MAX(), MIN()<br>
+            • GROUP BY 可以不搭配 ORDER BY 使用<br>
+            • GROUP BY 可用於任何資料型態<br>
+            • WHERE 在 GROUP BY 之前執行（過濾原始資料）<br>
+            • HAVING 在 GROUP BY 之後執行（過濾分組結果）
+        </div>
+    </div>
+
+    <div class="subsection-title">第二部分：SQL 查詢題（每題 20 分，共 60 分）</div>
+
+    <div class="question">
+        <div class="question-number">5. 年齡篩選與排序 <span class="score">(20分)</span></div>
+        <div class="answer">
+            <div class="answer-label">✅ 標準答案：</div>
+            <div class="code-block">SELECT name, age
+```
+
+FROM students
+WHERE age > 18
+ORDER BY age DESC;</div>
+</div>
+<div class="explanation">
+<div class="explanation-title">📖 評分標準：</div>
+• SELECT 正確欄位（name, age）：<strong>5分</strong><br>
+• FROM 正確表名：<strong>3分</strong><br>
+• WHERE 條件正確（age > 18）：<strong>7分</strong><br>
+• ORDER BY 降冪排序（DESC）：<strong>5分</strong>
+</div>
+</div>
+
+```
+    <div class="question">
+        <div class="question-number">6. 統計班級人數 <span class="score">(20分)</span></div>
+        <div class="answer">
+            <div class="answer-label">✅ 標準答案：</div>
+            <div class="code-block">SELECT c.class_name, COUNT(s.student_id) AS student_count
+```
+
+FROM classes c
+LEFT JOIN students s ON c.class_id = s.class_id
+GROUP BY c.class_id, c.class_name;</div>
+</div>
+<div class="explanation">
+<div class="explanation-title">📖 評分標準：</div>
+• SELECT 正確欄位和聚合函數：<strong>5分</strong><br>
+• JOIN 語法正確（使用 LEFT JOIN 顯示所有班級）：<strong>7分</strong><br>
+• ON 條件正確：<strong>3分</strong><br>
+• GROUP BY 正確：<strong>5分</strong><br>
+<strong>註：</strong>使用 INNER JOIN 也給分，但 LEFT JOIN 更好（顯示無學生的班級）
+</div>
+</div>
+
+```
+    <div class="question">
+        <div class="question-number">7. 科目成績統計 <span class="score">(20分)</span></div>
+        <div class="answer">
+            <div class="answer-label">✅ 標準答案：</div>
+            <div class="code-block">SELECT 
+subject,
+MAX(score) AS highest_score,
+MIN(score) AS lowest_score,
+AVG(score) AS average_score
+```
+
+FROM scores
+GROUP BY subject;</div>
+</div>
+<div class="explanation">
+<div class="explanation-title">📖 評分標準：</div>
+• SELECT 欄位正確：<strong>3分</strong><br>
+• MAX() 函數使用正確：<strong>5分</strong><br>
+• MIN() 函數使用正確：<strong>5分</strong><br>
+• AVG() 函數使用正確：<strong>5分</strong><br>
+• GROUP BY 正確：<strong>2分</strong><br>
+<strong>加分項：</strong>使用別名(AS)讓結果更易讀
+</div>
+</div>
+</div>
+
+```
+<div style="text-align: center; margin-top: 50px; padding: 20px; background: #d4edda; border: 2px solid #28a745; border-radius: 10px;">
+    <h2 style="color: #155724; margin: 0;">📊 總分統計</h2>
+    <p style="font-size: 18px; margin: 10px 0;">
+        <strong>Java 考卷總分：65 分</strong><br>
+        選擇題 35 分 + 程式設計題 30 分
+    </p>
+    <p style="font-size: 18px; margin: 10px 0;">
+        <strong>MySQL 考卷總分：100 分</strong><br>
+        選擇題 40 分 + SQL 查詢題 60 分
+    </p>
+</div>
+```
+
+</body>
+</html>
