@@ -3,114 +3,187 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>01. 基礎功能測試</title>
-  <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css">
-  <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+  <title>01. 基礎功能測試（PyScript 新版）</title>
+
+  <!-- ✅ 使用固定版本的 PyScript Core -->
+  <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
+  <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    h1 { color: #667eea; margin-bottom: 10px; font-size: 2em; }
+    h3 { color: #555; margin-top: 20px; margin-bottom: 10px; }
+    .subtitle { color: #666; font-size: 1.1em; margin-bottom: 30px; }
+    .card {
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 15px 0;
+      background: #fafafa;
+    }
+    .info {
+      background: #e3f2fd;
+      border-left: 4px solid #2196f3;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 4px;
+    }
+    .warning {
+      background: #fff3cd;
+      border-left: 4px solid #ff9800;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 4px;
+    }
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1em;
+      margin: 5px;
+      transition: transform 0.2s;
+    }
+    button:hover { transform: translateY(-2px); }
+    button.secondary { background: #6c757d; }
+    input {
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 1em;
+      margin: 5px;
+    }
+    .output-box {
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 15px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9em;
+      white-space: pre-wrap;
+    }
+    .row {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin: 10px 0;
+    }
+    .metric {
+      background: white;
+      padding: 15px 20px;
+      border-radius: 8px;
+      margin: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    .metric-value {
+      font-size: 2em;
+      font-weight: bold;
+      color: #667eea;
+    }
+    .metric-label {
+      color: #666;
+      font-size: 0.9em;
+      margin-top: 5px;
+    }
+    .status-indicator {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+    .status-loading { background: #ff9800; }
+    .status-ready { background: #4caf50; }
+    .status-error { background: #f44336; }
+  </style>
 </head>
 <body>
   <div class="container">
-    <div class="nav-links">
-      <a href="index.html">← 回首頁</a>
-      <a href="02-compute.html">下一個 →</a>
-    </div>
-
-    <h1>01. 基礎功能測試</h1>
-    <p class="subtitle">DOM 操作、事件處理、Python ↔ JS 互通</p>
+    <h1>🐍 PyScript 基礎功能測試（新版 Core）</h1>
+    <p class="subtitle">使用 PyScript 2024.1.1 穩定版本</p>
 
     <div class="info">
-      <strong>🎯 測試重點</strong>
-      <p>驗證 PyScript 的基本互動能力，這些是所有應用的基礎</p>
+      <strong>✅ 本版本改進</strong>
+      <ul style="margin-left: 20px; margin-top: 10px;">
+        <li>使用固定版本 (2024.1.1) 而非 latest</li>
+        <li>改用 core.js (type="module") 避免 CORB</li>
+        <li>明確指定 packages = ["numpy"]</li>
+        <li>建議使用 http-server 而非 file://</li>
+      </ul>
     </div>
 
     <!-- 載入狀態 -->
     <div class="card">
-      <h3>載入狀態監測</h3>
+      <h3>載入狀態</h3>
       <div class="row">
         <span class="status-indicator status-loading" id="status-dot"></span>
-        <span id="status-text">PyScript 載入中...</span>
+        <span id="status-text">PyScript 初始化中...</span>
       </div>
-      <div class="progress-bar">
-        <div class="progress-fill" id="load-progress" style="width: 0%"></div>
-      </div>
+      <div id="load-detail" style="margin-top: 10px; color: #666;"></div>
     </div>
 
     <!-- 測試 1: DOM 操作 -->
     <div class="card">
       <h3>測試 1: DOM 操作</h3>
-      <p>驗證 Python 能否讀寫 HTML 元素</p>
       <div class="row">
-        <input type="text" id="input1" placeholder="輸入一些文字..." value="Hello PyScript">
+        <input type="text" id="input1" placeholder="輸入文字..." value="Hello PyScript">
         <button id="btn-update">更新顯示</button>
-        <button id="btn-clear">清空</button>
+        <button id="btn-clear" class="secondary">清空</button>
       </div>
       <div class="output-box" id="output1">等待操作...</div>
     </div>
 
-    <!-- 測試 2: 事件處理 -->
+    <!-- 測試 2: Numpy 計算 -->
     <div class="card">
-      <h3>測試 2: 事件處理</h3>
-      <p>測試各種 DOM 事件的綁定與響應</p>
+      <h3>測試 2: Numpy 陣列運算</h3>
       <div class="row">
-        <button id="btn-click">點擊事件</button>
-        <button id="btn-dblclick">雙擊事件</button>
-        <button id="btn-context">右鍵事件</button>
+        <input type="number" id="array-size" value="1000" min="100" max="10000" step="100">
+        <button id="btn-compute">執行計算</button>
       </div>
+      <div class="output-box" id="output2">等待計算...</div>
+    </div>
+
+    <!-- 測試 3: 事件處理 -->
+    <div class="card">
+      <h3>測試 3: 事件處理</h3>
       <div class="row">
+        <button id="btn-click">點擊</button>
+        <button id="btn-dblclick">雙擊</button>
         <input type="range" id="slider" min="0" max="100" value="50">
         <span id="slider-value">50</span>
       </div>
-      <div class="output-box" id="output2">等待事件觸發...</div>
-    </div>
-
-    <!-- 測試 3: Python ↔ JS 互通 -->
-    <div class="card">
-      <h3>測試 3: Python ↔ JS 資料傳遞</h3>
-      <p>測試兩種語言之間的資料交換</p>
-      <div class="row">
-        <button id="btn-py-to-js">Python → JS</button>
-        <button id="btn-js-to-py">JS → Python</button>
-        <button id="btn-complex">複雜資料結構</button>
-      </div>
-      <div class="output-box" id="output3">等待資料傳遞...</div>
-    </div>
-
-    <!-- 測試 4: 動態元素創建 -->
-    <div class="card">
-      <h3>測試 4: 動態 HTML 生成</h3>
-      <p>Python 動態創建 DOM 元素</p>
-      <div class="row">
-        <input type="number" id="num-items" value="5" min="1" max="20">
-        <button id="btn-generate">生成列表</button>
-        <button id="btn-remove">清空列表</button>
-      </div>
-      <div id="dynamic-content"></div>
-    </div>
-
-    <!-- 測試 5: 樣式操作 -->
-    <div class="card">
-      <h3>測試 5: CSS 樣式控制</h3>
-      <p>Python 修改元素樣式</p>
-      <div class="row">
-        <button id="btn-color-red">紅色</button>
-        <button id="btn-color-blue">藍色</button>
-        <button id="btn-color-green">綠色</button>
-        <button id="btn-animate">動畫效果</button>
-      </div>
-      <div id="style-box" style="width: 200px; height: 100px; background: #eee; border-radius: 8px; margin: 15px 0; transition: all 0.5s;"></div>
+      <div class="output-box" id="output3">等待事件...</div>
     </div>
 
     <!-- 效能統計 -->
     <div class="card">
       <h3>效能統計</h3>
-      <div class="grid">
+      <div class="row">
         <div class="metric">
           <div class="metric-value" id="event-count">0</div>
-          <div class="metric-label">事件觸發次數</div>
-        </div>
-        <div class="metric">
-          <div class="metric-value" id="dom-ops">0</div>
-          <div class="metric-label">DOM 操作次數</div>
+          <div class="metric-label">事件次數</div>
         </div>
         <div class="metric">
           <div class="metric-value" id="load-time">--</div>
@@ -118,198 +191,86 @@
         </div>
       </div>
     </div>
-
   </div>
 
-  <!-- PyScript 區域 -->
-  <py-script>
+  <!-- ✅ PyScript 配置：明確指定套件 -->
+  <py-config>
+    packages = ["numpy"]
+  </py-config>
+
+  <!-- ✅ PyScript 程式碼 -->
+  <script type="py">
 from pyscript import document, window
 import time
-import json
 
-# 載入計時
 start_time = time.time()
-
-# 統計變數
 event_count = 0
-dom_ops = 0
 
-def update_stats():
-    global dom_ops
-    dom_ops += 1
+def timestamp():
+    return time.strftime('%H:%M:%S')
+
+def update_count():
+    global event_count
+    event_count += 1
     document.querySelector("#event-count").innerText = str(event_count)
-    document.querySelector("#dom-ops").innerText = str(dom_ops)
 
 # 測試 1: DOM 操作
 def update_output(*args):
-    global event_count
-    event_count += 1
-    input_val = document.querySelector("#input1").value
+    update_count()
+    val = document.querySelector("#input1").value
     output = document.querySelector("#output1")
-    output.innerText = f"[{time.strftime('%H:%M:%S')}] 你輸入了: {input_val}\n字元數: {len(input_val)}"
-    update_stats()
+    output.innerText = f"[{timestamp()}] 輸入: {val}\n字數: {len(val)}"
 
 def clear_input(*args):
-    global event_count
-    event_count += 1
+    update_count()
     document.querySelector("#input1").value = ""
     document.querySelector("#output1").innerText = "已清空"
-    update_stats()
 
-# 測試 2: 事件處理
-def handle_click(*args):
-    global event_count
-    event_count += 1
+# 測試 2: Numpy 計算
+def compute_numpy(*args):
+    import numpy as np
+    update_count()
+    
+    size = int(document.querySelector("#array-size").value)
     output = document.querySelector("#output2")
-    output.innerText = f"[{time.strftime('%H:%M:%S')}] 單擊事件觸發！"
-    update_stats()
+    output.innerText = f"計算 {size} 個元素...\n"
+    
+    t0 = time.perf_counter()
+    arr = np.random.rand(size).astype(np.float32)
+    mean = np.mean(arr)
+    std = np.std(arr)
+    t1 = time.perf_counter()
+    
+    elapsed = t1 - t0
+    output.innerText += f"""
+✅ 完成！
+陣列大小: {size}
+平均值: {mean:.6f}
+標準差: {std:.6f}
+耗時: {elapsed:.3f} 秒
+"""
+
+# 測試 3: 事件處理
+def handle_click(*args):
+    update_count()
+    document.querySelector("#output3").innerText = f"[{timestamp()}] 單擊事件"
 
 def handle_dblclick(*args):
-    global event_count
-    event_count += 1
-    output = document.querySelector("#output2")
-    output.innerText = f"[{time.strftime('%H:%M:%S')}] 雙擊事件觸發！"
-    update_stats()
-
-def handle_context(event):
-    global event_count
-    event_count += 1
-    event.preventDefault()
-    output = document.querySelector("#output2")
-    output.innerText = f"[{time.strftime('%H:%M:%S')}] 右鍵選單被攔截！"
-    update_stats()
+    update_count()
+    document.querySelector("#output3").innerText = f"[{timestamp()}] 雙擊事件"
 
 def handle_slider(*args):
-    global event_count
-    event_count += 1
-    value = document.querySelector("#slider").value
-    document.querySelector("#slider-value").innerText = value
-    update_stats()
-
-# 測試 3: Python ↔ JS 資料傳遞
-def py_to_js(*args):
-    global event_count
-    event_count += 1
-    
-    # Python 創建資料
-    data = {
-        "message": "這是從 Python 傳來的資料",
-        "timestamp": time.time(),
-        "list": [1, 2, 3, 4, 5],
-        "nested": {"key": "value"}
-    }
-    
-    # 傳給 JS（使用 window 的全域變數）
-    window.pyData = data
-    
-    # 呼叫 JS 函數
-    window.displayPyData()
-    update_stats()
-
-def js_to_py(*args):
-    global event_count
-    event_count += 1
-    
-    # 觸發 JS 函數，讓它設定資料
-    window.sendDataToPython()
-    update_stats()
-
-def complex_data(*args):
-    global event_count
-    event_count += 1
-    
-    import numpy as np
-    
-    # 創建 numpy array
-    arr = np.array([1, 2, 3, 4, 5])
-    
-    output = document.querySelector("#output3")
-    output.innerText = f"""
-Python numpy array:
-{arr}
-
-轉換為 list: {arr.tolist()}
-平均值: {arr.mean()}
-總和: {arr.sum()}
-
-注意：numpy array 不能直接傳給 JS，需要先轉換為 list
-"""
-    update_stats()
-
-# 測試 4: 動態元素創建
-def generate_items(*args):
-    global event_count, dom_ops
-    event_count += 1
-    
-    num = int(document.querySelector("#num-items").value)
-    container = document.querySelector("#dynamic-content")
-    container.innerHTML = ""
-    
-    for i in range(num):
-        item = document.createElement("div")
-        item.className = "card"
-        item.style.padding = "10px"
-        item.style.margin = "5px 0"
-        item.innerHTML = f"""
-            <strong>項目 {i+1}</strong>
-            <p>這是由 Python 動態生成的元素</p>
-            <button onclick="alert('項目 {i+1} 被點擊')">點我</button>
-        """
-        container.appendChild(item)
-        dom_ops += 1
-    
-    update_stats()
-
-def remove_items(*args):
-    global event_count
-    event_count += 1
-    document.querySelector("#dynamic-content").innerHTML = ""
-    update_stats()
-
-# 測試 5: 樣式操作
-def set_color(color):
-    def handler(*args):
-        global event_count
-        event_count += 1
-        box = document.querySelector("#style-box")
-        box.style.background = color
-        update_stats()
-    return handler
-
-def animate_box(*args):
-    global event_count
-    event_count += 1
-    box = document.querySelector("#style-box")
-    
-    # 隨機變換
-    import random
-    box.style.width = f"{random.randint(100, 400)}px"
-    box.style.height = f"{random.randint(50, 200)}px"
-    box.style.borderRadius = f"{random.randint(0, 50)}px"
-    box.style.transform = f"rotate({random.randint(-15, 15)}deg)"
-    
-    update_stats()
+    update_count()
+    val = document.querySelector("#slider").value
+    document.querySelector("#slider-value").innerText = val
 
 # 綁定事件
 document.querySelector("#btn-update").addEventListener("click", update_output)
 document.querySelector("#btn-clear").addEventListener("click", clear_input)
-
+document.querySelector("#btn-compute").addEventListener("click", compute_numpy)
 document.querySelector("#btn-click").addEventListener("click", handle_click)
 document.querySelector("#btn-dblclick").addEventListener("dblclick", handle_dblclick)
-document.querySelector("#btn-context").addEventListener("contextmenu", handle_context)
 document.querySelector("#slider").addEventListener("input", handle_slider)
-
-document.querySelector("#btn-py-to-js").addEventListener("click", py_to_js)
-document.querySelector("#btn-js-to-py").addEventListener("click", js_to_py)
-document.querySelector("#btn-complex").addEventListener("click", complex_data)
-
-document.querySelector("#btn-generate").addEventListener("click", generate_items)
-document.querySelector("#btn-remove").addEventListener("click", remove_items)
-
-document.querySelector("#btn-color-red").addEventListener("click", set_color("#ff6b6b"))
-document.querySelector("#btn-color-blue").addEventListener("click", set_color("#4dabf7"))
-document.querySelector("#btn-color-green").addEventListener("click", set_color("#51cf66"))
-document.querySelector("#btn-animate").addEventListener("click", animate_box)
 
 # 初始化完成
 end_time = time.time()
@@ -317,44 +278,26 @@ load_time = end_time - start_time
 
 document.querySelector("#status-dot").className = "status-indicator status-ready"
 document.querySelector("#status-text").innerText = "PyScript 已就緒"
-document.querySelector("#load-progress").style.width = "100%"
+document.querySelector("#load-detail").innerText = f"✅ 載入完成，耗時 {load_time:.2f} 秒"
 document.querySelector("#load-time").innerText = f"{load_time:.2f}"
 
-print(f"✅ 基礎功能模組載入完成 ({load_time:.2f}s)")
-  </py-script>
+print(f"✅ PyScript 初始化完成 ({load_time:.2f}s)")
+  </script>
 
-  <!-- JS 輔助函數 -->
+  <!-- JS 輔助：載入失敗處理 -->
   <script>
-    // 模擬載入進度
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 2;
-      if (progress >= 90) {
-        clearInterval(interval);
+    // 30 秒超時檢測
+    setTimeout(() => {
+      const statusText = document.getElementById('status-text').textContent;
+      if (statusText.includes('初始化中')) {
+        document.getElementById('status-dot').className = 'status-indicator status-error';
+        document.getElementById('status-text').textContent = '載入超時';
+        document.getElementById('load-detail').innerHTML = 
+          '❌ PyScript 載入失敗<br>請檢查：<br>1. 網路連線<br>2. 使用 http-server（非 file://）<br>3. 防火牆設定';
       }
-      document.getElementById("load-progress").style.width = progress + "%";
-    }, 100);
+    }, 30000);
 
-    // Python 呼叫的 JS 函數
-    function displayPyData() {
-      const output = document.querySelector("#output3");
-      const data = window.pyData;
-      output.innerText = `JS 收到 Python 的資料：\n${JSON.stringify(data, null, 2)}`;
-    }
-
-    function sendDataToPython() {
-      const jsData = {
-        message: "這是從 JS 傳來的資料",
-        timestamp: new Date().getTime(),
-        userAgent: navigator.userAgent
-      };
-      
-      // 設定到 window 讓 Python 可以讀取
-      window.jsData = jsData;
-      
-      const output = document.querySelector("#output3");
-      output.innerText = `Python 可以透過 window.jsData 讀取：\n${JSON.stringify(jsData, null, 2)}`;
-    }
+    console.log('⏳ 等待 PyScript 初始化...');
   </script>
 </body>
 </html>
