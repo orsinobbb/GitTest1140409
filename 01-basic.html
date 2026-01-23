@@ -46,4 +46,290 @@
         <button id="btn-retry" style="display:none; margin-left: auto;">重新載入</button>
       </div>
       <div class="progress-bar">
-        <div class​​​​​​​​​​​​​​​​
+        <div class="progress-fill" id="load-progress" style="width: 0%"></div>
+      </div>
+      <div id="load-detail" style="margin-top: 10px; color: #666; font-size: 0.9em;"></div>
+      
+      <!-- 載入時間過長提示 -->
+      <div id="slow-warning" class="warning" style="display: none; margin-top: 15px;">
+        <strong>⏱️ 載入時間較長</strong>
+        <p style="margin-top: 8px;">PyScript 首次載入需要下載 ~10MB 的檔案。如果網路較慢，可能需要 20-60 秒。</p>
+        <p style="margin-top: 8px;">已載入時間：<strong id="elapsed-time">0</strong> 秒</p>
+      </div>
+    </div>
+
+    <!-- 降級方案（載入失敗時顯示） -->
+    <div id="fallback-mode" class="fallback">
+      <h3>⚠️ PyScript 載入失敗</h3>
+      <p><strong>可能原因：</strong></p>
+      <ul style="margin-left: 20px; margin-top: 10px;">
+        <li>網路連線問題（CDN 無法訪問）</li>
+        <li>瀏覽器不支援（建議使用 Chrome/Edge/Firefox 最新版）</li>
+        <li>內容安全政策（CSP）限制</li>
+        <li>移動網路限制（某些網路會封鎖 CDN）</li>
+      </ul>
+      <p style="margin-top: 15px;"><strong>建議解決方案：</strong></p>
+      <ol style="margin-left: 20px;">
+        <li>檢查網路連線</li>
+        <li>嘗試切換到 Wi-Fi</li>
+        <li>使用桌面瀏覽器</li>
+        <li>點擊上方「重新載入」按鈕</li>
+      </ol>
+      <div style="margin-top: 20px;">
+        <button onclick="location.reload()">重新整理頁面</button>
+        <button onclick="testWithoutPyScript()" class="secondary">使用純 JS 模式（功能受限）</button>
+      </div>
+    </div>
+
+    <!-- 測試 1: DOM 操作 -->
+    <div class="card" id="test1" style="display: none;">
+      <h3>測試 1: DOM 操作</h3>
+      <p>驗證 Python 能否讀寫 HTML 元素</p>
+      <div class="row">
+        <input type="text" id="input1" placeholder="輸入一些文字..." value="Hello PyScript">
+        <button id="btn-update">更新顯示</button>
+        <button id="btn-clear">清空</button>
+      </div>
+      <div class="output-box" id="output1">等待操作...</div>
+    </div>
+
+    <!-- 測試 2: 事件處理 -->
+    <div class="card" id="test2" style="display: none;">
+      <h3>測試 2: 事件處理</h3>
+      <p>測試各種 DOM 事件的綁定與響應</p>
+      <div class="row">
+        <button id="btn-click">點擊事件</button>
+        <button id="btn-dblclick">雙擊事件</button>
+      </div>
+      <div class="row">
+        <input type="range" id="slider" min="0" max="100" value="50">
+        <span id="slider-value">50</span>
+      </div>
+      <div class="output-box" id="output2">等待事件觸發...</div>
+    </div>
+
+    <!-- 測試 3: Python ↔ JS 互通 -->
+    <div class="card" id="test3" style="display: none;">
+      <h3>測試 3: Python ↔ JS 資料傳遞</h3>
+      <div class="row">
+        <button id="btn-py-to-js">Python → JS</button>
+        <button id="btn-js-to-py">JS → Python</button>
+      </div>
+      <div class="output-box" id="output3">等待資料傳遞...</div>
+    </div>
+
+    <!-- 效能統計 -->
+    <div class="card" id="stats" style="display: none;">
+      <h3>效能統計</h3>
+      <div class="grid">
+        <div class="metric">
+          <div class="metric-value" id="event-count">0</div>
+          <div class="metric-label">事件觸發次數</div>
+        </div>
+        <div class="metric">
+          <div class="metric-value" id="load-time">--</div>
+          <div class="metric-label">載入時間 (秒)</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- PyScript 區域 -->
+  <py-script>
+from pyscript import document, window
+import time
+
+start_time = time.time()
+event_count = 0
+
+def log_event():
+    global event_count
+    event_count += 1
+    document.querySelector("#event-count").innerText = str(event_count)
+
+# 測試 1: DOM 操作
+def update_output(*args):
+    log_event()
+    input_val = document.querySelector("#input1").value
+    output = document.querySelector("#output1")
+    output.innerText = f"[{time.strftime('%H:%M:%S')}] 你輸入了: {input_val}\n字元數: {len(input_val)}"
+
+def clear_input(*args):
+    log_event()
+    document.querySelector("#input1").value = ""
+    document.querySelector("#output1").innerText = "已清空"
+
+# 測試 2: 事件處理
+def handle_click(*args):
+    log_event()
+    document.querySelector("#output2").innerText = f"[{time.strftime('%H:%M:%S')}] 單擊事件觸發！"
+
+def handle_dblclick(*args):
+    log_event()
+    document.querySelector("#output2").innerText = f"[{time.strftime('%H:%M:%S')}] 雙擊事件觸發！"
+
+def handle_slider(*args):
+    log_event()
+    value = document.querySelector("#slider").value
+    document.querySelector("#slider-value").innerText = value
+
+# 測試 3: 資料傳遞
+def py_to_js(*args):
+    log_event()
+    data = {
+        "message": "這是從 Python 傳來的資料",
+        "timestamp": time.time(),
+        "list": [1, 2, 3, 4, 5]
+    }
+    window.pyData = data
+    window.displayPyData()
+
+def js_to_py(*args):
+    log_event()
+    window.sendDataToPython()
+
+# 綁定事件
+document.querySelector("#btn-update").addEventListener("click", update_output)
+document.querySelector("#btn-clear").addEventListener("click", clear_input)
+document.querySelector("#btn-click").addEventListener("click", handle_click)
+document.querySelector("#btn-dblclick").addEventListener("dblclick", handle_dblclick)
+document.querySelector("#slider").addEventListener("input", handle_slider)
+document.querySelector("#btn-py-to-js").addEventListener("click", py_to_js)
+document.querySelector("#btn-js-to-py").addEventListener("click", js_to_py)
+
+# 載入完成
+end_time = time.time()
+load_time = end_time - start_time
+
+window.pyScriptLoaded(load_time)
+print(f"✅ PyScript 載入完成 ({load_time:.2f}s)")
+  </py-script>
+
+  <!-- JavaScript 載入管理 -->
+  <script>
+    let loadStartTime = Date.now();
+    let loadTimeout = null;
+    let slowWarningTimeout = null;
+    let elapsedInterval = null;
+
+    // 模擬進度條
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+      if (progress < 85) {
+        progress += Math.random() * 3;
+        document.getElementById("load-progress").style.width = Math.min(progress, 85) + "%";
+        document.getElementById("load-detail").textContent = 
+          `正在下載 PyScript 運行環境... (${Math.round(progress)}%)`;
+      }
+    }, 200);
+
+    // 載入超時檢測（30秒）
+    loadTimeout = setTimeout(() => {
+      console.error("PyScript 載入超時");
+      handleLoadFailure("載入超時（超過 30 秒）");
+    }, 30000);
+
+    // 慢速載入警告（8秒後顯示）
+    slowWarningTimeout = setTimeout(() => {
+      document.getElementById("slow-warning").style.display = "block";
+      
+      // 開始計時器
+      let elapsed = 8;
+      elapsedInterval = setInterval(() => {
+        elapsed++;
+        document.getElementById("elapsed-time").textContent = elapsed;
+      }, 1000);
+    }, 8000);
+
+    // PyScript 載入成功回調
+    window.pyScriptLoaded = function(loadTime) {
+      clearTimeout(loadTimeout);
+      clearTimeout(slowWarningTimeout);
+      clearInterval(progressInterval);
+      if (elapsedInterval) clearInterval(elapsedInterval);
+
+      document.getElementById("load-progress").style.width = "100%";
+      document.getElementById("status-dot").className = "status-indicator status-ready";
+      document.getElementById("status-text").innerText = "PyScript 已就緒";
+      document.getElementById("load-detail").textContent = `✅ 載入成功！耗時 ${loadTime.toFixed(2)} 秒`;
+      document.getElementById("load-time").innerText = loadTime.toFixed(2);
+      
+      // 隱藏警告，顯示測試區
+      document.getElementById("slow-warning").style.display = "none";
+      document.getElementById("test1").style.display = "block";
+      document.getElementById("test2").style.display = "block";
+      document.getElementById("test3").style.display = "block";
+      document.getElementById("stats").style.display = "block";
+    };
+
+    // 載入失敗處理
+    function handleLoadFailure(reason) {
+      clearInterval(progressInterval);
+      if (elapsedInterval) clearInterval(elapsedInterval);
+
+      document.getElementById("status-dot").className = "status-indicator status-error";
+      document.getElementById("status-text").innerText = "載入失敗";
+      document.getElementById("load-detail").innerHTML = `❌ ${reason}`;
+      document.getElementById("btn-retry").style.display = "inline-block";
+      document.getElementById("fallback-mode").classList.add("active");
+      
+      console.error("PyScript 載入失敗:", reason);
+    }
+
+    // 重試按鈕
+    document.getElementById("btn-retry").addEventListener("click", () => {
+      location.reload();
+    });
+
+    // 監聽 PyScript 錯誤
+    window.addEventListener("error", (e) => {
+      if (e.message && e.message.includes("pyscript")) {
+        handleLoadFailure("載入過程發生錯誤");
+      }
+    });
+
+    // Python 呼叫的 JS 函數
+    window.displayPyData = function() {
+      const output = document.querySelector("#output3");
+      const data = window.pyData;
+      output.innerText = `JS 收到 Python 的資料：\n${JSON.stringify(data, null, 2)}`;
+    };
+
+    window.sendDataToPython = function() {
+      const jsData = {
+        message: "這是從 JS 傳來的資料",
+        timestamp: Date.now(),
+        userAgent: navigator.userAgent.substring(0, 50) + "..."
+      };
+      window.jsData = jsData;
+      document.querySelector("#output3").innerText = 
+        `Python 可以透過 window.jsData 讀取：\n${JSON.stringify(jsData, null, 2)}`;
+    };
+
+    // 純 JS 降級模式
+    function testWithoutPyScript() {
+      alert("純 JS 模式下，部分 Python 特定功能無法使用。\n這個 Demo 主要展示 PyScript，建議解決載入問題後重試。");
+      
+      // 可以在這裡實作一些基本的 JS 功能作為示範
+      document.getElementById("fallback-mode").innerHTML = `
+        <h3>✅ 已切換到純 JS 模式</h3>
+        <p>這是一個簡化版本，用於展示基本功能：</p>
+        <div style="margin-top: 20px;">
+          <input type="text" id="js-input" placeholder="輸入文字" value="Hello JavaScript">
+          <button onclick="document.getElementById('js-output').textContent = document.getElementById('js-input').value">
+            更新顯示
+          </button>
+        </div>
+        <div style="margin-top: 15px; padding: 15px; background: white; border-radius: 6px;">
+          <strong>輸出：</strong>
+          <div id="js-output">等待操作...</div>
+        </div>
+        <p style="margin-top: 20px; color: #666;">
+          💡 這只是基本示範。完整功能需要 PyScript 正常載入。
+        </p>
+      `;
+    }
+  </script>
+</body>
+</html>
