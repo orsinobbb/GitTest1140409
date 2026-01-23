@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>02. 計算邊界測試</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css">
+  <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="nav-links">
+      <a href="index.html">← 回首頁</a>
+      <a href="01-basic.html">← 上一個</a>
+      <a href="03-worker.html">下一個 →</a>
+    </div>
+
+    <h1>02. 計算邊界測試</h1>
+    <p class="subtitle">Numpy 矩陣運算、記憶體限制、UI 阻塞觀察</p>
+
+    <div class="warning">
+      <strong>⚠️ 高負載測試警告</strong>
+      <ul style="margin-top: 10px; margin-left: 20px;">
+        <li>N > 2000 可能導致瀏覽器無回應或當機</li>
+        <li>建議從 N=800 開始測試</li>
+        <li>測試期間會看到 UI 心跳停止（這是正常現象）</li>
+        <li>記憶體不足時會拋出 MemoryError</li>
+      </ul>
+    </div>
+
+    <!-- UI 心跳監測 -->
+    <div class="card">
+      <h3>UI 心跳監測（觀察是否阻塞）</h3>
+      <div class="row">
+        <div class="metric">
+          <div class="metric-value" id="heartbeat">0</div>
+          <div class="metric-label">心跳計數（每50ms）</div>
+        </div>
+        <div class="metric">
+          <div class="metric-value" id="fps">60</div>
+          <div class="metric-label">FPS（流暢度）</div>
+        </div>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="heartbeat-bar" style="width: 0%"></div>
+      </div>
+      <p style="color: #666; margin-top: 10px;">
+        💡 當計算開始時，觀察心跳計數是否停止 → 這就是「主執行緒阻塞」
+      </p>
+    </div>
+
+    <!-- 測試控制 -->
+    <div class="card">
+      <h3>測試控制台</h3>
+      <div class="row">
+        <label>矩陣大小 N:</label>
+        <select id="matrix-size">
+          <option value="500">500 (安全)</option>
+          <option value="800" selected>800 (建議起點)</option>
+          <option value="1000">1000 (中等)</option>
+          <option value="1200">1200 (偏重)</option>
+          <option value="1600">1600 (很重)</option>
+          <option value="2000">2000 (危險)</option>
+          <option value="2400">2400 (極限)</option>
+        </select>
+        <input type="number" id="custom-size" placeholder="自訂大小" min="100" max="5000" style="width: 120px;">
+      </div>
+      <div class="row">
+        <button id="btn-single">單次運算</button>
+        <button id="btn-stress">壓力測試 (5次)</button>
+        <button id="btn-progressive">漸進測試 (500→2000)</button>
+        <button id="btn-memory">記憶體極限測試</button>
+      </div>
+      <div class="row">
+        <button id="btn-clear" class="secondary">清空輸出</button>
+        <button id="btn-stop" class="danger" disabled>強制停止 (僅供參考)</button>
+      </div>
+    </div>
+
+    <!-- 即時狀態 -->
+    <div class="card">
+      <h3>即時狀態</h3>
+      <div class="grid">
+        <div class="metric">
+          <div class="metric-value" id="current-status">待命</div>
+          <div class="metric-label">當前狀態</div>
+        </div>
+        <div class="metric">
+          <div class="metric-value" id="run-count">0</div>
+          <div class="metric-label">完成次數</div>
+        </div>
+        <div class="metric">
+          <div class="metric-value" id="total-time">0.00</div>
+          <div class="metric-label">累計時間 (秒)</div>
+        </div>
+        <div class="metric">
+          <div class="metric-value" id="mem-usage">--</div>
+          <div class="metric-label">預估記憶體 (MB)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 效能圖表 -->
+    <div class="card">
+      <h3>效能基準圖表</h3>
+      <canvas id="perf-chart" width="800" height="300"></canvas>
+      <p style="color: #666; margin-top: 10px;">
+        記錄每次運算的時間，觀察效能趨勢
+      </p>
+    </div>
+
+    <!-- 詳細輸出 -->
+    <div class="card">
+      <h3>詳細輸出日誌</h3>
+      <div class="output-box" id="output" style="max-height: 500px;"></div>
+    </div>
+
+    <!-- 邊界分析 -->
+    <div class="card">
+      <h3>📊 邊界分析報告</h3>
+      <div id="analysis" class="info" style="display: none;">
+        <h4>測試總結</h4>
+        <div id="analysis-content"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- PyScript 配置 -->
+  <py-config>
+    packages = ["numpy"]
+  </py-config>
+
+  <!-- PyScript 程式碼 -->
+  <py-script>
+from pyscript import document, window
+import time
+
+# 全域變數
+output = document.querySelector("#output")
+run_count = 0
+total_time = 0.0
+perf_history = []
+
+def log(msg, level="info"):
+    """輸出日誌"""
+    timestamp = time.strftime("%H:%M:%S")
+    prefix = {
+        "info": "ℹ️",
+        "success": "✅",
+        "warning": "⚠️",
+        "error": "❌",
+        "compute": "🔢"
+    }.get(level, "ℹ️")
+    
+    output.innerText += f"[{timestamp}] {prefix} {msg}\n"
+    output.scrollTop = output.scrollHeight
+
+def update_status(status, mem_mb=None):
+    """更新狀態顯示"""
+    document.querySelector("#current-status").innerText = status
+    if mem_mb:
+        document.querySelector("#mem-usage").innerText = f"{mem_mb:.1f}"
+
+def matmul_benchmark(n):
+    """執行矩陣乘法基準測試"""
+    import numpy as np
+    
+    log(f"開始計算 {n}×{n} 矩陣乘法...", "compute")
+    update_status(f"計算中 (N={n})")
+    
+    # 估算記憶體（3個矩陣：a, b, c）
+    mem_mb = (3 * n * n * 4) / (1024 ** 2)
+    update_status(f"計算中 (N={n})", mem_mb)
+    
+    try:
+        # 生成隨機矩陣
+        t0 = time.perf_counter()
+        a = np.random.rand(n, n).astype(np.float32)
+        b = np.random.rand(n, n).astype(np.float32)
+        gen_time = time.perf_counter() - t0
+        
+        # 矩陣乘法
+        t1 = time.perf_counter()
+        c = a @ b
+        compute_time = time.perf_counter() - t1
+        
+        # 計算 checksum（避免被優化掉）
+        checksum = float(c[0, 0] + c[-1, -1])
+        
+        total = gen_time + compute_time
+        
+        log(f"完成 N={n}", "success")
+        log(f"  生成時間: {gen_time:.3f}s", "info")
+        log(f"  計算時間: {compute_time:.3f}s", "info")
+        log(f"  總時間: {total:.3f}s", "info")
+        log(f"  記憶體: ~{mem_mb:.1f} MB", "info")
+        log(f"  Checksum: {checksum:.6f}", "info")
+        log("-" * 50, "info")
+        
+        return {
+            "n": n,
+            "time": total,
+            "mem": mem_mb,
+            "success": True
+        }
+        
+    except MemoryError:
+        log(f"記憶體不足！N={n} 超過瀏覽器記憶體限制", "error")
+        log("這是 PyScript 在瀏覽器中的實際邊界", "warning")
+        return {
+            "n": n,
+            "time": 0,
+            "mem": mem_mb,
+            "success": False,
+            "error": "MemoryError"
+        }
+    except Exception as e:
+        log(f"錯誤: {type(e).__name__}: {e}", "error")
+        return {
+            "n": n,
+            "time": 0,
+            "mem": mem_mb,
+            "success": False,
+            "error": str(e)
+        }
+
+def update_chart():
+    """更新效能圖表（呼叫 JS）"""
+    if perf_history:
+        window.updatePerfChart(perf_history)
+
+def update_counters():
+    """更新計數器"""
+    global run_count, total_time
+    document.querySelector("#run-count").innerText = str(run_count)
+    document.querySelector("#total-time").innerText = f"{total_time:.2f}"
+
+# ===== 測試函數 =====
+
+def single_run(*args):
+    """單次運算"""
+    global run_count, total_time
+    
+    size = document.querySelector("#matrix-size").value
+    custom = document.querySelector("#custom-size").value
+    n = int(custom) if custom else int(size)
+    
+    log(f"=== 單次測試 N={n} ===", "info")
+    result = matmul_benchmark(n)
+    
+    if result["success"]:
+        run_count += 1
+        total_time += result["time"]
+        perf_history.append(result)
+        update_chart()
+    
+    update_counters()
+    update_status("待命")
+
+def stress_test(*args):
+    """壓力測試（連續5次）"""
+    global run_count, total_time
+    
+    size = document.querySelector("#matrix-size").value
+    n = int(size)
+    
+    log(f"=== 壓力測試開始 (N={n}, 5次) ===", "warning")
+    
+    for i in range(5):
+        log(f"--- 第 {i+1}/5 輪 ---", "info")
+        result = matmul_benchmark(n)
+        
+        if not result["success"]:
+            log("壓力測試中斷（記憶體不足）", "error")
+            break
+        
+        run_count += 1
+        total_time += result["time"]
+        perf_history.append(result)
+    
+    update_chart()
+    update_counters()
+    update_status("待命")
+    log("=== 壓力測試完成 ===", "success")
+
+def progressive_test(*args):
+    """漸進測試（500 → 2000）"""
+    global run_count, total_time
+    
+    sizes = [500, 800, 1000, 1200, 1600, 2000]
+    log("=== 漸進測試開始 ===", "warning")
+    log(f"測試序列: {sizes}", "info")
+    
+    for n in sizes:
+        log(f"--- 測試 N={n} ---", "info")
+        result = matmul_benchmark(n)
+        
+        if not result["success"]:
+            log(f"漸進測試在 N={n} 處中斷", "error")
+            break
+        
+        run_count += 1
+        total_time += result["time"]
+        perf_history.append(result)
+        update_chart()
+    
+    update_counters()
+    update_status("待命")
+    log("=== 漸進測試完成 ===", "success")
+    
+    # 生成分析報告
+    generate_analysis()
+
+def memory_limit_test(*args):
+    """記憶體極限測試（二分法尋找極限）"""
+    global run_count, total_time
+    
+    log("=== 記憶體極限測試開始 ===", "warning")
+    log("使用二分法尋找記憶體邊界...", "info")
+    
+    low = 1000
+    high = 5000
+    last_success = low
+    
+    while low <= high:
+        mid = (low + high) // 2
+        log(f"嘗試 N={mid}...", "info")
+        
+        result = matmul_benchmark(mid)
+        
+        if result["success"]:
+            last_success = mid
+            run_count += 1
+            total_time += result["time"]
+            perf_history.append(result)
+            update_chart()
+            low = mid + 200
+        else:
+            high = mid - 200
+    
+    update_counters()
+    update_status("待命")
+    log(f"=== 記憶體極限測試完成 ===", "success")
+    log(f"最大可運算矩陣: N={last_success}", "success")
+    log(f"對應記憶體: ~{(3 * last_success * last_success * 4) / (1024**2):.1f} MB", "info")
+
+def clear_output(*args):
+    """清空輸出"""
+    output.innerText = ""
+    log("輸出已清空", "info")
+
+def generate_analysis():
+    """生成分析報告"""
+    if not perf_history:
+        return
+    
+    analysis_div = document.querySelector("#analysis")
+    analysis_content = document.querySelector("#analysis-content")
+    
+    # 計算統計資料
+    times = [r["time"] for r in perf_history if r["success"]]
+    sizes = [r["n"] for r in perf_history if r["success"]]
+    
+    if not times:
+        return
+    
+    avg_time = sum(times) / len(times)
+    max_time = max(times)
+    min_time = min(times)
+    max_n = max(sizes)
+    
+    # 計算時間複雜度（理論上是 O(n^3)）
+    if len(times) >= 2:
+        # 簡單的複雜度估算
+        ratio = times[-1] / times[0] if times[0] > 0 else 0
+        n_ratio = sizes[-1] / sizes[0] if sizes[0] > 0 else 0
+        
+        report = f"""
+<ul style="margin-left: 20px;">
+  <li><strong>測試次數:</strong> {len(times)} 次</li>
+  <li><strong>平均時間:</strong> {avg_time:.3f} 秒</li>
+  <li><strong>最快時間:</strong> {min_time:.3f} 秒 (N={sizes[times.index(min_time)]})</li>
+  <li><strong>最慢時間:</strong> {max_time:.3f} 秒 (N={sizes[times.index(max_time)]})</li>
+  <li><strong>最大成功矩陣:</strong> N={max_n}</li>
+  <li><strong>時間成長率:</strong> {ratio:.2f}x (矩陣大小 {n_ratio:.2f}x)</li>
+  <li><strong>複雜度估算:</strong> 接近 O(n^{2.7 if ratio < n_ratio**2.5 else 3})</li>
+</ul>
+
+<h4 style="margin-top: 15px;">關鍵發現</h4>
+<ul style="margin-left: 20px;">
+  <li>{'⚠️ 時間成長非線性：矩陣翻倍，時間增長約 ' + f'{ratio/(n_ratio**2):.1f}' + '~8倍' if ratio > 4 else '✅ 效能尚可接受'}</li>
+  <li>{'⚠️ 記憶體是主要限制：N > 2000 容易失敗' if max_n > 1500 else '✅ 在安全範圍內'}</li>
+  <li>🔍 主執行緒阻塞：所有測試期間 UI 都會卡住</li>
+</ul>
+        """
+        
+        analysis_content.innerHTML = report
+        analysis_div.style.display = "block"
+
+# 綁定事件
+document.querySelector("#btn-single").addEventListener("click", single_run)
+document.querySelector("#btn-stress").addEventListener("click", stress_test)
+document.querySelector("#btn-progressive").addEventListener("click", progressive_test)
+document.querySelector("#btn-memory").addEventListener("click", memory_limit_test)
+document.querySelector("#btn-clear").addEventListener("click", clear_output)
+
+# 初始化
+log("🐍 計算邊界測試模組已載入", "success")
+log("準備進行高負載計算測試", "info")
+update_status("待命")
+  </py-script>
+
+  <!-- JavaScript 輔助 -->
+  <script>
+    // UI 心跳監測
+    let heartbeat = 0;
+    let lastTime = performance.now();
+    let fps = 60;
+
+    function updateHeartbeat() {
+      heartbeat++;
+      document.getElementById("heartbeat").textContent = heartbeat;
+      document.getElementById("heartbeat-bar").style.width = (heartbeat % 100) + "%";
+      
+      // 計算 FPS
+      const now = performance.now();
+      fps = Math.round(1000 / (now - lastTime));
+      lastTime = now;
+      document.getElementById("fps").textContent = fps;
+    }
+
+    setInterval(updateHeartbeat, 50);
+
+    // 效能圖表（使用 Canvas）
+    const canvas = document.getElementById("perf-chart");
+    const ctx = canvas.getContext("2d");
+
+    window.updatePerfChart = function(data) {
+      const width = canvas.width;
+      const height = canvas.height;
+      const padding = 40;
+      
+      // 清空畫布
+      ctx.fillStyle = "#fafafa";
+      ctx.fillRect(0, 0, width, height);
+      
+      if (data.length === 0) return;
+      
+      // 找出最大值
+      const maxTime = Math.max(...data.map(d => d.time));
+      const maxN = Math.max(...data.map(d => d.n));
+      
+      // 繪製座標軸
+      ctx.strokeStyle = "#999";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(padding, padding);
+      ctx.lineTo(padding, height - padding);
+      ctx.lineTo(width - padding, height - padding);
+      ctx.stroke();
+      
+      // 繪製標籤
+      ctx.fillStyle = "#666";
+      ctx.font = "12px sans-serif";
+      ctx.fillText("時間 (秒)", 10, 20);
+      ctx.fillText("矩陣大小 N", width - 80, height - 10);
+      
+      // 繪製數據點和連線
+      ctx.strokeStyle = "#667eea";
+      ctx.fillStyle = "#667eea";
+      ctx.lineWidth = 2;
+      
+      ctx.beginPath();
+      data.forEach((d, i) => {
+        const x = padding + ((d.n / maxN) * (width - 2 * padding));
+        const y = height - padding - ((d.time / maxTime) * (height - 2 * padding));
+        
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+        
+        // 繪製數據點
+        ctx.fillRect(x - 3, y - 3, 6, 6);
+      });
+      ctx.stroke();
+      
+      // 繪製數值標註
+      ctx.fillStyle = "#333";
+      ctx.font = "10px sans-serif";
+      data.forEach(d => {
+        const x = padding + ((d.n / maxN) * (width - 2 * padding));
+        const y = height - padding - ((d.time / maxTime) * (height - 2 * padding));
+        ctx.fillText(`${d.time.toFixed(2)}s`, x + 5, y - 5);
+      });
+    };
+
+    // 強制停止（實際上很難做到，只是給個提示）
+    document.getElementById("btn-stop").addEventListener("click", function() {
+      alert("注意：JavaScript 無法真正中斷 Python 計算\n只能重新整理頁面來停止");
+    });
+  </script>
+</body>
+</html>
