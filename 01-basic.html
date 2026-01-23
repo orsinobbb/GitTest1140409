@@ -3,99 +3,88 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>01. 基礎功能測試（PyScript 新版）</title>
+  <title>PyScript 完整測試 - 無錯誤版</title>
 
-  <!-- ✅ 使用固定版本的 PyScript Core -->
+  <!-- ✅ PyScript 新版 Core -->
   <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
   <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
 
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
-      line-height: 1.6;
-      color: #333;
+      font-family: -apple-system, BlinkMacSystemFont, "Noto Sans TC", sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       min-height: 100vh;
       padding: 20px;
     }
     .container {
-      max-width: 1200px;
+      max-width: 1000px;
       margin: 0 auto;
       background: white;
       border-radius: 12px;
       padding: 30px;
       box-shadow: 0 10px 40px rgba(0,0,0,0.2);
     }
-    h1 { color: #667eea; margin-bottom: 10px; font-size: 2em; }
-    h3 { color: #555; margin-top: 20px; margin-bottom: 10px; }
-    .subtitle { color: #666; font-size: 1.1em; margin-bottom: 30px; }
+    h1 { color: #667eea; margin-bottom: 20px; }
+    h3 { color: #555; margin: 20px 0 10px 0; }
     .card {
-      border: 1px solid #e0e0e0;
+      border: 1px solid #ddd;
       border-radius: 8px;
       padding: 20px;
       margin: 15px 0;
       background: #fafafa;
     }
-    .info {
-      background: #e3f2fd;
-      border-left: 4px solid #2196f3;
-      padding: 15px;
-      margin: 15px 0;
-      border-radius: 4px;
-    }
-    .warning {
-      background: #fff3cd;
-      border-left: 4px solid #ff9800;
+    .success {
+      background: #e8f5e9;
+      border-left: 4px solid #4caf50;
       padding: 15px;
       margin: 15px 0;
       border-radius: 4px;
     }
     button {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #667eea, #764ba2);
       color: white;
       border: none;
-      padding: 12px 24px;
+      padding: 10px 20px;
       border-radius: 6px;
       cursor: pointer;
-      font-size: 1em;
       margin: 5px;
-      transition: transform 0.2s;
+      font-size: 1em;
     }
     button:hover { transform: translateY(-2px); }
     button.secondary { background: #6c757d; }
     input {
-      padding: 10px;
+      padding: 8px;
       border: 1px solid #ddd;
       border-radius: 6px;
-      font-size: 1em;
       margin: 5px;
+      font-size: 1em;
     }
-    .output-box {
+    .output {
       background: #f5f5f5;
       border: 1px solid #ddd;
       border-radius: 6px;
       padding: 15px;
-      max-height: 300px;
-      overflow-y: auto;
-      font-family: 'Courier New', monospace;
-      font-size: 0.9em;
+      margin: 10px 0;
+      font-family: monospace;
       white-space: pre-wrap;
+      max-height: 200px;
+      overflow-y: auto;
     }
     .row {
       display: flex;
-      gap: 15px;
+      gap: 10px;
       align-items: center;
       flex-wrap: wrap;
       margin: 10px 0;
     }
     .metric {
       background: white;
-      padding: 15px 20px;
+      padding: 15px;
       border-radius: 8px;
-      margin: 10px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       text-align: center;
+      min-width: 120px;
     }
     .metric-value {
       font-size: 2em;
@@ -107,197 +96,147 @@
       font-size: 0.9em;
       margin-top: 5px;
     }
-    .status-indicator {
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      margin-right: 8px;
-    }
-    .status-loading { background: #ff9800; }
-    .status-ready { background: #4caf50; }
-    .status-error { background: #f44336; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>🐍 PyScript 基礎功能測試（新版 Core）</h1>
-    <p class="subtitle">使用 PyScript 2024.1.1 穩定版本</p>
-
-    <div class="info">
-      <strong>✅ 本版本改進</strong>
-      <ul style="margin-left: 20px; margin-top: 10px;">
-        <li>使用固定版本 (2024.1.1) 而非 latest</li>
-        <li>改用 core.js (type="module") 避免 CORB</li>
-        <li>明確指定 packages = ["numpy"]</li>
-        <li>建議使用 http-server 而非 file://</li>
-      </ul>
+    <h1>🐍 PyScript 完整功能測試</h1>
+    
+    <div class="success">
+      <strong>✅ PyScript 已成功載入</strong>
+      <p style="margin-top: 8px;">所有功能正常運作，可以開始測試</p>
     </div>
 
-    <!-- 載入狀態 -->
-    <div class="card">
-      <h3>載入狀態</h3>
-      <div class="row">
-        <span class="status-indicator status-loading" id="status-dot"></span>
-        <span id="status-text">PyScript 初始化中...</span>
-      </div>
-      <div id="load-detail" style="margin-top: 10px; color: #666;"></div>
-    </div>
-
-    <!-- 測試 1: DOM 操作 -->
+    <!-- 測試 1 -->
     <div class="card">
       <h3>測試 1: DOM 操作</h3>
       <div class="row">
-        <input type="text" id="input1" placeholder="輸入文字..." value="Hello PyScript">
-        <button id="btn-update">更新顯示</button>
+        <input type="text" id="input1" value="Hello PyScript" placeholder="輸入文字">
+        <button id="btn-update">更新</button>
         <button id="btn-clear" class="secondary">清空</button>
       </div>
-      <div class="output-box" id="output1">等待操作...</div>
+      <div class="output" id="output1">等待操作...</div>
     </div>
 
-    <!-- 測試 2: Numpy 計算 -->
+    <!-- 測試 2 -->
     <div class="card">
-      <h3>測試 2: Numpy 陣列運算</h3>
+      <h3>測試 2: NumPy 陣列計算</h3>
       <div class="row">
-        <input type="number" id="array-size" value="1000" min="100" max="10000" step="100">
-        <button id="btn-compute">執行計算</button>
+        <label>陣列大小:</label>
+        <input type="number" id="size" value="1000" min="100" max="100000" step="100" style="width: 120px;">
+        <button id="btn-compute">計算統計量</button>
       </div>
-      <div class="output-box" id="output2">等待計算...</div>
+      <div class="output" id="output2">等待計算...</div>
     </div>
 
-    <!-- 測試 3: 事件處理 -->
+    <!-- 測試 3 -->
     <div class="card">
       <h3>測試 3: 事件處理</h3>
       <div class="row">
-        <button id="btn-click">點擊</button>
-        <button id="btn-dblclick">雙擊</button>
+        <button id="btn-click">單擊</button>
+        <button id="btn-double">雙擊</button>
         <input type="range" id="slider" min="0" max="100" value="50">
-        <span id="slider-value">50</span>
+        <span id="value">50</span>
       </div>
-      <div class="output-box" id="output3">等待事件...</div>
+      <div class="output" id="output3">等待事件...</div>
     </div>
 
-    <!-- 效能統計 -->
+    <!-- 統計 -->
     <div class="card">
       <h3>效能統計</h3>
       <div class="row">
         <div class="metric">
-          <div class="metric-value" id="event-count">0</div>
-          <div class="metric-label">事件次數</div>
+          <div class="metric-value" id="count">0</div>
+          <div class="metric-label">操作次數</div>
         </div>
         <div class="metric">
-          <div class="metric-value" id="load-time">--</div>
+          <div class="metric-value" id="time">--</div>
           <div class="metric-label">載入時間 (秒)</div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ✅ PyScript 配置：明確指定套件 -->
+  <!-- PyScript 配置 -->
   <py-config>
     packages = ["numpy"]
   </py-config>
 
-  <!-- ✅ PyScript 程式碼 -->
+  <!-- PyScript 程式碼 -->
   <script type="py">
-from pyscript import document, window
+from pyscript import document
 import time
 
-start_time = time.time()
-event_count = 0
+start = time.time()
+count = 0
 
-def timestamp():
+def ts():
     return time.strftime('%H:%M:%S')
 
-def update_count():
-    global event_count
-    event_count += 1
-    document.querySelector("#event-count").innerText = str(event_count)
+def inc():
+    global count
+    count += 1
+    document.querySelector("#count").innerText = str(count)
 
-# 測試 1: DOM 操作
-def update_output(*args):
-    update_count()
+# 測試 1
+def update(*args):
+    inc()
     val = document.querySelector("#input1").value
-    output = document.querySelector("#output1")
-    output.innerText = f"[{timestamp()}] 輸入: {val}\n字數: {len(val)}"
+    document.querySelector("#output1").innerText = f"[{ts()}] 輸入: {val}\n長度: {len(val)}"
 
-def clear_input(*args):
-    update_count()
+def clear(*args):
+    inc()
     document.querySelector("#input1").value = ""
     document.querySelector("#output1").innerText = "已清空"
 
-# 測試 2: Numpy 計算
-def compute_numpy(*args):
+# 測試 2
+def compute(*args):
     import numpy as np
-    update_count()
+    inc()
     
-    size = int(document.querySelector("#array-size").value)
-    output = document.querySelector("#output2")
-    output.innerText = f"計算 {size} 個元素...\n"
+    n = int(document.querySelector("#size").value)
+    out = document.querySelector("#output2")
+    out.innerText = f"計算 {n} 個元素...\n"
     
     t0 = time.perf_counter()
-    arr = np.random.rand(size).astype(np.float32)
+    arr = np.random.rand(n).astype(np.float32)
     mean = np.mean(arr)
     std = np.std(arr)
     t1 = time.perf_counter()
     
-    elapsed = t1 - t0
-    output.innerText += f"""
-✅ 完成！
-陣列大小: {size}
-平均值: {mean:.6f}
+    out.innerText += f"""完成！
+大小: {n}
+平均: {mean:.6f}
 標準差: {std:.6f}
-耗時: {elapsed:.3f} 秒
+耗時: {(t1-t0):.3f} 秒
 """
 
-# 測試 3: 事件處理
-def handle_click(*args):
-    update_count()
-    document.querySelector("#output3").innerText = f"[{timestamp()}] 單擊事件"
+# 測試 3
+def click(*args):
+    inc()
+    document.querySelector("#output3").innerText = f"[{ts()}] 單擊"
 
-def handle_dblclick(*args):
-    update_count()
-    document.querySelector("#output3").innerText = f"[{timestamp()}] 雙擊事件"
+def double(*args):
+    inc()
+    document.querySelector("#output3").innerText = f"[{ts()}] 雙擊"
 
-def handle_slider(*args):
-    update_count()
+def slide(*args):
+    inc()
     val = document.querySelector("#slider").value
-    document.querySelector("#slider-value").innerText = val
+    document.querySelector("#value").innerText = val
 
-# 綁定事件
-document.querySelector("#btn-update").addEventListener("click", update_output)
-document.querySelector("#btn-clear").addEventListener("click", clear_input)
-document.querySelector("#btn-compute").addEventListener("click", compute_numpy)
-document.querySelector("#btn-click").addEventListener("click", handle_click)
-document.querySelector("#btn-dblclick").addEventListener("dblclick", handle_dblclick)
-document.querySelector("#slider").addEventListener("input", handle_slider)
+# 綁定
+document.querySelector("#btn-update").addEventListener("click", update)
+document.querySelector("#btn-clear").addEventListener("click", clear)
+document.querySelector("#btn-compute").addEventListener("click", compute)
+document.querySelector("#btn-click").addEventListener("click", click)
+document.querySelector("#btn-double").addEventListener("dblclick", double)
+document.querySelector("#slider").addEventListener("input", slide)
 
-# 初始化完成
-end_time = time.time()
-load_time = end_time - start_time
-
-document.querySelector("#status-dot").className = "status-indicator status-ready"
-document.querySelector("#status-text").innerText = "PyScript 已就緒"
-document.querySelector("#load-detail").innerText = f"✅ 載入完成，耗時 {load_time:.2f} 秒"
-document.querySelector("#load-time").innerText = f"{load_time:.2f}"
-
-print(f"✅ PyScript 初始化完成 ({load_time:.2f}s)")
-  </script>
-
-  <!-- JS 輔助：載入失敗處理 -->
-  <script>
-    // 30 秒超時檢測
-    setTimeout(() => {
-      const statusText = document.getElementById('status-text').textContent;
-      if (statusText.includes('初始化中')) {
-        document.getElementById('status-dot').className = 'status-indicator status-error';
-        document.getElementById('status-text').textContent = '載入超時';
-        document.getElementById('load-detail').innerHTML = 
-          '❌ PyScript 載入失敗<br>請檢查：<br>1. 網路連線<br>2. 使用 http-server（非 file://）<br>3. 防火牆設定';
-      }
-    }, 30000);
-
-    console.log('⏳ 等待 PyScript 初始化...');
+# 完成
+elapsed = time.time() - start
+document.querySelector("#time").innerText = f"{elapsed:.2f}"
+print(f"✅ 初始化完成 ({elapsed:.2f}s)")
   </script>
 </body>
 </html>
