@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PyScript 完整邊界探索</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>🐍 PyScript 完整邊界探索套件</h1>
+    <p class="subtitle">系統化測試 PyScript 的能力與限制</p>
+
+    <div class="info">
+      <strong>📋 使用說明</strong>
+      <ul style="margin-top: 10px; margin-left: 20px;">
+        <li>每個頁面獨立運行，可按任意順序測試</li>
+        <li>建議從「基礎功能」開始，逐步深入</li>
+        <li>注意觀察瀏覽器控制台的載入時間和錯誤訊息</li>
+        <li>部分測試可能導致瀏覽器暫時無回應（這正是我們要探索的邊界）</li>
+      </ul>
+    </div>
+
+    <h2>🎯 測試模組</h2>
+
+    <div class="grid">
+      <div class="card">
+        <h3>01. 基礎功能</h3>
+        <p>DOM 操作、事件處理、Python ↔ JS 互通</p>
+        <ul style="margin: 10px 0 10px 20px; color: #666;">
+          <li>即時 DOM 更新</li>
+          <li>事件綁定</li>
+          <li>雙向資料傳遞</li>
+          <li>型別轉換</li>
+        </ul>
+        <a href="01-basic.html"><button>開始測試</button></a>
+      </div>
+
+      <div class="card">
+        <h3>02. 計算邊界</h3>
+        <p>Numpy 矩陣運算、記憶體限制、UI 阻塞</p>
+        <ul style="margin: 10px 0 10px 20px; color: #666;">
+          <li>大矩陣乘法</li>
+          <li>記憶體壓力測試</li>
+          <li>主執行緒阻塞觀察</li>
+          <li>效能基準測試</li>
+        </ul>
+        <a href="02-compute.html"><button>開始測試</button></a>
+      </div>
+
+      <div class="card">
+        <h3>03. 背景計算</h3>
+        <p>Web Worker、非阻塞運算、架構複雜度</p>
+        <ul style="margin: 10px 0 10px 20px; color: #666;">
+          <li>Worker 初始化</li>
+          <li>背景計算對比</li>
+          <li>資料序列化成本</li>
+          <li>錯誤處理</li>
+        </ul>
+        <a href="03-worker.html"><button>開始測試</button></a>
+      </div>
+
+      <div class="card">
+        <h3>04. 大數據視覺化</h3>
+        <p>100萬筆資料處理、Canvas 渲染、效能極限</p>
+        <ul style="margin: 10px 0 10px 20px; color: #666;">
+          <li>大量資料生成</li>
+          <li>聚合運算</li>
+          <li>Canvas 繪圖</li>
+          <li>互動效能</li>
+        </ul>
+        <a href="04-data-viz.html"><button>開始測試</button></a>
+      </div>
+
+      <div class="card">
+        <h3>05. 瀏覽器 API</h3>
+        <p>Fetch、Storage、IndexedDB、檔案處理</p>
+        <ul style="margin: 10px 0 10px 20px; color: #666;">
+          <li>HTTP 請求</li>
+          <li>本地儲存</li>
+          <li>資料庫操作</li>
+          <li>檔案上傳/下載</li>
+        </ul>
+        <a href="05-api-storage.html"><button>開始測試</button></a>
+      </div>
+
+      <div class="card">
+        <h3>06. 已知限制</h3>
+        <p>無法做到的事、替代方案、設計建議</p>
+        <ul style="margin: 10px 0 10px 20px; color: #666;">
+          <li>限制清單</li>
+          <li>錯誤示範</li>
+          <li>解決方案</li>
+          <li>最佳實踐</li>
+        </ul>
+        <a href="06-limitations.html"><button>開始測試</button></a>
+      </div>
+    </div>
+
+    <h2>📊 能力矩陣速查表</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>功能</th>
+          <th>可行性</th>
+          <th>效能</th>
+          <th>複雜度</th>
+          <th>建議場景</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>基礎 DOM 操作</td>
+          <td>✅ 完全支援</td>
+          <td>⭐⭐⭐⭐</td>
+          <td>低</td>
+          <td>簡單互動、表單處理</td>
+        </tr>
+        <tr>
+          <td>Numpy 計算</td>
+          <td>✅ 支援</td>
+          <td>⭐⭐⭐</td>
+          <td>中</td>
+          <td>資料科學 Demo、演算法驗證</td>
+        </tr>
+        <tr>
+          <td>背景計算</td>
+          <td>⚠️ 需要 Worker</td>
+          <td>⭐⭐⭐⭐</td>
+          <td>高</td>
+          <td>重計算且需保持 UI 流暢</td>
+        </tr>
+        <tr>
+          <td>大數據處理</td>
+          <td>⚠️ 有記憶體限制</td>
+          <td>⭐⭐</td>
+          <td>高</td>
+          <td>中小型資料集視覺化</td>
+        </tr>
+        <tr>
+          <td>複雜 UI 框架</td>
+          <td>❌ 不建議</td>
+          <td>⭐</td>
+          <td>極高</td>
+          <td>用 React/Vue 替代</td>
+        </tr>
+        <tr>
+          <td>即時通訊</td>
+          <td>⚠️ 透過 JS</td>
+          <td>⭐⭐⭐</td>
+          <td>高</td>
+          <td>簡單 WebSocket，複雜邏輯用 JS</td>
+        </tr>
+        <tr>
+          <td>機器學習推論</td>
+          <td>✅ 支援</td>
+          <td>⭐⭐</td>
+          <td>中</td>
+          <td>小模型推論、教學展示</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="warning">
+      <strong>⚠️ 測試前注意事項</strong>
+      <ul style="margin-top: 10px; margin-left: 20px;">
+        <li><strong>首次載入慢：</strong>PyScript + 套件可能需要 5-10 秒載入</li>
+        <li><strong>記憶體消耗：</strong>部分測試會佔用大量記憶體（建議關閉其他分頁）</li>
+        <li><strong>瀏覽器差異：</strong>Chrome/Edge 效能最佳，Safari 可能有相容性問題</li>
+        <li><strong>行動裝置：</strong>不建議在手機上測試高負載項目（02、03、04）</li>
+      </ul>
+    </div>
+
+    <h2>🎓 學習路徑建議</h2>
+
+    <div class="grid">
+      <div class="card">
+        <h3>🔰 初學者</h3>
+        <p>建議順序：01 → 05 → 06</p>
+        <p style="color: #666; margin-top: 10px;">先掌握基礎功能和限制，避開複雜的效能議題</p>
+      </div>
+
+      <div class="card">
+        <h3>⚙️ 開發者</h3>
+        <p>建議順序：01 → 02 → 03 → 04 → 06</p>
+        <p style="color: #666; margin-top: 10px;">完整體驗效能邊界，理解架構權衡</p>
+      </div>
+
+      <div class="card">
+        <h3>🚀 架構師</h3>
+        <p>建議順序：全部測試 + 自訂壓力測試</p>
+        <p style="color: #666; margin-top: 10px;">評估是否適合生產環境，設計混合架構</p>
+      </div>
+    </div>
+
+    <div class="success" style="margin-top: 30px;">
+      <strong>💡 測試目標</strong>
+      <p style="margin-top: 10px;">
+        這個套件的目的不是證明「PyScript 很厲害」或「PyScript 不夠好」，
+        而是<strong>讓你清楚知道在什麼情況下該用 PyScript，什麼情況下該用 JavaScript</strong>。
+      </p>
+    </div>
+  </div>
+</body>
+</html>
