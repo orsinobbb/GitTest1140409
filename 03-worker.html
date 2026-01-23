@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>03. Web Worker 背景計算</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css">
+  <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="nav-links">
+      <a href="index.html">← 回首頁</a>
+      <a href="02-compute.html">← 上一個</a>
+      <a href="04-data-viz.html">下一個 →</a>
+    </div>
+
+    <h1>03. Web Worker 背景計算</h1>
+    <p class="subtitle">非阻塞運算、架構複雜度、效能對比</p>
+
+    <div class="info">
+      <strong>💡 核心概念</strong>
+      <p style="margin-top: 10px;">
+        Web Worker 允許在背景執行緒運行代碼，避免阻塞 UI。
+        但需要 <strong>JS 當主控、Python 當工人</strong>，架構複雜度大幅提升。
+      </p>
+    </div>
+
+    <!-- 初始化狀態 -->
+    <div class="card">
+      <h3>Worker 初始化狀態</h3>
+      <div class="row">
+        <div>
+          <span class="status-indicator status-loading" id="main-status"></span>
+          主執行緒 Python: <strong id="main-text">載入中...</strong>
+        </div>
+        <div>
+          <span class="status-indicator status-loading" id="worker-status"></span>
+          Worker Python: <strong id="worker-text">等待中...</strong>
+        </div>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="init-progress" style="width: 0%"></div>
+      </div>
+      <p style="color: #666; margin-top: 10px;">
+        ⏱️ Worker 需要重新載入 Pyodide + Numpy，通常需要 5-10 秒
+      </p>
+    </div>
+
+    <!-- UI 流暢度監測 -->
+    <div class="card">
+      <h3>UI 流暢度即時監測</h3>
+      <div class="grid" style="grid-template-columns: 1fr 1fr;">
+        <div class="metric">
+          <div class="metric-value" id="ui-tick">0</div>
+          <div class="metric-label">UI 心跳 (50ms)</div>
+        </div>
+        <div class="metric">
+          <div class="metric-value" id="ui-fps">60</div>
+          <div class="metric-label">渲染 FPS</div>
+        </div>
+      </div>
+      <div style="margin-top: 15px;">
+        <canvas id="wave-canvas" width="800" height="100"></canvas>
+        <p style="color: #666; margin-top: 10px;">
+          💡 觀察重點：Worker 計算時，波形應該持續流暢；主執行緒計算時會卡住
+        </p>
+      </div>
+    </div>
+
+    <!-- 測試控制 -->
+    <div class="card">
+      <h3>對比測試控制台</h3>
+      <div class="row">
+        <label>矩陣大小 N:</label>
+        <select id="test-size">
+          <option value="800">800 (輕量)</option>
+          <option value="1000" selected>1000 (中等)</option>
+          <option value="1200">1200 (較重)</option>
+          <option value="1600">1600 (重負載)</option>
+        </select>
+      </div>
+      <div class="row">
+        <button id="btn-main" disabled>主執行緒計算 (會卡UI)</button>
+        <button id="btn-worker" disabled>Worker 計算 (不卡UI)</button>
+        <button id="btn-compare" disabled>對比測試</button>
+      </div>
+      <div class="row">
+        <button id="btn-stress-worker" disabled class="secondary">Worker 壓測 (5次)</button>
+        <button id="btn-clear" class="secondary">清空日誌</button>
+      </div>
+    </div>
+
+    <!-- 效能對比 -->
+    <div class="card">
+      <h3>效能對比統計</h3>
+      <div class="grid">
+        <div class="metric">
+          <div class="metric-value" id="main-time">--</div>
+          <div class="metric-label">主執行緒最後耗時</div>
+        </div>
+        <div class="metric">
+          <div class="metric-value" id="worker-time">--</div>
+          <div class="metric-label">Worker 最後耗時</div>
+        </div>
+        <div class="metric">
+          <div class="metric-value" id="ui-blocked">--</div>
+          <div class="metric-label">UI 阻塞時長</div>
+        </div>
+      </div>
+      <canvas id="compare-chart" width="800" height="250"></canvas>
+    </div>
+
+    <!-- 詳細日誌 -->
+    <div class="card">
+      <h3>執行日誌</h3>
+      <div class="output-box" id="log" style="max-height: 400px;"></div>
+    </div>
+
+    <!-- 架構說明 -->
+    <div class="card">
+      <h3>🏗️ 架構複雜度分析</h3>
+      <div class="warning">
+        <h4>主執行緒模式（簡單但會卡）</h4>
+        <pre style="background: white; color: #333; padding: 10px; border-radius: 4px;">
+Python (主執行緒) → 直接計算 → 更新 DOM
+✅ 架構簡單
+❌ UI 完全阻塞</pre>
+      </div>
+      <div class="success">
+        <h4>Worker 模式（複雜但流暢）</h4>
+        <pre style="background: white; color: #333; padding: 10px; border-radius: 4px;">
+JS (主執行緒) → postMessage → Worker Python → 計算
+              ↑                              ↓
+              ← ← ← ← postMessage 回傳結果 ← ←
+✅ UI 完全流暢
+❌ 架構複雜：需要 JS 管理、資料序列化、錯誤處理困難</pre>
+      </div>
+      <p style="margin-top: 15px; color: #666;">
+        <strong>關鍵取捨：</strong>
+        如果需要「產品級的流暢體驗」，就必須接受「工程複雜度的大幅提升」。
+        這也是為什麼大多數生產環境仍然選擇純 JS 方案。
+      </p>
+    </div>
+
+  </div>
+
+  <!-- PyScript 主執行緒 -->
+  <py-config>
+    packages = ["numpy"]
+  </py-config>
+
+  <py-script>
+from pyscript import document, window
+import time
+
+log_el = document.querySelector("#log")
+
+def log(msg, level="info"):
+    timestamp = time.strftime("%H:%M:%S")
+    prefix = {"info": "ℹ️", "success": "✅", "warning": "⚠️", "error": "❌", "compute": "🔢"}.get(level, "ℹ️")
+    log_el.innerText += f"[{timestamp}] {prefix} {msg}\n"
+    log_el.scrollTop = log_el.scrollHeight
+
+def main_compute(*args):
+    """主執行緒計算"""
+    import numpy as np
+    
+    n = int(document.querySelector("#test-size").value)
+    log(f"主執行緒開始計算 N={n}", "compute")
+    
+    # 通知 JS 開始計時
+    window.startMainTimer()
+    
+    try:
+        t0 = time.perf_counter()
+        a = np.random.rand(n, n).astype(np.float32)
+        b = np.random.rand(n, n).astype(np.float32)
+        c = a @ b
+        t1 = time.perf_counter()
+        
+        elapsed = t1 - t0
+        checksum = float(c[0, 0])
+        
+        log(f"主執行緒完成 | 耗時: {elapsed:.3f}s | Checksum: {checksum:.6f}", "success")
+        
+        # 更新顯示
+        document.querySelector("#main-time").innerText = f"{elapsed:.3f}s"
+        window.endMainTimer(elapsed)
+        
+    except Exception as e:
+        log(f"主執行緒錯誤: {e}", "error")
+        window.endMainTimer(0)
+
+def clear_log(*args):
+    log_el.innerText = ""
+    log("日誌已清空", "info")
+
+# 綁定事件
+document.querySelector("#btn-main").addEventListener("click", main_compute)
+document.querySelector("#btn-clear").addEventListener("click", clear_log)
+
+# 通知 JS：主執行緒 Python 已就緒
+window.mainPythonReady = True
+log("✅ 主執行緒 Python 已就緒", "success")
+document.querySelector("#main-status").className = "status-indicator status-ready"
+document.querySelector("#main-text").innerText = "就緒"
+  </py-script>
+
+  <!-- JavaScript 主控邏輯 -->
+  <script>
+    let worker = null;
+    let workerReady = false;
+    let mainTimerStart = 0;
+    let uiTick = 0;
+    let lastFrameTime = performance.now();
+    let compareData = { main: [], worker: [] };
+
+    // UI 心跳
+    setInterval(() => {
+      uiTick++;
+      document.getElementById("ui-tick").textContent = uiTick;
+      
+      const now = performance.now();
+      const fps = Math.round(1000 / (now - lastFrameTime));
+      lastFrameTime = now;
+      document.getElementById("ui-fps").textContent = fps;
+    }, 50);
+
+    // 繪製波形（視覺化 UI 流暢度）
+    const waveCanvas = document.getElementById("wave-canvas");
+    const waveCtx = waveCanvas.getContext("2d");
+    let waveOffset = 0;
+
+    function drawWave() {
+      const width = waveCanvas.width;
+      const height = waveCanvas.height;
+      
+      waveCtx.fillStyle = "#f0f0f0";
+      waveCtx.fillRect(0, 0, width, height);
+      
+      waveCtx.strokeStyle = "#667eea";
+      waveCtx.lineWidth = 2;
+      waveCtx.beginPath();
+      
+      for (let x = 0; x < width; x++) {
+        const y = height / 2 + Math.sin((x + waveOffset) * 0.02) * 30;
+        if (x === 0) waveCtx.moveTo(x, y);
+        else waveCtx.lineTo(x, y);
+      }
+      
+      waveCtx.stroke();
+      waveOffset += 5;
+      
+      requestAnimationFrame(drawWave);
+    }
+    drawWave();
+
+    // 初始化 Worker
+    function initWorker() {
+      const workerCode = `
+        importScripts('https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js');
+        
+        let pyodide = null;
+        
+        async function init() {
+          self.postMessage({ type: 'status', message: '載入 Pyodide...' });
+          pyodide = await loadPyodide();
+          
+          self.postMessage({ type: 'status', message: '載入 NumPy...' });
+          await pyodide.loadPackage('numpy');
+          
+          self.postMessage({ type: 'ready' });
+        }
+        
+        self.onmessage = async function(e) {
+          if (e.data.type === 'compute') {
+            const n = e.data.n;
+            const t0 = performance.now();
+            
+            try {
+              const result = await pyodide.runPythonAsync(\`
+import numpy as np
+
+a = np.random.rand(${n}, ${n}).astype(np.float32)
+b = np.random.rand(${n}, ${n}).astype(np.float32)
+c = a @ b
+
+{
+  "checksum": float(c[0, 0]),
+  "n": ${n}
+}
+              \`);
+              
+              const t1 = performance.now();
+              const data = result.toJs();
+              
+              self.postMessage({
+                type: 'result',
+                time: (t1 - t0) / 1000,
+                checksum: data.get('checksum'),
+                n: data.get('n')
+              });
+            } catch (error) {
+              self.postMessage({
+                type: 'error',
+                message: error.toString()
+              });
+            }
+          }
+        };
+        
+        init();
+      `;
+
+      const blob = new Blob([workerCode], { type: 'application/javascript' });
+      worker = new Worker(URL.createObjectURL(blob));
+
+      worker.onmessage = function(e) {
+        const logEl = document.getElementById("log");
+        const timestamp = new Date().toLocaleTimeString();
+
+        if (e.data.type === 'status') {
+          logEl.innerText += `[${timestamp}] 🔄 Worker: ${e.data.message}\n`;
+          logEl.scrollTop = logEl.scrollHeight;
+          
+          document.getElementById("init-progress").style.width = "50%";
+        } else if (e.data.type === 'ready') {
+          workerReady = true;
+          logEl.innerText += `[${timestamp}] ✅ Worker Python 已就緒\n`;
+          logEl.scrollTop = logEl.scrollHeight;
+          
+          document.getElementById("worker-status").className = "status-indicator status-ready";
+          document.getElementById("worker-text").innerText = "就緒";
+          document.getElementById("init-progress").style.width = "100%";
+          
+          enableButtons();
+        } else if (e.data.type === 'result') {
+          const { time, checksum, n } = e.data;
+          logEl.innerText += `[${timestamp}] ✅ Worker 完成 N=${n} | 耗時: ${time.toFixed(3)}s | Checksum: ${checksum.toFixed(6)}\n`;
+          logEl.scrollTop = logEl.scrollHeight;
+          
+          document.getElementById("worker-time").textContent = `${time.toFixed(3)}s`;
+          document.getElementById("ui-blocked").textContent = "0.00s";
+          
+          compareData.worker.push({ n, time });
+          updateCompareChart();
+          enableButtons();
+        } else if (e.data.type === 'error') {
+          logEl.innerText += `[${timestamp}] ❌ Worker 錯誤: ${e.data.message}\n`;
+          logEl.scrollTop = logEl.scrollHeight;
+          enableButtons();
+        }
+      };
+    }
+
+    function enableButtons() {
+      if (window.mainPythonReady && workerReady) {
+        document.getElementById("btn-main").disabled = false;
+        document.getElementById("btn-worker").disabled = false;
+        document.getElementById("btn-compare").disabled = false;
+        document.getElementById("btn-stress-worker").disabled = false;
+      }
+    }
+
+    // Worker 計算
+    document.getElementById("btn-worker").addEventListener("click", function() {
+      const n = parseInt(document.getElementById("test-size").value);
+      const logEl = document.getElementById("log");
+      const timestamp = new Date().toLocaleTimeString();
+      
+      logEl.innerText += `[${timestamp}] 🔢 Worker 開始計算 N=${n}\n`;
+      logEl.scrollTop = logEl.scrollHeight;
+      
+      this.disabled = true;
+      worker.postMessage({ type: 'compute', n });
+    });
+
+    // 對比測試
+    document.getElementById("btn-compare").addEventListener("click", async function() {
+      const logEl = document.getElementById("log");
+      logEl.innerText += "\n=== 開始對比測試 ===\n";
+      
+      this.disabled = true;
+      
+      // 先測主執行緒
+      document.getElementById("btn-main").click();
+      
+      // 等待 2 秒
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // 再測 Worker
+      document.getElementById("btn-worker").click();
+      
+      setTimeout(() => {
+        logEl.innerText += "=== 對比測試完成 ===\n";
+        this.disabled = false;
+      }, 3000);
+    });
+
+    // Worker 壓測
+    document.getElementById("btn-stress-worker").addEventListener("click", async function() {
+      const n = parseInt(document.getElementById("test-size").value);
+      const logEl = document.getElementById("log");
+      
+      logEl.innerText += "\n=== Worker 壓力測試開始 (5次) ===\n";
+      this.disabled = true;
+      
+      for (let i = 0; i < 5; i++) {
+        logEl.innerText += `--- 第 ${i + 1}/5 輪 ---\n`;
+        worker.postMessage({ type: 'compute', n });
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+      
+      logEl.innerText += "=== 壓力測試完成 ===\n";
+      this.disabled = false;
+    });
+
+    // 主執行緒計時器
+    window.startMainTimer = function() {
+      mainTimerStart = performance.now();
+    };
+
+    window.endMainTimer = function(computeTime) {
+      const uiBlockTime = (performance.now() - mainTimerStart) / 1000;
+      document.getElementById("ui-blocked").textContent = `${uiBlockTime.toFixed(3)}s`;
+      
+      const n = parseInt(document.getElementById("test-size").value);
+      compareData.main.push({ n, time: computeTime });
+      updateCompareChart();
+    };
+
+    // 對比圖表
+    function updateCompareChart() {
+      const canvas = document.getElementById("compare-chart");
+      const ctx = canvas.getContext("2d");
+      const width = canvas.width;
+      const height = canvas.height;
+      const padding = 50;
+      
+      ctx.fillStyle = "#fafafa";
+      ctx.fillRect(0, 0, width, height);
+      
+      if (compareData.main.length === 0 && compareData.worker.length === 0) return;
+      
+      // 座標軸
+      ctx.strokeStyle = "#999";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(padding, padding);
+      ctx.lineTo(padding, height - padding);
+      ctx.lineTo(width - padding, height - padding);
+      ctx.stroke();
+      
+      // 繪製數據
+      const allData = [...compareData.main, ...compareData.worker];
+      const maxTime = Math.max(...allData.map(d => d.time));
+      const maxN = Math.max(...allData.map(d => d.n));
+      
+      // 主執行緒數據（紅色）
+      if (compareData.main.length > 0) {
+        ctx.strokeStyle = "#ff6b6b";
+        ctx.fillStyle = "#ff6b6b";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        
+        compareData.main.forEach((d, i) => {
+          const x = padding + ((d.n / maxN) * (width - 2 * padding));
+          const y = height - padding - ((d.time / maxTime) * (height - 2 * padding));
+          
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+          
+          ctx.fillRect(x - 4, y - 4, 8, 8);
+        });
+        ctx.stroke();
+      }
+      
+      // Worker 數據（藍色）
+      if (compareData.worker.length > 0) {
+        ctx.strokeStyle = "#4dabf7";
+        ctx.fillStyle = "#4dabf7";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        
+        compareData.worker.forEach((d, i) => {
+          const x = padding + ((d.n / maxN) * (width - 2 * padding));
+          const y = height - padding - ((d.time / maxTime) * (height - 2 * padding));
+          
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+          
+          ctx.fillRect(x - 4, y - 4, 8, 8);
+        });
+        ctx.stroke();
+      }
+      
+      // 圖例
+      ctx.fillStyle = "#ff6b6b";
+      ctx.fillRect(width - 150, 20, 15, 15);
+      ctx.fillStyle = "#333";
+      ctx.font = "12px sans-serif";
+      ctx.fillText("主執行緒", width - 130, 32);
+      
+      ctx.fillStyle = "#4dabf7";
+      ctx.fillRect(width - 150, 45, 15, 15);
+      ctx.fillText("Worker", width - 130, 57);
+    }
+
+    // 啟動
+    setTimeout(() => {
+      initWorker();
+      
+      const checkReady = setInterval(() => {
+        if (window.mainPythonReady && workerReady) {
+          clearInterval(checkReady);
+        }
+      }, 100);
+    }, 1000);
+  </script>
+</body>
+</html>
