@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>教學型西洋棋開局訓練（純前端 Demo）</title>
+
+  <!-- chess.js: 用於合法走法/產生 SAN/套用走法 -->
+  <script src="https://unpkg.com/chess.js@1.0.0-beta.8/dist/chess.umd.js"></script>
+
+  <style>
+    :root{
+      --bg:#0b1220; --panel:#0f1a2f; --panel2:#111f3a;
+      --text:#e7eefc; --muted:#9fb0d0; --line:rgba(255,255,255,.10);
+      --accent:#63a4ff; --ok:#43d18a; --warn:#ffcc66; --danger:#ff6b6b;
+      --shadow:0 18px 50px rgba(0,0,0,.35); --radius:16px; --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; background:linear-gradient(135deg,#081022 0%, #0b1b3a 55%, #0a1222 100%);
+      color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      min-height:100vh;
+    }
+    header{
+      padding:18px 18px 12px;
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px; flex-wrap:wrap;
+    }
+    .brand{
+      display:flex; flex-direction:column; gap:4px;
+    }
+    .brand h1{
+      margin:0; font-size:18px; letter-spacing:.5px;
+    }
+    .brand .sub{
+      color:var(--muted); font-size:13px;
+    }
+    .wrap{
+      padding: 0 18px 22px;
+      display:grid;
+      grid-template-columns: 420px 1fr;
+      gap:16px;
+    }
+    @media (max-width: 980px){
+      .wrap{ grid-template-columns: 1fr; }
+    }
+
+    .card{
+      background:rgba(15,26,47,.72);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    .card .hd{
+      padding:12px 14px;
+      background:rgba(17,31,58,.6);
+      border-bottom:1px solid var(--line);
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+    }
+    .card .hd .title{
+      font-weight:700;
+      font-size:14px;
+      letter-spacing:.3px;
+    }
+    .card .bd{ padding:14px; }
+
+    .controls{
+      display:grid; grid-template-columns: 1fr 1fr;
+      gap:10px;
+    }
+    .controls .row{ display:flex; flex-direction:column; gap:6px; }
+    label{ font-size:12px; color:var(--muted); }
+    select, button{
+      width:100%;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:rgba(11,18,32,.7);
+      color:var(--text);
+      padding:10px 12px;
+      outline:none;
+    }
+    select:focus, button:focus{ border-color: rgba(99,164,255,.6); }
+    button{
+      cursor:pointer;
+      transition: transform .03s ease, filter .15s ease, border-color .15s ease;
+    }
+    button:hover{ filter:brightness(1.06); border-color: rgba(99,164,255,.55); }
+    button:active{ transform: translateY(1px); }
+    .btns{
+      display:grid; grid-template-columns: 1fr 1fr 1fr;
+      gap:10px; margin-top:10px;
+    }
+
+    .layout{
+      display:grid;
+      grid-template-columns: 360px 1fr;
+      gap:14px;
+      align-items:start;
+    }
+    @media (max-width: 980px){
+      .layout{ grid-template-columns: 1fr; }
+    }
+
+    /* Board */
+    .board-wrap{
+      display:flex; flex-direction:column; gap:10px;
+    }
+    .board{
+      width:360px; height:360px;
+      border-radius:14px;
+      overflow:hidden;
+      border:1px solid var(--line);
+      box-shadow: 0 16px 40px rgba(0,0,0,.35);
+      user-select:none;
+      display:grid;
+      grid-template-columns: repeat(8, 1fr);
+      grid-template-rows: repeat(8, 1fr);
+      background: #14213d;
+    }
+    .sq{
+      display:flex; align-items:center; justify-content:center;
+      font-size:30px;
+      position:relative;
+      cursor:pointer;
+    }
+    .light{ background: rgba(236,236,236,.12); }
+    .dark{ background: rgba(0,0,0,.22); }
+    .sq:hover{ outline: 2px solid rgba(99,164,255,.35); outline-offset:-2px; }
+    .sq.sel{ outline: 3px solid rgba(99,164,255,.85); outline-offset:-3px; }
+    .sq.hint{ box-shadow: inset 0 0 0 3px rgba(67,209,138,.6); }
+    .coords{
+      display:flex; justify-content:space-between;
+      color:var(--muted); font-size:12px;
+      width:360px;
+      padding: 0 2px;
+    }
+    .meta{
+      display:flex; gap:10px; flex-wrap:wrap;
+      font-size:12px; color:var(--muted);
+    }
+    .pill{
+      border:1px solid var(--line);
+      background: rgba(11,18,32,.55);
+      padding:6px 10px;
+      border-radius:999px;
+    }
+
+    /* Right panel */
+    .panel{
+      display:flex; flex-direction:column; gap:12px;
+    }
+    .box{
+      background:rgba(11,18,32,.55);
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:12px;
+    }
+    .box h3{
+      margin:0 0 8px;
+      font-size:13px;
+      color: var(--text);
+      letter-spacing:.2px;
+    }
+    .muted{ color:var(--muted); }
+    .log{
+      font-family: var(--mono);
+      font-size:12px;
+      line-height:1.5;
+      white-space:pre-wrap;
+      margin:0;
+    }
+    .status{
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background: rgba(11,18,32,.45);
+      font-size:13px;
+    }
+    .status.ok{ border-color: rgba(67,209,138,.45); }
+    .status.warn{ border-color: rgba(255,204,102,.55); }
+    .status.danger{ border-color: rgba(255,107,107,.55); }
+    .small{ font-size:12px; }
+
+    /* Quiz */
+    .choices{
+      display:grid; gap:8px;
+    }
+    .choice{
+      text-align:left;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background: rgba(15,26,47,.45);
+      padding:10px 12px;
+    }
+
+    .footer{
+      padding: 0 18px 20px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    a{ color: var(--accent); text-decoration:none; }
+    a:hover{ text-decoration:underline; }
+  </style>
+</head>
+
+<body>
+<header>
+  <div class="brand">
+    <h1>教學型西洋棋開局訓練（純前端 Demo）</h1>
+    <div class="sub">開局樹（Line）× 教學解說（Explanation）× 錯誤回饋（WrongMove）× 練習/測驗（Exercise）</div>
+  </div>
+  <div class="meta">
+    <div class="pill">模式：資料驅動教學</div>
+    <div class="pill">引擎：chess.js（合法走法/SAN）</div>
+    <div class="pill">單檔可離線（首次需載入 CDN）</div>
+  </div>
+</header>
+
+<div class="wrap">
+  <!-- Left: Controls -->
+  <section class="card">
+    <div class="hd">
+      <div class="title">設定</div>
+      <div class="muted small">選開局 → 選路線 → 選模式</div>
+    </div>
+    <div class="bd">
+      <div class="controls">
+        <div class="row">
+          <label>開局（Opening）</label>
+          <select id="selOpening"></select>
+        </div>
+        <div class="row">
+          <label>路線（Line）</label>
+          <select id="selLine"></select>
+        </div>
+        <div class="row">
+          <label>模式（Mode）</label>
+          <select id="selMode">
+            <option value="learn">📖 教學模式（逐步解說）</option>
+            <option value="practice">🎯 練習模式（你下 + 系統回饋）</option>
+            <option value="quiz">🧩 測驗模式（概念選擇題）</option>
+          </select>
+        </div>
+        <div class="row">
+          <label>你要扮演（Practice Only）</label>
+          <select id="selSide">
+            <option value="w">白方</option>
+            <option value="b">黑方</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="btns">
+        <button id="btnReset">重置</button>
+        <button id="btnPrev">上一步</button>
+        <button id="btnNext">下一步</button>
+      </div>
+
+      <div style="margin-top:12px" class="status" id="statusBox">
+        請選擇開局與路線，然後開始練習。
+      </div>
+
+      <div style="margin-top:12px" class="box">
+        <h3>本 Demo 的資料擴充方式</h3>
+        <div class="muted small">
+          你可以在程式最下方的 <span style="font-family:var(--mono)">DATA</span> 裡新增 Opening / Line / Node（局面節點）即可。<br/>
+          Node 用 <span style="font-family:var(--mono)">fen</span> 當局面鍵，並提供：推薦著法、解說、錯誤著法、測驗。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Right: Board + Panels -->
+  <section class="card">
+    <div class="hd">
+      <div class="title">棋盤與教學</div>
+      <div class="muted small" id="headlineRight">—</div>
+    </div>
+    <div class="bd">
+      <div class="layout">
+        <div class="board-wrap">
+          <div class="board" id="board"></div>
+          <div class="coords">
+            <span>a</span><span>b</span><span>c</span><span>d</span><span>e</span><span>f</span><span>g</span><span>h</span>
+          </div>
+          <div class="muted small" id="turnInfo">—</div>
+        </div>
+
+        <div class="panel">
+          <div class="box">
+            <h3>教學重點（Explanation）</h3>
+            <div id="explain" class="small muted">—</div>
+          </div>
+
+          <div class="box" id="quizBox" style="display:none;">
+            <h3>小測驗（Exercise）</h3>
+            <div id="quizPrompt" class="small" style="margin-bottom:10px;">—</div>
+            <div class="choices" id="quizChoices"></div>
+            <div id="quizFeedback" class="small muted" style="margin-top:10px;">—</div>
+          </div>
+
+          <div class="box">
+            <h3>棋譜（SAN）</h3>
+            <pre class="log" id="pgnLog">—</pre>
+          </div>
+
+          <div class="box">
+            <h3>系統訊息</h3>
+            <pre class="log" id="sysLog">—</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="footer">
+  提示：此 Demo 主要驗證「資料格式是否足以驅動教學互動」。若你要進一步做到「更多分支 + 自動評估 + 進度追蹤」，下一步可以加：學習者 Profile、錯誤統計、概念圖譜（tags）、以及 Stockfish 評估（WASM）。
+</div>
+
+<script>
+  // -----------------------------
+  // Data (你要擴充開局/分支就改這裡)
+  // -----------------------------
+  const DATA = {
+    openings: [
+      {
+        opening_id: "OP001",
+        name: "義大利開局（Italian Game）",
+        eco: "C50",
+        difficulty: "Beginner",
+        style: ["Open Game", "Tactical"],
+        description: "快速發展、針對 f7 弱點的典型入門開局。"
+      }
+    ],
+    lines: [
+      {
+        line_id: "LINE_ITALIAN_MAIN",
+        opening_id: "OP001",
+        name: "主線：1.e4 e5 2.Nf3 Nc6 3.Bc4",
+        line_type: "Main",
+        // 以 SAN 形式保存（教學與比對用）
+        move_sequence_san: ["e4", "e5", "Nf3", "Nc6", "Bc4"],
+        teaching_focus: ["Development", "f7 Weakness", "Tempo"]
+      }
+    ],
+    // Node 以「到達該局面時」要顯示的教學資訊為主（資料驅動）
+    // key: fen（局面）
+    nodes: [
+      // startpos
+      {
+        fen: "startpos",
+        title: "起始局面",
+        is_key_teaching_point: true,
+        explanation: "我們要用義大利開局示範：用『發展＋中心控制』建立主動權。",
+        // 在教學/練習中，系統期待的下一步（來自 line 的下一步）
+        // 也可以覆寫成多個允許走法（例如同一局面有多種教學可行路）
+        expected_next_san: ["e4"],
+        wrong_moves: [
+          {
+            san: "a4",
+            reason: "邊兵通常不影響中心，容易浪費節奏。",
+            mistake_type: "No Center Impact"
+          }
+        ],
+        exercise: {
+          prompt: "開局最優先的策略通常是？",
+          choices: ["先吃子", "控制中心並發展子力", "把后早點放出來"],
+          correct: "控制中心並發展子力",
+          feedback: "開局重點：中心控制、子力發展、王安全。"
+        }
+      },
+
+      // after 1.e4 (black to move)
+      {
+        fen: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+        title: "1.e4 之後（黑方走）",
+        is_key_teaching_point: true,
+        explanation: "1.e4 直接搶中心（d5/f5）並打開主教與皇后通道，是最典型的開放型開局起手。",
+        expected_next_san: ["e5"],
+        wrong_moves: [
+          {
+            san: "a6",
+            reason: "過於被動，沒有回應中心，容易讓白方無壓力完成發展。",
+            mistake_type: "Passive"
+          }
+        ],
+        exercise: null
+      },
+
+      // after 1...e5 (white to move)
+      {
+        fen: "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+        title: "1...e5 之後（白方走）",
+        is_key_teaching_point: true,
+        explanation: "黑方用 1...e5 對稱回應中心。白方常用 Nf3：一邊發展，一邊攻擊 e5，這叫『帶威脅的發展』。",
+        expected_next_san: ["Nf3"],
+        wrong_moves: [
+          {
+            san: "Qh5",
+            reason: "過早出后通常會被子力（如 Nc6）追趕，浪費節奏。",
+            mistake_type: "Early Queen Move"
+          }
+        ],
+        exercise: {
+          prompt: "為什麼 2.Nf3 常被視為好棋？",
+          choices: ["因為能直接將死", "因為同時發展並攻擊 e5", "因為能立刻換后"],
+          correct: "因為同時發展並攻擊 e5",
+          feedback: "你在開局想要的是：發展（development）＋節奏（tempo）。"
+        }
+      },
+
+      // after 2.Nf3 (black to move)
+      {
+        fen: "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2",
+        title: "2.Nf3 之後（黑方走）",
+        is_key_teaching_point: false,
+        explanation: "黑方通常用 Nc6 保護 e5 並發展子力，維持中心張力。",
+        expected_next_san: ["Nc6"],
+        wrong_moves: [
+          {
+            san: "f6",
+            reason: "這會削弱 e6、g6 並讓王翼變脆（而且也擋到子力發展）。",
+            mistake_type: "King Safety"
+          }
+        ],
+        exercise: null
+      },
+
+      // after 2...Nc6 (white to move)
+      {
+        fen: "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3",
+        title: "2...Nc6 之後（白方走）",
+        is_key_teaching_point: true,
+        explanation: "白方的 Bc4 是義大利開局的標誌：主教對準 f7 —— 黑方開局唯一『只被國王保護』的弱點格。",
+        expected_next_san: ["Bc4"],
+        wrong_moves: [
+          {
+            san: "Bb5",
+            reason: "Bb5 是西班牙開局（Ruy Lopez）的路線，不是義大利主線。你可以另建一條 Line 來教它。",
+            mistake_type: "Different Opening Branch"
+          }
+        ],
+        exercise: {
+          prompt: "為何 f7 常被稱為黑方開局弱點？",
+          choices: ["因為那裡放了皇后", "因為通常只由國王防守", "因為那裡永遠不能走子"],
+          correct: "因為通常只由國王防守",
+          feedback: "這就是義大利開局很適合教『弱點格 + 快速發展』的原因。"
+        }
+      },
+
+      // after 3.Bc4 (black to move) - we end demo line here
+      {
+        fen: "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 2 3",
+        title: "3.Bc4 之後（黑方走）",
+        is_key_teaching_point: true,
+        explanation: "到這裡你已完成：中心兵 + 馬 + 象 的標準三步發展。接下來會進入更多分支（如 ...Bc5 / ...Nf6）。",
+        expected_next_san: ["Bc5", "Nf6"], // 示範：同局面可容許多個教學分支
+        wrong_moves: [
+          {
+            san: "Qh4",
+            reason: "過早出后同樣容易被追趕，且對開局核心（發展與王安全）幫助有限。",
+            mistake_type: "Early Queen Move"
+          }
+        ],
+        exercise: null
+      }
+    ]
+  };
+
+  // -----------------------------
+  // App State
+  // -----------------------------
+  const { Chess } = window.Chess;
+  let chess = new Chess(); // chess.js 內部狀態
+  let selectedSquare = null;
+
+  // 目前選擇
+  let curOpeningId = null;
+  let curLineId = null;
+  let curMode = "learn";
+  let curPracticeSide = "w";
+
+  // line 進度（以 ply / SAN 序列的索引來控制）
+  let lineSAN = [];
+  let plyIndex = 0; // 0 表示 startpos
+  let historyFEN = []; // 便於回退（每個 ply 的 fen）
+
+  // UI refs
+  const elOpening = document.getElementById("selOpening");
+  const elLine = document.getElementById("selLine");
+  const elMode = document.getElementById("selMode");
+  const elSide = document.getElementById("selSide");
+  const elReset = document.getElementById("btnReset");
+  const elPrev = document.getElementById("btnPrev");
+  const elNext = document.getElementById("btnNext");
+
+  const elBoard = document.getElementById("board");
+  const elExplain = document.getElementById("explain");
+  const elPgn = document.getElementById("pgnLog");
+  const elSys = document.getElementById("sysLog");
+  const elStatus = document.getElementById("statusBox");
+  const elTurnInfo = document.getElementById("turnInfo");
+  const elHeadlineRight = document.getElementById("headlineRight");
+
+  const elQuizBox = document.getElementById("quizBox");
+  const elQuizPrompt = document.getElementById("quizPrompt");
+  const elQuizChoices = document.getElementById("quizChoices");
+  const elQuizFeedback = document.getElementById("quizFeedback");
+
+  // Piece map (unicode)
+  const PIECE_UNI = {
+    wp:"♙", wn:"♘", wb:"♗", wr:"♖", wq:"♕", wk:"♔",
+    bp:"♟", bn:"♞", bb:"♝", br:"♜", bq:"♛", bk:"♚"
+  };
+
+  // -----------------------------
+  // Helpers
+  // -----------------------------
+  function getLinesByOpening(openingId){
+    return DATA.lines.filter(l => l.opening_id === openingId);
+  }
+  function getOpening(openingId){
+    return DATA.openings.find(o => o.opening_id === openingId);
+  }
+  function getLine(lineId){
+    return DATA.lines.find(l => l.line_id === lineId);
+  }
+  function getNodeByFEN(fen){
+    // fen 可能是 "startpos"
+    if (fen === "startpos") return DATA.nodes.find(n => n.fen === "startpos") || null;
+    return DATA.nodes.find(n => n.fen === fen) || null;
+  }
+  function setStatus(kind, text){
+    elStatus.className = "status" + (kind ? ` ${kind}` : "");
+    elStatus.textContent = text;
+  }
+  function logSys(text){
+    const prev = (elSys.textContent === "—") ? "" : elSys.textContent + "\n";
+    elSys.textContent = (prev + text).trim();
+  }
+  function clearSys(){
+    elSys.textContent = "—";
+  }
+  function updateHeadline(){
+    const op = getOpening(curOpeningId);
+    const li = getLine(curLineId);
+    if(!op || !li){
+      elHeadlineRight.textContent = "—";
+      return;
+    }
+    elHeadlineRight.textContent = `${op.name} / ${li.name}`;
+  }
+
+  // -----------------------------
+  // Board Rendering
+  // -----------------------------
+  function buildBoard(){
+    elBoard.innerHTML = "";
+    // ranks 8->1, files a->h
+    const files = ["a","b","c","d","e","f","g","h"];
+    for(let r=8; r>=1; r--){
+      for(let f=0; f<8; f++){
+        const sq = files[f] + r;
+        const isLight = ( (f + r) % 2 === 1 ); // simple alternating
+        const div = document.createElement("div");
+        div.className = "sq " + (isLight ? "light" : "dark");
+        div.dataset.sq = sq;
+        div.addEventListener("click", onSquareClick);
+        elBoard.appendChild(div);
+      }
+    }
+  }
+
+  function renderPosition(){
+    // clear selections/hints
+    [...elBoard.querySelectorAll(".sq")].forEach(s => {
+      s.classList.remove("sel","hint");
+      s.textContent = "";
+    });
+
+    const board = chess.board(); // 8x8 array, [rank][file] rank 0 is 8th
+    const files = ["a","b","c","d","e","f","g","h"];
+    for(let rankIdx=0; rankIdx<8; rankIdx++){
+      for(let fileIdx=0; fileIdx<8; fileIdx++){
+        const p = board[rankIdx][fileIdx];
+        if(!p) continue;
+        const sq = files[fileIdx] + (8 - rankIdx);
+        const key = p.color + p.type; // e.g., 'wp'
+        const el = elBoard.querySelector(`.sq[data-sq="${sq}"]`);
+        if(el) el.textContent = PIECE_UNI[key] || "";
+      }
+    }
+
+    // update info
+    const turn = chess.turn() === "w" ? "白方" : "黑方";
+    elTurnInfo.textContent = `輪到：${turn}｜FEN：${chess.fen()}`;
+    elPgn.textContent = chess.pgn({ newline_char: "\n" }) || "—";
+
+    // explanation driven by node
+    const node = getNodeByFEN(getCurrentNodeFENKey());
+    if(node?.explanation){
+      elExplain.textContent = node.explanation;
+    }else{
+      elExplain.textContent = "（此局面尚未配置教學解說）";
+    }
+
+    // quiz mode: show exercise (if exists)
+    if(curMode === "quiz"){
+      renderQuiz(node);
+    }else{
+      elQuizBox.style.display = "none";
+    }
+  }
+
+  function highlightMoves(fromSq){
+    [...elBoard.querySelectorAll(".sq")].forEach(s => s.classList.remove("hint"));
+    const moves = chess.moves({ square: fromSq, verbose: true });
+    for(const m of moves){
+      const el = elBoard.querySelector(`.sq[data-sq="${m.to}"]`);
+      if(el) el.classList.add("hint");
+    }
+  }
+
+  // -----------------------------
+  // Line Progress / Node Key
+  // -----------------------------
+  function getCurrentNodeFENKey(){
+    // node key uses "startpos" when plyIndex === 0
+    if(plyIndex === 0) return "startpos";
+    return chess.fen();
+  }
+
+  function resetToLineStart(){
+    chess = new Chess();
+    selectedSquare = null;
+    plyIndex = 0;
+    historyFEN = ["startpos"];
+    clearSys();
+    setStatus(null, "已重置。你可以開始教學/練習。");
+    renderPosition();
+  }
+
+  function applySANMove(san){
+    try{
+      const move = chess.move(san, { sloppy: true });
+      if(!move) return { ok:false, err:"非法走法" };
+      historyFEN.push(chess.fen());
+      plyIndex++;
+      return { ok:true, move };
+    }catch(e){
+      return { ok:false, err: String(e?.message || e) };
+    }
+  }
+
+  function goNextLearn(){
+    const nextSan = lineSAN[plyIndex]; // plyIndex=0 expects move0
+    if(!nextSan){
+      setStatus("ok","已到此路線結尾（你可以切到練習模式再走一次）。");
+      logSys("（教學）路線結尾。");
+      return;
+    }
+    const r = applySANMove(nextSan);
+    if(!r.ok){
+      setStatus("danger", `無法套用路線走法：${nextSan}（${r.err}）`);
+      logSys(`套用失敗：${nextSan} / ${r.err}`);
+      return;
+    }
+    setStatus("ok", `（教學）已走：${nextSan}`);
+    logSys(`（教學）系統走：${nextSan}`);
+    renderPosition();
+  }
+
+  function goPrev(){
+    if(plyIndex <= 0){
+      setStatus("warn","已在起始局面。");
+      return;
+    }
+    // undo one move
+    chess.undo();
+    plyIndex--;
+    historyFEN.pop();
+    selectedSquare = null;
+    setStatus(null, "已回到上一步。");
+    renderPosition();
+  }
+
+  // -----------------------------
+  // Practice: validate vs expected + wrong move feedback
+  // -----------------------------
+  function validateMoveAgainstNode(playerSAN){
+    const nodeKey = getCurrentNodeFENKey(); // BEFORE move applied in practice flow
+    const node = getNodeByFEN(nodeKey);
+    if(!node){
+      return { kind:"warn", msg:"此局面沒有教學節點資料：系統僅做合法性判斷。", node:null };
+    }
+    // wrong move match
+    if(Array.isArray(node.wrong_moves)){
+      const wm = node.wrong_moves.find(x => normalizeSAN(x.san) === normalizeSAN(playerSAN));
+      if(wm){
+        return {
+          kind:"danger",
+          msg:`❌ 常見錯誤：${wm.san}（${wm.mistake_type}）\n原因：${wm.reason}`,
+          node
+        };
+      }
+    }
+    // expected next
+    if(Array.isArray(node.expected_next_san) && node.expected_next_san.length>0){
+      const ok = node.expected_next_san.some(x => normalizeSAN(x) === normalizeSAN(playerSAN));
+      if(ok){
+        return { kind:"ok", msg:`✅ 正確：${playerSAN}\n重點：${node.explanation || "—"}`, node };
+      }
+      return {
+        kind:"warn",
+        msg:`⚠️ 不是此教學路線的推薦著法：你下了 ${playerSAN}\n建議：${node.expected_next_san.join(" 或 ")}`,
+        node
+      };
+    }
+    return { kind:"warn", msg:"此局面沒有設定 expected_next_san。", node };
+  }
+
+  function normalizeSAN(s){
+    return (s || "").replace(/\s+/g,"").replace(/[+#?!]/g,"").toLowerCase();
+  }
+
+  function practiceMaybeAutoReply(){
+    // 系統扮演對手：如果輪到對手，且 line 有下一步，就走 line 的下一步
+    const sideToMove = chess.turn(); // 'w'/'b'
+    const playerSide = curPracticeSide;
+    if(sideToMove === playerSide) return;
+
+    // 期待系統走 line 的下一步（依 plyIndex）
+    const nextSan = lineSAN[plyIndex];
+    if(!nextSan){
+      setStatus("ok","練習到路線結尾（你可以重置或換分支）。");
+      logSys("（練習）路線結尾。");
+      return;
+    }
+    const r = applySANMove(nextSan);
+    if(!r.ok){
+      setStatus("danger", `對手走法套用失敗：${nextSan}（${r.err}）`);
+      logSys(`（練習）對手走失敗：${nextSan} / ${r.err}`);
+      return;
+    }
+    logSys(`（練習）對手走：${nextSan}`);
+    renderPosition();
+  }
+
+  // -----------------------------
+  // Click-to-move
+  // -----------------------------
+  function onSquareClick(e){
+    const sq = e.currentTarget.dataset.sq;
+    if(!sq) return;
+
+    // quiz mode: board still clickable, but keep behavior consistent
+    // learn mode: ignore manual moves (use next/prev)
+    if(curMode === "learn"){
+      setStatus("warn","教學模式請用「下一步/上一步」，避免破壞路線。");
+      return;
+    }
+
+    // practice mode: only allow moving if it's player's turn
+    if(curMode === "practice"){
+      if(chess.turn() !== curPracticeSide){
+        setStatus("warn","現在輪到系統/對手走。");
+        return;
+      }
+    }
+
+    const el = elBoard.querySelector(`.sq[data-sq="${sq}"]`);
+    if(!selectedSquare){
+      // select
+      selectedSquare = sq;
+      [...elBoard.querySelectorAll(".sq")].forEach(s => s.classList.remove("sel"));
+      if(el) el.classList.add("sel");
+      highlightMoves(sq);
+      return;
+    }
+
+    // attempt move selectedSquare -> sq
+    const from = selectedSquare;
+    const to = sq;
+
+    // clear selection
+    selectedSquare = null;
+    [...elBoard.querySelectorAll(".sq")].forEach(s => s.classList.remove("sel","hint"));
+
+    // capture node key BEFORE applying (for validation)
+    const nodeKeyBefore = getCurrentNodeFENKey();
+
+    // try move
+    let moveObj = null;
+    try{
+      moveObj = chess.move({ from, to, promotion: "q" }); // simple auto queen promotion
+    }catch(_){}
+    if(!moveObj){
+      setStatus("danger", `非法走法：${from} → ${to}`);
+      logSys(`非法走法：${from}→${to}`);
+      // restore explanation for current node
+      renderPosition();
+      return;
+    }
+
+    // update plyIndex/history
+    historyFEN.push(chess.fen());
+    plyIndex++;
+
+    const playerSAN = moveObj.san;
+
+    if(curMode === "practice"){
+      // validate vs node BEFORE move (nodeKeyBefore)
+      const node = getNodeByFEN(nodeKeyBefore);
+      let verdict = { kind:"warn", msg:"—" };
+      if(node){
+        // temporarily validate against nodeKeyBefore by injecting into helper
+        // easiest: revert reading current node by passing playerSAN w/ node from before
+        // We'll reuse validateMoveAgainstNode by setting a custom lookup
+        verdict = (function(){
+          // validate against explicit node
+          // wrong
+          if(Array.isArray(node.wrong_moves)){
+            const wm = node.wrong_moves.find(x => normalizeSAN(x.san) === normalizeSAN(playerSAN));
+            if(wm){
+              return {
+                kind:"danger",
+                msg:`❌ 常見錯誤：${wm.san}（${wm.mistake_type}）\n原因：${wm.reason}`
+              };
+            }
+          }
+          if(Array.isArray(node.expected_next_san) && node.expected_next_san.length>0){
+            const ok = node.expected_next_san.some(x => normalizeSAN(x) === normalizeSAN(playerSAN));
+            if(ok){
+              return { kind:"ok", msg:`✅ 正確：${playerSAN}\n重點：${node.explanation || "—"}` };
+            }
+            return { kind:"warn", msg:`⚠️ 非推薦著法：${playerSAN}\n建議：${node.expected_next_san.join(" 或 ")}` };
+          }
+          return { kind:"warn", msg:`你下了：${playerSAN}\n（此局面未配置 expected_next_san）` };
+        })();
+      }else{
+        verdict = { kind:"warn", msg:`你下了：${playerSAN}\n（此局面尚未有教學節點資料）` };
+      }
+
+      setStatus(verdict.kind, verdict.msg);
+      logSys(`（練習）你走：${playerSAN}`);
+
+      renderPosition();
+
+      // auto reply by line
+      practiceMaybeAutoReply();
+      return;
+    }
+
+    // quiz mode: still allow free play, but show status only
+    setStatus("ok", `你走：${playerSAN}`);
+    logSys(`（自由）你走：${playerSAN}`);
+    renderPosition();
+  }
+
+  // -----------------------------
+  // Quiz rendering
+  // -----------------------------
+  function renderQuiz(node){
+    elQuizBox.style.display = "block";
+    elQuizFeedback.textContent = "—";
+    elQuizChoices.innerHTML = "";
+
+    const ex = node?.exercise;
+    if(!ex){
+      elQuizPrompt.textContent = "（此局面沒有配置測驗）";
+      return;
+    }
+
+    elQuizPrompt.textContent = ex.prompt;
+
+    for(const c of ex.choices){
+      const btn = document.createElement("button");
+      btn.className = "choice";
+      btn.textContent = c;
+      btn.addEventListener("click", () => {
+        const correct = (c === ex.correct);
+        elQuizFeedback.textContent = correct ? `✅ 正確！${ex.feedback}` : `❌ 不正確。提示：${ex.feedback}`;
+        setStatus(correct ? "ok" : "warn", correct ? "測驗答對。" : "測驗答錯，再想想。");
+      });
+      elQuizChoices.appendChild(btn);
+    }
+  }
+
+  // -----------------------------
+  // Wiring: selectors & buttons
+  // -----------------------------
+  function populateOpenings(){
+    elOpening.innerHTML = "";
+    for(const op of DATA.openings){
+      const opt = document.createElement("option");
+      opt.value = op.opening_id;
+      opt.textContent = `${op.name}（ECO: ${op.eco}｜${op.difficulty}）`;
+      elOpening.appendChild(opt);
+    }
+    curOpeningId = DATA.openings[0]?.opening_id || null;
+    elOpening.value = curOpeningId || "";
+  }
+
+  function populateLines(){
+    elLine.innerHTML = "";
+    const lines = getLinesByOpening(curOpeningId);
+    for(const li of lines){
+      const opt = document.createElement("option");
+      opt.value = li.line_id;
+      opt.textContent = `${li.name}`;
+      elLine.appendChild(opt);
+    }
+    curLineId = lines[0]?.line_id || null;
+    elLine.value = curLineId || "";
+  }
+
+  function loadLine(){
+    const li = getLine(curLineId);
+    if(!li){
+      setStatus("danger","找不到路線資料。");
+      return;
+    }
+    lineSAN = li.move_sequence_san.slice();
+    resetToLineStart();
+
+    const op = getOpening(curOpeningId);
+    updateHeadline();
+    setStatus(null, `已載入：${op?.name || ""} / ${li.name}`);
+    logSys(`載入路線：${li.line_id}`);
+  }
+
+  elOpening.addEventListener("change", () => {
+    curOpeningId = elOpening.value;
+    populateLines();
+    loadLine();
+  });
+
+  elLine.addEventListener("change", () => {
+    curLineId = elLine.value;
+    loadLine();
+  });
+
+  elMode.addEventListener("change", () => {
+    curMode = elMode.value;
+    clearSys();
+    selectedSquare = null;
+    renderPosition();
+
+    if(curMode === "learn"){
+      setStatus(null,"教學模式：用「下一步/上一步」逐步看解說。");
+    }else if(curMode === "practice"){
+      setStatus(null,"練習模式：點選棋子 → 點目標格下棋。系統會回饋『正確/非推薦/常見錯誤』。");
+      // practice mode might require auto reply if player chose to be black
+      practiceMaybeAutoReply();
+    }else{
+      setStatus(null,"測驗模式：看局面解說，回答概念選擇題（若該局面有配置）。棋盤仍可自由走。");
+    }
+  });
+
+  elSide.addEventListener("change", () => {
+    curPracticeSide = elSide.value;
+    if(curMode === "practice"){
+      setStatus(null, `練習模式：你扮演 ${curPracticeSide==="w"?"白方":"黑方"}。`);
+      practiceMaybeAutoReply();
+    }
+  });
+
+  elReset.addEventListener("click", () => {
+    loadLine();
+    if(curMode === "practice"){
+      practiceMaybeAutoReply();
+    }
+  });
+
+  elPrev.addEventListener("click", () => {
+    goPrev();
+  });
+
+  elNext.addEventListener("click", () => {
+    if(curMode !== "learn"){
+      setStatus("warn","「下一步」主要用於教學模式。練習模式請直接在棋盤上走。");
+      return;
+    }
+    goNextLearn();
+  });
+
+  // -----------------------------
+  // Init
+  // -----------------------------
+  buildBoard();
+  populateOpenings();
+  populateLines();
+  loadLine();
+  renderPosition();
+  setStatus(null,"教學模式：按「下一步」開始。練習模式：直接在棋盤上點選走子。");
+</script>
+</body>
+</html>
