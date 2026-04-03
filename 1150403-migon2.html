@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>迷宮挑戰 v1.5 - 暢通無阻版</title>
+  <title>迷宮挑戰 v1.6 - 360度全向搖桿版</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
@@ -13,7 +13,7 @@
       margin: 0;
       padding: 0;
       overflow: hidden;
-      touch-action: none;
+      touch-action: none; /* 防止畫面滾動 */
       font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
       background: radial-gradient(circle at 50% 0%, #e0eafc 0%, #cfdef3 100%);
     }
@@ -34,6 +34,7 @@
       max-width: min(84vw, 240px);
       transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
       transform-origin: top left;
+      pointer-events: auto;
     }
 
     #ui.minimized {
@@ -41,7 +42,7 @@
       opacity: 0.4;
     }
 
-    #ui.minimized:hover, #ui.minimized:active {
+    #ui.minimized:hover {
       transform: scale(1);
       opacity: 1;
     }
@@ -137,68 +138,51 @@
 
     canvas { display: block; }
 
-    #dpad {
+    /* 全向虛擬搖桿樣式 */
+    #joystick-zone {
       position: absolute;
-      left: 16px;
-      bottom: 16px;
+      left: 20px;
+      bottom: 20px;
       z-index: 35;
-      width: 156px;
-      height: 156px;
-      user-select: none;
-      touch-action: none;
-    }
-
-    #dpad .pad-btn {
-      position: absolute;
-      width: 52px;
-      height: 52px;
-      border-radius: 16px;
-      border: 1px solid rgba(255, 255, 255, 0.5);
+      width: 140px;
+      height: 140px;
       background: rgba(255, 255, 255, 0.25);
       backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px);
-      color: #1e293b;
-      font-size: 22px;
+      border: 2px solid rgba(255, 255, 255, 0.4);
+      border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.08), inset 0 1px 1px rgba(255,255,255,0.8);
-      transition: all 0.1s;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1), inset 0 2px 8px rgba(255,255,255,0.5);
     }
 
-    #dpad .pad-btn.active {
-      background: rgba(59, 130, 246, 0.85);
-      color: white;
-      transform: scale(0.92);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15), inset 0 2px 4px rgba(0,0,0,0.2);
-      border-color: transparent;
+    #joystick-knob {
+      width: 56px;
+      height: 56px;
+      background: radial-gradient(circle at 30% 30%, #60a5fa, #2563eb);
+      border-radius: 50%;
+      box-shadow: 0 6px 16px rgba(37,99,235,0.4), inset 0 -2px 6px rgba(0,0,0,0.3);
+      pointer-events: none; /* 讓事件穿透到 zone */
+      transform: translate(0px, 0px);
     }
 
-    #pad-up    { left: 52px; top: 0; }
-    #pad-left  { left: 0; top: 52px; }
-    #pad-right { right: 0; top: 52px; }
-    #pad-down  { left: 52px; bottom: 0; }
+    /* 搖桿回彈動畫 */
+    #joystick-knob.snap-back {
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
 
     @media (min-width: 769px) {
       #ui { left: 24px; top: 24px; min-width: 230px; }
-      #dpad {
-        width: 170px;
-        height: 170px;
-        left: 24px;
-        bottom: 24px;
-      }
-      #dpad .pad-btn { width: 56px; height: 56px; font-size: 24px; }
-      #pad-up    { left: 57px; top: 0; }
-      #pad-left  { left: 0; top: 57px; }
-      #pad-right { right: 0; top: 57px; }
-      #pad-down  { left: 57px; bottom: 0; }
+      #joystick-zone { left: 32px; bottom: 32px; width: 160px; height: 160px; }
+      #joystick-knob { width: 64px; height: 64px; }
     }
   </style>
 </head>
 <body>
   <div id="ui">
     <h1>🧩 迷宮三關挑戰</h1>
-    <div class="ver">v1.5 Smooth Engine</div>
+    <div class="ver">v1.6 360° Joystick Edition</div>
     <div class="row">關卡進度 <span><span id="levelText">1</span> / 3</span></div>
     <div class="row">本關時間 <span><span id="levelTime">0.00</span>s</span></div>
     <div class="row">累計時間 <span><span id="totalTime">0.00</span>s</span></div>
@@ -208,11 +192,8 @@
 
   <div id="centerMessage"></div>
 
-  <div id="dpad">
-    <div class="pad-btn" id="pad-up">▲</div>
-    <div class="pad-btn" id="pad-left">◀</div>
-    <div class="pad-btn" id="pad-right">▶</div>
-    <div class="pad-btn" id="pad-down">▼</div>
+  <div id="joystick-zone">
+    <div id="joystick-knob"></div>
   </div>
 
   <script>
@@ -222,7 +203,7 @@
     const H = window.innerHeight;
 
     const engine = Engine.create();
-    engine.gravity.y = 0;
+    engine.gravity.y = 0; // 無重力，由玩家控制
     const world = engine.world;
 
     const render = Render.create({
@@ -256,12 +237,13 @@
 
     let ball = null;
     let mazeMetrics = null;
-    
-    // 改為純邏輯座標物件，不再加入物理引擎
     let startZone = null;
     let goalZone = null;
 
-    const pressed = { up: false, down: false, left: false, right: false };
+    // --- 虛擬搖桿與鍵盤輸入狀態 ---
+    const keys = { up: false, down: false, left: false, right: false };
+    let joyActive = false;
+    let joyVector = { x: 0, y: 0 }; // 範圍 -1 到 1
 
     function randInt(min, max) {
       return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -279,9 +261,7 @@
       centerMessageEl.textContent = text;
       centerMessageEl.className = "show";
       if (duration > 0) {
-        setTimeout(() => {
-          centerMessageEl.className = "";
-        }, duration);
+        setTimeout(() => { centerMessageEl.className = ""; }, duration);
       }
     }
 
@@ -323,10 +303,8 @@
         grid[row][col] = true;
 
         const neighbors = shuffle([
-          [row - 1, col, "up"],
-          [row, col + 1, "right"],
-          [row + 1, col, "down"],
-          [row, col - 1, "left"]
+          [row - 1, col, "up"], [row, col + 1, "right"],
+          [row + 1, col, "down"], [row, col - 1, "left"]
         ]);
 
         for (const [nextRow, nextCol, direction] of neighbors) {
@@ -353,14 +331,12 @@
 
       let rows, cols, wallThickness, speed;
       if (level === 1) {
-        rows = 7; cols = 10; wallThickness = 12; speed = 2.55;
+        rows = 7; cols = 10; wallThickness = 12; speed = 2.80;
       } else if (level === 2) {
-        rows = 10; cols = 14; wallThickness = 10; speed = 2.40;
+        rows = 10; cols = 14; wallThickness = 10; speed = 2.65;
       } else {
-        rows = 13; cols = 18; wallThickness = 8; speed = 2.20;
+        rows = 13; cols = 18; wallThickness = 8; speed = 2.50;
       }
-
-      const maze = generateMaze(rows, cols);
 
       const isMobile = W <= 768;
       const leftPad = isMobile ? Math.max(92, W * 0.10) : Math.max(130, W * 0.11);
@@ -370,91 +346,76 @@
 
       const mazeWidth = W - leftPad - rightPad;
       const mazeHeight = H - topPad - bottomPad;
-
       const cellW = mazeWidth / cols;
       const cellH = mazeHeight / rows;
-
       const offsetX = leftPad;
       const offsetY = topPad;
 
       mazeMetrics = { offsetX, offsetY, mazeWidth, mazeHeight, cellW, cellH };
 
+      // 迷宮底板 (絕對確保 isSensor: true，不產生任何阻力)
       const mazeBg = Bodies.rectangle(
-        offsetX + mazeWidth / 2,
-        offsetY + mazeHeight / 2,
-        mazeWidth,
-        mazeHeight,
-        { isStatic: true, render: { fillStyle: "rgba(241, 245, 249, 0.7)" } }
+        offsetX + mazeWidth / 2, offsetY + mazeHeight / 2,
+        mazeWidth, mazeHeight,
+        { isStatic: true, isSensor: true, render: { fillStyle: "rgba(241, 245, 249, 0.7)" } }
       );
       World.add(world, mazeBg);
 
       const outerWallColor = "#1e293b";
       const innerWallColor = "#475569";
+      const maze = generateMaze(rows, cols);
 
-      const frameTop = Bodies.rectangle(offsetX + mazeWidth / 2, offsetY, mazeWidth + wallThickness, wallThickness, { isStatic: true, render: { fillStyle: outerWallColor } });
-      const frameBottom = Bodies.rectangle(offsetX + mazeWidth / 2, offsetY + mazeHeight, mazeWidth + wallThickness, wallThickness, { isStatic: true, render: { fillStyle: outerWallColor } });
-      
-      const entryGapHeight = cellH * 1.15;
-      const leftLowerH = mazeHeight - entryGapHeight;
-      const frameLeftLower = Bodies.rectangle(
-        offsetX, offsetY + entryGapHeight + leftLowerH / 2,
-        wallThickness, leftLowerH + wallThickness,
-        { isStatic: true, render: { fillStyle: outerWallColor } }
-      );
+      // 邊框
+      World.add(world, [
+        Bodies.rectangle(offsetX + mazeWidth / 2, offsetY, mazeWidth + wallThickness, wallThickness, { isStatic: true, render: { fillStyle: outerWallColor } }),
+        Bodies.rectangle(offsetX + mazeWidth / 2, offsetY + mazeHeight, mazeWidth + wallThickness, wallThickness, { isStatic: true, render: { fillStyle: outerWallColor } }),
+        Bodies.rectangle(offsetX, offsetY + (cellH * 1.15) + (mazeHeight - cellH * 1.15) / 2, wallThickness, (mazeHeight - cellH * 1.15) + wallThickness, { isStatic: true, render: { fillStyle: outerWallColor } }),
+        Bodies.rectangle(offsetX + mazeWidth, offsetY + mazeHeight / 2, wallThickness, mazeHeight + wallThickness, { isStatic: true, render: { fillStyle: outerWallColor } })
+      ]);
 
-      const frameRight = Bodies.rectangle(offsetX + mazeWidth, offsetY + mazeHeight / 2, wallThickness, mazeHeight + wallThickness, { isStatic: true, render: { fillStyle: outerWallColor } });
-
-      World.add(world, [frameTop, frameBottom, frameLeftLower, frameRight]);
-
+      // 內部牆壁
       maze.verticals.forEach((row, rowIndex) => {
         row.forEach((isWall, colIndex) => {
           if (!isWall) return;
+          // 確保起點周遭不會有牆壁阻擋
           if (rowIndex === 0 && colIndex === 0) return;
-
-          const wall = Bodies.rectangle(
-            offsetX + cellW * (colIndex + 1),
-            offsetY + cellH * rowIndex + cellH / 2,
+          World.add(world, Bodies.rectangle(
+            offsetX + cellW * (colIndex + 1), offsetY + cellH * rowIndex + cellH / 2,
             wallThickness, cellH + wallThickness,
             { isStatic: true, render: { fillStyle: innerWallColor } }
-          );
-          World.add(world, wall);
+          ));
         });
       });
 
       maze.horizontals.forEach((row, rowIndex) => {
         row.forEach((isWall, colIndex) => {
           if (!isWall) return;
-
-          const wall = Bodies.rectangle(
-            offsetX + cellW * colIndex + cellW / 2,
-            offsetY + cellH * (rowIndex + 1),
+          if (rowIndex === 0 && colIndex === 0) return;
+          World.add(world, Bodies.rectangle(
+            offsetX + cellW * colIndex + cellW / 2, offsetY + cellH * (rowIndex + 1),
             cellW + wallThickness, wallThickness,
             { isStatic: true, render: { fillStyle: innerWallColor } }
-          );
-          World.add(world, wall);
+          ));
         });
       });
 
-      // 設定邏輯區塊：起點與終點 (完全脫離物理引擎)
+      // 邏輯區域 (沒有實體物理，純感測)
       const startCenterX = offsetX + cellW * 0.5;
       const startCenterY = offsetY + cellH * 0.5;
-      const goalCenterX = offsetX + mazeWidth - cellW / 2;
-      const goalCenterY = offsetY + mazeHeight - cellH / 2;
-      const triggerRadius = Math.min(cellW, cellH) * 0.35; // 判斷進洞的半徑
+      const goalCenterX = offsetX + mazeWidth - cellW * 0.5;
+      const goalCenterY = offsetY + mazeHeight - cellH * 0.5;
+      const triggerRadius = Math.min(cellW, cellH) * 0.35; 
 
       startZone = { x: startCenterX, y: startCenterY, radius: triggerRadius };
       goalZone = { x: goalCenterX, y: goalCenterY, radius: triggerRadius };
 
-      const radius = Math.min(cellW, cellH) * 0.22;
+      // 【關鍵修正】進一步縮小球體，並嚴格生成於第一格正中心，徹底避免卡牆
+      const radius = Math.min(cellW, cellH) * 0.18; 
 
-      // 遊戲起始座標
-      const spawnX = startCenterX + cellW * 0.15;
-      const spawnY = startCenterY + cellH * 0.15;
-
-      ball = Bodies.circle(spawnX, spawnY, radius, {
+      ball = Bodies.circle(startCenterX, startCenterY, radius, {
         label: "player",
-        frictionAir: 0.22, 
-        restitution: 0.02, 
+        frictionAir: 0.18, // 降低空氣阻力讓滾動更滑順
+        restitution: 0.2,  // 增加一點點彈性，碰牆不會死當
         render: { visible: false } 
       });
       ball.moveSpeed = speed;
@@ -493,119 +454,136 @@
       totalElapsed = 0;
       gameFinished = false;
       centerMessageEl.className = "";
-      resetPressed();
       buildMazeLevel(currentLevel);
     }
 
-    function resetPressed() {
-      pressed.up = false;
-      pressed.down = false;
-      pressed.left = false;
-      pressed.right = false;
-      document.querySelectorAll(".pad-btn").forEach(btn => btn.classList.remove("active"));
-    }
+    restartBtn.addEventListener("click", restartGame);
 
-    function handleInput() {
-      if (!ball || levelEnded || gameFinished) return;
+    // --- 搖桿控制器邏輯 ---
+    const joyZone = document.getElementById('joystick-zone');
+    const joyKnob = document.getElementById('joystick-knob');
+    let joyOrigin = { x: 0, y: 0 };
+    const maxJoyDist = 45; // 搖桿最大移動半徑
 
-      let vx = 0, vy = 0;
-      if (pressed.up) vy -= ball.moveSpeed;
-      if (pressed.down) vy += ball.moveSpeed;
-      if (pressed.left) vx -= ball.moveSpeed;
-      if (pressed.right) vx += ball.moveSpeed;
+    joyZone.addEventListener('pointerdown', (e) => {
+      joyActive = true;
+      joyKnob.classList.remove('snap-back'); // 移除回彈動畫，準備跟隨手指
+      const rect = joyZone.getBoundingClientRect();
+      joyOrigin = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      updateJoystick(e);
+      joyZone.setPointerCapture(e.pointerId);
+    });
 
-      if (vx !== 0 && vy !== 0) {
-        vx *= 0.72;
-        vy *= 0.72;
+    joyZone.addEventListener('pointermove', (e) => {
+      if (!joyActive) return;
+      updateJoystick(e);
+    });
+
+    const resetJoystick = () => {
+      joyActive = false;
+      joyVector = { x: 0, y: 0 };
+      joyKnob.classList.add('snap-back');
+      joyKnob.style.transform = `translate(0px, 0px)`;
+    };
+
+    joyZone.addEventListener('pointerup', resetJoystick);
+    joyZone.addEventListener('pointercancel', resetJoystick);
+
+    function updateJoystick(e) {
+      let dx = e.clientX - joyOrigin.x;
+      let dy = e.clientY - joyOrigin.y;
+      const dist = Math.hypot(dx, dy);
+
+      // 限制搖桿在圓形範圍內
+      if (dist > maxJoyDist) {
+        dx = (dx / dist) * maxJoyDist;
+        dy = (dy / dist) * maxJoyDist;
       }
 
-      Body.setVelocity(ball, { x: vx, y: vy });
+      joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+      
+      // 正規化為 -1.0 到 1.0 的向量，供物理引擎使用
+      joyVector.x = dx / maxJoyDist;
+      joyVector.y = dy / maxJoyDist;
     }
 
+    // --- 鍵盤邏輯 ---
     window.addEventListener("keydown", (e) => {
       const key = e.key.toLowerCase();
-      if (["arrowup", "w"].includes(key)) pressed.up = true;
-      if (["arrowdown", "s"].includes(key)) pressed.down = true;
-      if (["arrowleft", "a"].includes(key)) pressed.left = true;
-      if (["arrowright", "d"].includes(key)) pressed.right = true;
+      if (["arrowup", "w"].includes(key)) keys.up = true;
+      if (["arrowdown", "s"].includes(key)) keys.down = true;
+      if (["arrowleft", "a"].includes(key)) keys.left = true;
+      if (["arrowright", "d"].includes(key)) keys.right = true;
     });
 
     window.addEventListener("keyup", (e) => {
       const key = e.key.toLowerCase();
-      if (["arrowup", "w"].includes(key)) pressed.up = false;
-      if (["arrowdown", "s"].includes(key)) pressed.down = false;
-      if (["arrowleft", "a"].includes(key)) pressed.left = false;
-      if (["arrowright", "d"].includes(key)) pressed.right = false;
+      if (["arrowup", "w"].includes(key)) keys.up = false;
+      if (["arrowdown", "s"].includes(key)) keys.down = false;
+      if (["arrowleft", "a"].includes(key)) keys.left = false;
+      if (["arrowright", "d"].includes(key)) keys.right = false;
     });
 
-    restartBtn.addEventListener("click", restartGame);
-
-    function bindPad(id, dirKey) {
-      const el = document.getElementById(id);
-
-      const start = (ev) => {
-        ev.preventDefault();
-        pressed[dirKey] = true;
-        el.classList.add("active");
-      };
-
-      const end = (ev) => {
-        ev.preventDefault();
-        pressed[dirKey] = false;
-        el.classList.remove("active");
-      };
-
-      el.addEventListener("touchstart", start, { passive: false });
-      el.addEventListener("touchend", end, { passive: false });
-      el.addEventListener("touchcancel", end, { passive: false });
-
-      el.addEventListener("mousedown", start);
-      el.addEventListener("mouseup", end);
-      el.addEventListener("mouseleave", () => {
-        pressed[dirKey] = false;
-        el.classList.remove("active");
-      });
-    }
-
-    bindPad("pad-up", "up");
-    bindPad("pad-down", "down");
-    bindPad("pad-left", "left");
-    bindPad("pad-right", "right");
-
+    // --- 遊戲引擎每幀更新邏輯 ---
     Events.on(engine, "beforeUpdate", () => {
-      handleInput();
+      if (!ball || levelEnded || gameFinished) return;
 
-      if (!levelEnded && !gameFinished) {
-        const now = performance.now();
-        const levelSeconds = (now - levelStartTs) / 1000;
-        levelTimeEl.textContent = levelSeconds.toFixed(2);
-        totalTimeEl.textContent = (totalElapsed + levelSeconds).toFixed(2);
-      }
+      // 整合搖桿與鍵盤輸入
+      let inputX = 0;
+      let inputY = 0;
 
-      if (ball && !levelEnded && !gameFinished) {
-        const speed = Math.hypot(ball.velocity.x, ball.velocity.y);
-        const isPressing = pressed.up || pressed.down || pressed.left || pressed.right;
-        
-        if (speed > 0.5 || isPressing) {
-          uiEl.classList.add("minimized");
-        } else if (speed < 0.05) {
-          uiEl.classList.remove("minimized");
-        }
-
-        if (speed > 0.05) {
-          Body.setAngle(ball, ball.angle + speed * 0.04);
-        }
-        
-        // 【核心邏輯判定】取代物理碰撞：以數學距離來計算球是否進入終點
-        if (goalZone) {
-          const distToGoal = Math.hypot(ball.position.x - goalZone.x, ball.position.y - goalZone.y);
-          if (distToGoal < goalZone.radius) {
-            completeLevel();
-          }
+      if (joyActive) {
+        inputX = joyVector.x;
+        inputY = joyVector.y;
+      } else {
+        if (keys.left) inputX -= 1;
+        if (keys.right) inputX += 1;
+        if (keys.up) inputY -= 1;
+        if (keys.down) inputY += 1;
+        // 鍵盤斜向移動時將向量正規化 (維持總速度一致)
+        if (inputX !== 0 && inputY !== 0) {
+          inputX *= 0.707;
+          inputY *= 0.707;
         }
       }
+
+      // 套用速度
+      Body.setVelocity(ball, { 
+        x: inputX * ball.moveSpeed, 
+        y: inputY * ball.moveSpeed 
+      });
+
+      const speed = Math.hypot(ball.velocity.x, ball.velocity.y);
+      const isPressing = joyActive || keys.up || keys.down || keys.left || keys.right;
+      
+      // UI 自動收合判定
+      if (speed > 0.5 || isPressing) {
+        uiEl.classList.add("minimized");
+      } else if (speed < 0.05) {
+        uiEl.classList.remove("minimized");
+      }
+
+      // 球體滾動視覺旋轉
+      if (speed > 0.05) {
+        Body.setAngle(ball, ball.angle + speed * 0.04);
+      }
+      
+      // 邏輯區域判斷進洞
+      if (goalZone) {
+        const distToGoal = Math.hypot(ball.position.x - goalZone.x, ball.position.y - goalZone.y);
+        if (distToGoal < goalZone.radius) {
+          completeLevel();
+        }
+      }
+
+      // 時間更新
+      const now = performance.now();
+      const levelSeconds = (now - levelStartTs) / 1000;
+      levelTimeEl.textContent = levelSeconds.toFixed(2);
+      totalTimeEl.textContent = (totalElapsed + levelSeconds).toFixed(2);
     });
 
+    // --- 畫布自訂渲染 ---
     Events.on(render, "afterRender", () => {
       const ctx = render.context;
       if (!mazeMetrics) return;
@@ -613,30 +591,28 @@
 
       ctx.save();
       
-      // === 繪製地板上的起終點標示 (畫在底層) ===
       ctx.font = `bold ${Math.max(14, Math.min(cellW, cellH) * 0.3)}px Noto Sans TC, sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
 
+      // 繪製起點
       if (startZone) {
         ctx.beginPath();
         ctx.arc(startZone.x, startZone.y, startZone.radius, 0, Math.PI * 2);
         ctx.fillStyle = "rgba(16, 185, 129, 0.15)";
         ctx.fill();
-
         ctx.fillStyle = "#059669";
         ctx.fillText("起", startZone.x, startZone.y);
       }
 
+      // 繪製終點
       if (goalZone) {
         ctx.beginPath();
         ctx.arc(goalZone.x, goalZone.y, goalZone.radius, 0, Math.PI * 2);
         ctx.fillStyle = "rgba(244, 63, 94, 0.15)";
         ctx.fill();
-
         ctx.fillStyle = "#e11d48";
         ctx.fillText("終", goalZone.x, goalZone.y);
-
         ctx.beginPath();
         ctx.arc(goalZone.x, goalZone.y, goalZone.radius * 1.2, 0, Math.PI * 2);
         ctx.strokeStyle = "rgba(225, 29, 72, 0.5)";
@@ -644,7 +620,7 @@
         ctx.stroke();
       }
 
-      // === 繪製實體球 (畫在頂層，確保覆蓋地上的文字與標線) ===
+      // 繪製立體球
       if (ball) {
         const r = ball.circleRadius;
         const x = ball.position.x;
@@ -663,22 +639,18 @@
         ctx.fill();
         
         ctx.shadowBlur = 0; 
-
         ctx.beginPath();
         ctx.arc(0, 0, r, 0, Math.PI);
         ctx.fillStyle = "#60a5fa"; 
         ctx.fill();
-
         ctx.beginPath();
         ctx.arc(r / 2, 0, r / 2, 0, Math.PI, true);
         ctx.fillStyle = "#1e3a8a"; 
         ctx.fill();
-
         ctx.beginPath();
         ctx.arc(-r / 2, 0, r / 2, 0, Math.PI, false);
         ctx.fillStyle = "#60a5fa"; 
         ctx.fill();
-        
         ctx.restore(); 
 
         ctx.save();
@@ -694,12 +666,9 @@
         ctx.fill();
         ctx.restore();
       }
-
       ctx.restore(); 
     });
 
-    window.addEventListener("blur", resetPressed);
-    
     let resizeTimer;
     window.addEventListener("resize", () => {
       clearTimeout(resizeTimer);
