@@ -3,19 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>迷宮挑戰 v1.6 - 360度全向搖桿版</title>
+  <title>迷宮挑戰 v1.7 - 3D積木與紀錄版</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
 
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     html, body {
       margin: 0;
       padding: 0;
       overflow: hidden;
-      touch-action: none; /* 防止畫面滾動 */
-      font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
-      background: radial-gradient(circle at 50% 0%, #e0eafc 0%, #cfdef3 100%);
+      touch-action: none; 
+      font-family: "Noto Sans TC", sans-serif;
+      /* 美化：點狀網格科技感地板 */
+      background-color: #f1f5f9;
+      background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px);
+      background-size: 24px 24px;
+      background-position: 0 0;
     }
 
     #ui {
@@ -23,10 +27,10 @@
       top: 16px;
       left: 16px;
       z-index: 30;
-      background: rgba(255, 255, 255, 0.65);
+      background: rgba(255, 255, 255, 0.7);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.9);
       border-radius: 16px;
       padding: 14px 16px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
@@ -37,15 +41,8 @@
       pointer-events: auto;
     }
 
-    #ui.minimized {
-      transform: scale(0.65);
-      opacity: 0.4;
-    }
-
-    #ui.minimized:hover {
-      transform: scale(1);
-      opacity: 1;
-    }
+    #ui.minimized { transform: scale(0.65); opacity: 0.4; }
+    #ui.minimized:hover { transform: scale(1); opacity: 1; }
 
     #ui h1 {
       margin: 0 0 4px 0;
@@ -55,12 +52,7 @@
       text-shadow: 0 1px 2px rgba(255,255,255,0.8);
     }
 
-    #ui .ver {
-      font-size: 12px;
-      color: #64748b;
-      margin-bottom: 10px;
-      font-weight: bold;
-    }
+    #ui .ver { font-size: 12px; color: #64748b; margin-bottom: 10px; font-weight: bold; }
 
     #ui .row {
       margin: 5px 0;
@@ -71,10 +63,8 @@
       justify-content: space-between;
     }
 
-    #ui .row span {
-      font-weight: 700;
-      color: #0f172a;
-    }
+    #ui .row span.val { font-weight: 700; color: #0f172a; }
+    #ui .row.highlight span.val { color: #2563eb; }
 
     #ui .legend {
       margin-top: 10px;
@@ -101,10 +91,7 @@
       transition: transform 0.1s, box-shadow 0.1s;
     }
 
-    #ui button:active {
-      transform: scale(0.96);
-      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
-    }
+    #ui button:active { transform: scale(0.96); box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3); }
 
     @keyframes popIn {
       0% { opacity: 0; transform: translate(-50%, -30%) scale(0.8); }
@@ -130,15 +117,10 @@
       box-shadow: 0 10px 40px rgba(0,0,0,0.25);
       border: 1px solid rgba(255,255,255,0.1);
     }
-
-    #centerMessage.show {
-      display: block;
-      animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-    }
+    #centerMessage.show { display: block; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
 
     canvas { display: block; }
 
-    /* 全向虛擬搖桿樣式 */
     #joystick-zone {
       position: absolute;
       left: 20px;
@@ -163,17 +145,13 @@
       background: radial-gradient(circle at 30% 30%, #60a5fa, #2563eb);
       border-radius: 50%;
       box-shadow: 0 6px 16px rgba(37,99,235,0.4), inset 0 -2px 6px rgba(0,0,0,0.3);
-      pointer-events: none; /* 讓事件穿透到 zone */
+      pointer-events: none;
       transform: translate(0px, 0px);
     }
-
-    /* 搖桿回彈動畫 */
-    #joystick-knob.snap-back {
-      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    }
+    #joystick-knob.snap-back { transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
 
     @media (min-width: 769px) {
-      #ui { left: 24px; top: 24px; min-width: 230px; }
+      #ui { left: 24px; top: 24px; min-width: 240px; }
       #joystick-zone { left: 32px; bottom: 32px; width: 160px; height: 160px; }
       #joystick-knob { width: 64px; height: 64px; }
     }
@@ -182,10 +160,11 @@
 <body>
   <div id="ui">
     <h1>🧩 迷宮三關挑戰</h1>
-    <div class="ver">v1.6 360° Joystick Edition</div>
-    <div class="row">關卡進度 <span><span id="levelText">1</span> / 3</span></div>
-    <div class="row">本關時間 <span><span id="levelTime">0.00</span>s</span></div>
-    <div class="row">累計時間 <span><span id="totalTime">0.00</span>s</span></div>
+    <div class="ver">v1.7 3D Blocks & Leaderboard</div>
+    <div class="row">關卡進度 <span class="val"><span id="levelText">1</span> / 3</span></div>
+    <div class="row">本關時間 <span class="val"><span id="levelTime">0.00</span>s</span></div>
+    <div class="row">累計時間 <span class="val"><span id="totalTime">0.00</span>s</span></div>
+    <div class="row highlight">最佳紀錄 <span class="val"><span id="bestTime">--</span>s</span></div>
     <div class="legend"><span style="color:#10b981">● 起點</span>　<span style="color:#f43f5e">● 終點</span></div>
     <button id="restartBtn">重新開始</button>
   </div>
@@ -203,17 +182,14 @@
     const H = window.innerHeight;
 
     const engine = Engine.create();
-    engine.gravity.y = 0; // 無重力，由玩家控制
+    engine.gravity.y = 0;
     const world = engine.world;
 
     const render = Render.create({
       element: document.body,
       engine,
       options: {
-        width: W,
-        height: H,
-        wireframes: false,
-        background: "transparent"
+        width: W, height: H, wireframes: false, background: "transparent"
       }
     });
 
@@ -225,6 +201,7 @@
     const levelTextEl = document.getElementById("levelText");
     const levelTimeEl = document.getElementById("levelTime");
     const totalTimeEl = document.getElementById("totalTime");
+    const bestTimeEl = document.getElementById("bestTime");
     const centerMessageEl = document.getElementById("centerMessage");
     const restartBtn = document.getElementById("restartBtn");
 
@@ -240,14 +217,15 @@
     let startZone = null;
     let goalZone = null;
 
-    // --- 虛擬搖桿與鍵盤輸入狀態 ---
+    // --- 本機紀錄處理 ---
+    let storedBest = localStorage.getItem("mazeBestRecord");
+    let bestRecord = storedBest ? parseFloat(storedBest) : null;
+
     const keys = { up: false, down: false, left: false, right: false };
     let joyActive = false;
-    let joyVector = { x: 0, y: 0 }; // 範圍 -1 到 1
+    let joyVector = { x: 0, y: 0 };
 
-    function randInt(min, max) {
-      return Math.floor(Math.random() * (max - min + 1)) + min;
-    }
+    function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 
     function shuffle(arr) {
       for (let i = arr.length - 1; i > 0; i--) {
@@ -260,37 +238,33 @@
     function showMessage(text, duration = 1200) {
       centerMessageEl.textContent = text;
       centerMessageEl.className = "show";
-      if (duration > 0) {
-        setTimeout(() => { centerMessageEl.className = ""; }, duration);
-      }
+      if (duration > 0) setTimeout(() => { centerMessageEl.className = ""; }, duration);
     }
 
     function updateUI() {
       levelTextEl.textContent = currentLevel;
       totalTimeEl.textContent = totalElapsed.toFixed(2);
+      if (bestRecord) {
+        bestTimeEl.textContent = bestRecord.toFixed(2);
+      }
     }
 
     function clearLevelObjects() {
       const allBodies = Composite.allBodies(world);
-      for (const body of allBodies) {
-        World.remove(world, body);
-      }
-      ball = null;
-      startZone = null;
-      goalZone = null;
-      mazeMetrics = null;
+      for (const body of allBodies) World.remove(world, body);
+      ball = null; startZone = null; goalZone = null; mazeMetrics = null;
     }
 
     function createBoundaryWalls() {
-      const thickness = 40;
-      const wallColor = "#0f172a";
-      const walls = [
-        Bodies.rectangle(W / 2, -thickness / 2, W, thickness, { isStatic: true, render: { fillStyle: wallColor } }),
-        Bodies.rectangle(W / 2, H + thickness / 2, W, thickness, { isStatic: true, render: { fillStyle: wallColor } }),
-        Bodies.rectangle(-thickness / 2, H / 2, thickness, H, { isStatic: true, render: { fillStyle: wallColor } }),
-        Bodies.rectangle(W + thickness / 2, H / 2, thickness, H, { isStatic: true, render: { fillStyle: wallColor } })
-      ];
-      World.add(world, walls);
+      const thickness = 50;
+      // 標記 label 為 wall，並關閉預設渲染，全交由 Canvas 自訂繪製
+      const wallOpts = { label: 'wall', isStatic: true, render: { visible: false } };
+      World.add(world, [
+        Bodies.rectangle(W / 2, -thickness / 2, W, thickness, wallOpts),
+        Bodies.rectangle(W / 2, H + thickness / 2, W, thickness, wallOpts),
+        Bodies.rectangle(-thickness / 2, H / 2, thickness, H, wallOpts),
+        Bodies.rectangle(W + thickness / 2, H / 2, thickness, H, wallOpts)
+      ]);
     }
 
     function generateMaze(rows, cols) {
@@ -301,25 +275,19 @@
       function stepThroughCell(row, col) {
         if (grid[row][col]) return;
         grid[row][col] = true;
-
         const neighbors = shuffle([
-          [row - 1, col, "up"], [row, col + 1, "right"],
-          [row + 1, col, "down"], [row, col - 1, "left"]
+          [row - 1, col, "up"], [row, col + 1, "right"], [row + 1, col, "down"], [row, col - 1, "left"]
         ]);
-
         for (const [nextRow, nextCol, direction] of neighbors) {
           if (nextRow < 0 || nextRow >= rows || nextCol < 0 || nextCol >= cols) continue;
           if (grid[nextRow][nextCol]) continue;
-
           if (direction === "left") verticals[row][col - 1] = false;
           else if (direction === "right") verticals[row][col] = false;
           else if (direction === "up") horizontals[row - 1][col] = false;
           else if (direction === "down") horizontals[row][col] = false;
-
           stepThroughCell(nextRow, nextCol);
         }
       }
-
       stepThroughCell(randInt(0, rows - 1), randInt(0, cols - 1));
       return { rows, cols, verticals, horizontals };
     }
@@ -330,13 +298,9 @@
       uiEl.classList.remove("minimized");
 
       let rows, cols, wallThickness, speed;
-      if (level === 1) {
-        rows = 7; cols = 10; wallThickness = 12; speed = 2.80;
-      } else if (level === 2) {
-        rows = 10; cols = 14; wallThickness = 10; speed = 2.65;
-      } else {
-        rows = 13; cols = 18; wallThickness = 8; speed = 2.50;
-      }
+      if (level === 1) { rows = 7; cols = 10; wallThickness = 12; speed = 2.80; } 
+      else if (level === 2) { rows = 10; cols = 14; wallThickness = 10; speed = 2.65; } 
+      else { rows = 13; cols = 18; wallThickness = 9; speed = 2.50; }
 
       const isMobile = W <= 768;
       const leftPad = isMobile ? Math.max(92, W * 0.10) : Math.max(130, W * 0.11);
@@ -353,53 +317,38 @@
 
       mazeMetrics = { offsetX, offsetY, mazeWidth, mazeHeight, cellW, cellH };
 
-      // 迷宮底板 (絕對確保 isSensor: true，不產生任何阻力)
-      const mazeBg = Bodies.rectangle(
-        offsetX + mazeWidth / 2, offsetY + mazeHeight / 2,
-        mazeWidth, mazeHeight,
-        { isStatic: true, isSensor: true, render: { fillStyle: "rgba(241, 245, 249, 0.7)" } }
-      );
-      World.add(world, mazeBg);
-
-      const outerWallColor = "#1e293b";
-      const innerWallColor = "#475569";
       const maze = generateMaze(rows, cols);
+      const wOpts = { label: 'wall', isStatic: true, render: { visible: false } };
 
-      // 邊框
+      // 外框牆壁
       World.add(world, [
-        Bodies.rectangle(offsetX + mazeWidth / 2, offsetY, mazeWidth + wallThickness, wallThickness, { isStatic: true, render: { fillStyle: outerWallColor } }),
-        Bodies.rectangle(offsetX + mazeWidth / 2, offsetY + mazeHeight, mazeWidth + wallThickness, wallThickness, { isStatic: true, render: { fillStyle: outerWallColor } }),
-        Bodies.rectangle(offsetX, offsetY + (cellH * 1.15) + (mazeHeight - cellH * 1.15) / 2, wallThickness, (mazeHeight - cellH * 1.15) + wallThickness, { isStatic: true, render: { fillStyle: outerWallColor } }),
-        Bodies.rectangle(offsetX + mazeWidth, offsetY + mazeHeight / 2, wallThickness, mazeHeight + wallThickness, { isStatic: true, render: { fillStyle: outerWallColor } })
+        Bodies.rectangle(offsetX + mazeWidth / 2, offsetY, mazeWidth + wallThickness, wallThickness, wOpts),
+        Bodies.rectangle(offsetX + mazeWidth / 2, offsetY + mazeHeight, mazeWidth + wallThickness, wallThickness, wOpts),
+        Bodies.rectangle(offsetX, offsetY + (cellH * 1.15) + (mazeHeight - cellH * 1.15) / 2, wallThickness, (mazeHeight - cellH * 1.15) + wallThickness, wOpts),
+        Bodies.rectangle(offsetX + mazeWidth, offsetY + mazeHeight / 2, wallThickness, mazeHeight + wallThickness, wOpts)
       ]);
 
       // 內部牆壁
       maze.verticals.forEach((row, rowIndex) => {
         row.forEach((isWall, colIndex) => {
-          if (!isWall) return;
-          // 確保起點周遭不會有牆壁阻擋
-          if (rowIndex === 0 && colIndex === 0) return;
+          if (!isWall || (rowIndex === 0 && colIndex === 0)) return;
           World.add(world, Bodies.rectangle(
             offsetX + cellW * (colIndex + 1), offsetY + cellH * rowIndex + cellH / 2,
-            wallThickness, cellH + wallThickness,
-            { isStatic: true, render: { fillStyle: innerWallColor } }
+            wallThickness, cellH + wallThickness, wOpts
           ));
         });
       });
 
       maze.horizontals.forEach((row, rowIndex) => {
         row.forEach((isWall, colIndex) => {
-          if (!isWall) return;
-          if (rowIndex === 0 && colIndex === 0) return;
+          if (!isWall || (rowIndex === 0 && colIndex === 0)) return;
           World.add(world, Bodies.rectangle(
             offsetX + cellW * colIndex + cellW / 2, offsetY + cellH * (rowIndex + 1),
-            cellW + wallThickness, wallThickness,
-            { isStatic: true, render: { fillStyle: innerWallColor } }
+            cellW + wallThickness, wallThickness, wOpts
           ));
         });
       });
 
-      // 邏輯區域 (沒有實體物理，純感測)
       const startCenterX = offsetX + cellW * 0.5;
       const startCenterY = offsetY + cellH * 0.5;
       const goalCenterX = offsetX + mazeWidth - cellW * 0.5;
@@ -409,14 +358,9 @@
       startZone = { x: startCenterX, y: startCenterY, radius: triggerRadius };
       goalZone = { x: goalCenterX, y: goalCenterY, radius: triggerRadius };
 
-      // 【關鍵修正】進一步縮小球體，並嚴格生成於第一格正中心，徹底避免卡牆
       const radius = Math.min(cellW, cellH) * 0.18; 
-
       ball = Bodies.circle(startCenterX, startCenterY, radius, {
-        label: "player",
-        frictionAir: 0.18, // 降低空氣阻力讓滾動更滑順
-        restitution: 0.2,  // 增加一點點彈性，碰牆不會死當
-        render: { visible: false } 
+        label: "player", frictionAir: 0.18, restitution: 0.2, render: { visible: false } 
       });
       ball.moveSpeed = speed;
       World.add(world, ball);
@@ -435,9 +379,9 @@
       const now = performance.now();
       const levelSeconds = (now - levelStartTs) / 1000;
       totalElapsed += levelSeconds;
-      updateUI();
 
       if (currentLevel < TOTAL_LEVELS) {
+        updateUI();
         showMessage(`恭喜完成第 ${currentLevel} 關！ 🎉`);
         setTimeout(() => {
           currentLevel++;
@@ -445,7 +389,15 @@
         }, 1500);
       } else {
         gameFinished = true;
-        showMessage(`🏆 挑戰成功！總時長：${totalElapsed.toFixed(2)}s`, 0);
+        // --- 最佳紀錄判斷儲存 ---
+        if (!bestRecord || totalElapsed < bestRecord) {
+          bestRecord = totalElapsed;
+          localStorage.setItem("mazeBestRecord", bestRecord);
+          showMessage(`🏆 破紀錄啦！總時長：${totalElapsed.toFixed(2)}s`, 0);
+        } else {
+          showMessage(`🎉 挑戰成功！總時長：${totalElapsed.toFixed(2)}s`, 0);
+        }
+        updateUI();
       }
     }
 
@@ -463,25 +415,21 @@
     const joyZone = document.getElementById('joystick-zone');
     const joyKnob = document.getElementById('joystick-knob');
     let joyOrigin = { x: 0, y: 0 };
-    const maxJoyDist = 45; // 搖桿最大移動半徑
+    const maxJoyDist = 45; 
 
     joyZone.addEventListener('pointerdown', (e) => {
       joyActive = true;
-      joyKnob.classList.remove('snap-back'); // 移除回彈動畫，準備跟隨手指
+      joyKnob.classList.remove('snap-back'); 
       const rect = joyZone.getBoundingClientRect();
       joyOrigin = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
       updateJoystick(e);
       joyZone.setPointerCapture(e.pointerId);
     });
 
-    joyZone.addEventListener('pointermove', (e) => {
-      if (!joyActive) return;
-      updateJoystick(e);
-    });
+    joyZone.addEventListener('pointermove', (e) => { if (joyActive) updateJoystick(e); });
 
     const resetJoystick = () => {
-      joyActive = false;
-      joyVector = { x: 0, y: 0 };
+      joyActive = false; joyVector = { x: 0, y: 0 };
       joyKnob.classList.add('snap-back');
       joyKnob.style.transform = `translate(0px, 0px)`;
     };
@@ -490,24 +438,13 @@
     joyZone.addEventListener('pointercancel', resetJoystick);
 
     function updateJoystick(e) {
-      let dx = e.clientX - joyOrigin.x;
-      let dy = e.clientY - joyOrigin.y;
+      let dx = e.clientX - joyOrigin.x; let dy = e.clientY - joyOrigin.y;
       const dist = Math.hypot(dx, dy);
-
-      // 限制搖桿在圓形範圍內
-      if (dist > maxJoyDist) {
-        dx = (dx / dist) * maxJoyDist;
-        dy = (dy / dist) * maxJoyDist;
-      }
-
+      if (dist > maxJoyDist) { dx = (dx / dist) * maxJoyDist; dy = (dy / dist) * maxJoyDist; }
       joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
-      
-      // 正規化為 -1.0 到 1.0 的向量，供物理引擎使用
-      joyVector.x = dx / maxJoyDist;
-      joyVector.y = dy / maxJoyDist;
+      joyVector.x = dx / maxJoyDist; joyVector.y = dy / maxJoyDist;
     }
 
-    // --- 鍵盤邏輯 ---
     window.addEventListener("keydown", (e) => {
       const key = e.key.toLowerCase();
       if (["arrowup", "w"].includes(key)) keys.up = true;
@@ -524,66 +461,40 @@
       if (["arrowright", "d"].includes(key)) keys.right = false;
     });
 
-    // --- 遊戲引擎每幀更新邏輯 ---
     Events.on(engine, "beforeUpdate", () => {
       if (!ball || levelEnded || gameFinished) return;
 
-      // 整合搖桿與鍵盤輸入
-      let inputX = 0;
-      let inputY = 0;
-
+      let inputX = 0, inputY = 0;
       if (joyActive) {
-        inputX = joyVector.x;
-        inputY = joyVector.y;
+        inputX = joyVector.x; inputY = joyVector.y;
       } else {
-        if (keys.left) inputX -= 1;
-        if (keys.right) inputX += 1;
-        if (keys.up) inputY -= 1;
-        if (keys.down) inputY += 1;
-        // 鍵盤斜向移動時將向量正規化 (維持總速度一致)
-        if (inputX !== 0 && inputY !== 0) {
-          inputX *= 0.707;
-          inputY *= 0.707;
-        }
+        if (keys.left) inputX -= 1; if (keys.right) inputX += 1;
+        if (keys.up) inputY -= 1; if (keys.down) inputY += 1;
+        if (inputX !== 0 && inputY !== 0) { inputX *= 0.707; inputY *= 0.707; }
       }
 
-      // 套用速度
-      Body.setVelocity(ball, { 
-        x: inputX * ball.moveSpeed, 
-        y: inputY * ball.moveSpeed 
-      });
+      Body.setVelocity(ball, { x: inputX * ball.moveSpeed, y: inputY * ball.moveSpeed });
 
       const speed = Math.hypot(ball.velocity.x, ball.velocity.y);
       const isPressing = joyActive || keys.up || keys.down || keys.left || keys.right;
       
-      // UI 自動收合判定
-      if (speed > 0.5 || isPressing) {
-        uiEl.classList.add("minimized");
-      } else if (speed < 0.05) {
-        uiEl.classList.remove("minimized");
-      }
+      if (speed > 0.5 || isPressing) uiEl.classList.add("minimized");
+      else if (speed < 0.05) uiEl.classList.remove("minimized");
 
-      // 球體滾動視覺旋轉
-      if (speed > 0.05) {
-        Body.setAngle(ball, ball.angle + speed * 0.04);
-      }
+      if (speed > 0.05) Body.setAngle(ball, ball.angle + speed * 0.04);
       
-      // 邏輯區域判斷進洞
       if (goalZone) {
         const distToGoal = Math.hypot(ball.position.x - goalZone.x, ball.position.y - goalZone.y);
-        if (distToGoal < goalZone.radius) {
-          completeLevel();
-        }
+        if (distToGoal < goalZone.radius) completeLevel();
       }
 
-      // 時間更新
       const now = performance.now();
       const levelSeconds = (now - levelStartTs) / 1000;
       levelTimeEl.textContent = levelSeconds.toFixed(2);
       totalTimeEl.textContent = (totalElapsed + levelSeconds).toFixed(2);
     });
 
-    // --- 畫布自訂渲染 ---
+    // --- 畫布深度自訂渲染 (3D積木牆與陰影) ---
     Events.on(render, "afterRender", () => {
       const ctx = render.context;
       if (!mazeMetrics) return;
@@ -591,36 +502,62 @@
 
       ctx.save();
       
+      // 1. 繪製地板起終點標示
       ctx.font = `bold ${Math.max(14, Math.min(cellW, cellH) * 0.3)}px Noto Sans TC, sans-serif`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
 
-      // 繪製起點
       if (startZone) {
-        ctx.beginPath();
-        ctx.arc(startZone.x, startZone.y, startZone.radius, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(16, 185, 129, 0.15)";
-        ctx.fill();
-        ctx.fillStyle = "#059669";
-        ctx.fillText("起", startZone.x, startZone.y);
+        ctx.beginPath(); ctx.arc(startZone.x, startZone.y, startZone.radius, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(16, 185, 129, 0.15)"; ctx.fill();
+        ctx.fillStyle = "#059669"; ctx.fillText("起", startZone.x, startZone.y);
       }
-
-      // 繪製終點
       if (goalZone) {
-        ctx.beginPath();
-        ctx.arc(goalZone.x, goalZone.y, goalZone.radius, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(244, 63, 94, 0.15)";
-        ctx.fill();
-        ctx.fillStyle = "#e11d48";
-        ctx.fillText("終", goalZone.x, goalZone.y);
-        ctx.beginPath();
-        ctx.arc(goalZone.x, goalZone.y, goalZone.radius * 1.2, 0, Math.PI * 2);
-        ctx.strokeStyle = "rgba(225, 29, 72, 0.5)";
-        ctx.lineWidth = 2;
-        ctx.stroke();
+        ctx.beginPath(); ctx.arc(goalZone.x, goalZone.y, goalZone.radius, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(244, 63, 94, 0.15)"; ctx.fill();
+        ctx.fillStyle = "#e11d48"; ctx.fillText("終", goalZone.x, goalZone.y);
+        ctx.beginPath(); ctx.arc(goalZone.x, goalZone.y, goalZone.radius * 1.2, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(225, 29, 72, 0.5)"; ctx.lineWidth = 2; ctx.stroke();
       }
 
-      // 繪製立體球
+      // 2. 繪製 3D 積木牆壁
+      const walls = Composite.allBodies(world).filter(b => b.label === 'wall');
+      
+      // 為了立體感，所有牆的陰影/厚度先畫
+      ctx.fillStyle = "#94a3b8"; // 深度厚度的顏色
+      walls.forEach(wall => {
+        const w = wall.bounds.max.x - wall.bounds.min.x;
+        const h = wall.bounds.max.y - wall.bounds.min.y;
+        const x = wall.position.x - w / 2;
+        const y = wall.position.y - h / 2;
+        ctx.beginPath();
+        if(ctx.roundRect) ctx.roundRect(x, y + 6, w, h, 6);
+        else ctx.rect(x, y + 6, w, h); // 降級相容
+        ctx.fill();
+      });
+
+      // 接著畫所有牆的正頂面
+      walls.forEach(wall => {
+        const w = wall.bounds.max.x - wall.bounds.min.x;
+        const h = wall.bounds.max.y - wall.bounds.min.y;
+        const x = wall.position.x - w / 2;
+        const y = wall.position.y - h / 2;
+        
+        const gradient = ctx.createLinearGradient(x, y, x + w, y + h);
+        gradient.addColorStop(0, "#ffffff");
+        gradient.addColorStop(1, "#e2e8f0");
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        if(ctx.roundRect) ctx.roundRect(x, y, w, h, 6);
+        else ctx.rect(x, y, w, h);
+        ctx.fill();
+
+        ctx.strokeStyle = "rgba(255,255,255,0.8)";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      });
+
+      // 3. 繪製立體球
       if (ball) {
         const r = ball.circleRadius;
         const x = ball.position.x;
@@ -629,28 +566,16 @@
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(ball.angle);
-        
-        ctx.shadowColor = "#3b82f6";
-        ctx.shadowBlur = 12;
-
-        ctx.beginPath();
-        ctx.arc(0, 0, r, 0, Math.PI * 2);
-        ctx.fillStyle = "#1e3a8a"; 
-        ctx.fill();
-        
+        ctx.shadowColor = "#3b82f6"; ctx.shadowBlur = 12;
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.fillStyle = "#1e3a8a"; ctx.fill();
         ctx.shadowBlur = 0; 
-        ctx.beginPath();
-        ctx.arc(0, 0, r, 0, Math.PI);
-        ctx.fillStyle = "#60a5fa"; 
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(r / 2, 0, r / 2, 0, Math.PI, true);
-        ctx.fillStyle = "#1e3a8a"; 
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(-r / 2, 0, r / 2, 0, Math.PI, false);
-        ctx.fillStyle = "#60a5fa"; 
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI);
+        ctx.fillStyle = "#60a5fa"; ctx.fill();
+        ctx.beginPath(); ctx.arc(r / 2, 0, r / 2, 0, Math.PI, true);
+        ctx.fillStyle = "#1e3a8a"; ctx.fill();
+        ctx.beginPath(); ctx.arc(-r / 2, 0, r / 2, 0, Math.PI, false);
+        ctx.fillStyle = "#60a5fa"; ctx.fill();
         ctx.restore(); 
 
         ctx.save();
@@ -659,11 +584,8 @@
         gradient.addColorStop(0, "rgba(255, 255, 255, 0.7)");
         gradient.addColorStop(0.4, "rgba(255, 255, 255, 0.1)");
         gradient.addColorStop(1, "rgba(0, 0, 0, 0.6)");
-        
-        ctx.beginPath();
-        ctx.arc(0, 0, r, 0, Math.PI * 2);
-        ctx.fillStyle = gradient;
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.fillStyle = gradient; ctx.fill();
         ctx.restore();
       }
       ctx.restore(); 
@@ -675,6 +597,8 @@
       resizeTimer = setTimeout(() => location.reload(), 200);
     });
 
+    // 初次載入更新UI
+    updateUI();
     restartGame();
   </script>
 </body>
