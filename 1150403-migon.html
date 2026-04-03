@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Matter.js 隨機迷宮三關挑戰（手機方向控制器版）</title>
+  <title>Matter.js 隨機迷宮三關挑戰（修正版）</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
   <style>
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -13,7 +13,7 @@
       overflow: hidden;
       touch-action: none;
       font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
-      background: linear-gradient(180deg, #eaf6ff 0%, #d9efff 50%, #f8fbff 100%);
+      background: linear-gradient(180deg, #dbeafe 0%, #eff6ff 55%, #f8fbff 100%);
     }
 
     #ui {
@@ -21,7 +21,7 @@
       top: 12px;
       left: 12px;
       z-index: 30;
-      background: rgba(255,255,255,0.9);
+      background: rgba(255,255,255,0.94);
       border-radius: 14px;
       padding: 12px 14px;
       box-shadow: 0 8px 24px rgba(0,0,0,0.14);
@@ -83,7 +83,6 @@
       display: block;
     }
 
-    /* 手機半透明方向控制器 */
     #dpad {
       position: absolute;
       left: 16px;
@@ -123,7 +122,6 @@
     #pad-right { right: 0; top: 57px; }
     #pad-down  { left: 57px; bottom: 0; }
 
-    /* 手機時 UI 再縮小一點 */
     @media (max-width: 768px) {
       #ui {
         top: 10px;
@@ -236,6 +234,8 @@
 
     let ball = null;
     let goalSensor = null;
+    let startSensor = null;
+    let mazeMetrics = null;
 
     const pressed = {
       up: false,
@@ -278,6 +278,8 @@
       }
       ball = null;
       goalSensor = null;
+      startSensor = null;
+      mazeMetrics = null;
     }
 
     function createBoundaryWalls() {
@@ -285,19 +287,19 @@
       const walls = [
         Bodies.rectangle(W / 2, -thickness / 2, W, thickness, {
           isStatic: true,
-          render: { fillStyle: "#334155" }
+          render: { fillStyle: "#0f172a" }
         }),
         Bodies.rectangle(W / 2, H + thickness / 2, W, thickness, {
           isStatic: true,
-          render: { fillStyle: "#334155" }
+          render: { fillStyle: "#0f172a" }
         }),
         Bodies.rectangle(-thickness / 2, H / 2, thickness, H, {
           isStatic: true,
-          render: { fillStyle: "#334155" }
+          render: { fillStyle: "#0f172a" }
         }),
         Bodies.rectangle(W + thickness / 2, H / 2, thickness, H, {
           isStatic: true,
-          render: { fillStyle: "#334155" }
+          render: { fillStyle: "#0f172a" }
         })
       ];
       World.add(world, walls);
@@ -348,26 +350,27 @@
       if (level === 1) {
         rows = 7;
         cols = 10;
-        wallThickness = 8;
+        wallThickness = 10;
         speed = 2.55;
       } else if (level === 2) {
         rows = 10;
         cols = 14;
-        wallThickness = 7;
+        wallThickness = 9;
         speed = 2.4;
       } else {
         rows = 13;
         cols = 18;
-        wallThickness = 6;
+        wallThickness = 8;
         speed = 2.2;
       }
 
       const maze = generateMaze(rows, cols);
 
-      const leftPad = Math.max(100, W * 0.12);
-      const rightPad = Math.max(40, W * 0.06);
-      const topPad = Math.max(70, H * 0.1);
-      const bottomPad = Math.max(70, H * 0.1);
+      const isMobile = W <= 768;
+      const leftPad = isMobile ? Math.max(92, W * 0.10) : Math.max(130, W * 0.11);
+      const rightPad = isMobile ? 28 : 50;
+      const topPad = isMobile ? 88 : 82;
+      const bottomPad = isMobile ? 88 : 70;
 
       const mazeWidth = W - leftPad - rightPad;
       const mazeHeight = H - topPad - bottomPad;
@@ -378,6 +381,8 @@
       const offsetX = leftPad;
       const offsetY = topPad;
 
+      mazeMetrics = { offsetX, offsetY, mazeWidth, mazeHeight, cellW, cellH };
+
       const mazeBg = Bodies.rectangle(
         offsetX + mazeWidth / 2,
         offsetY + mazeHeight / 2,
@@ -385,53 +390,25 @@
         mazeHeight,
         {
           isStatic: true,
-          render: { fillStyle: "#f8fbff" }
+          render: { fillStyle: "#dbeafe" }
         }
       );
       World.add(world, mazeBg);
 
-      const startRect = Bodies.rectangle(
-        offsetX + cellW / 2,
-        offsetY + cellH / 2,
-        cellW * 0.8,
-        cellH * 0.8,
-        {
-          isStatic: true,
-          isSensor: true,
-          label: "start",
-          render: { fillStyle: "#86efac" }
-        }
-      );
-      World.add(world, startRect);
-
-      goalSensor = Bodies.rectangle(
-        offsetX + mazeWidth - cellW / 2,
-        offsetY + mazeHeight - cellH / 2,
-        cellW * 0.8,
-        cellH * 0.8,
-        {
-          isStatic: true,
-          isSensor: true,
-          label: "goal",
-          render: { fillStyle: "#f87171" }
-        }
-      );
-      World.add(world, goalSensor);
-
       const frameTop = Bodies.rectangle(
-        offsetX + mazeWidth / 2, offsetY, mazeWidth, wallThickness,
+        offsetX + mazeWidth / 2, offsetY, mazeWidth + wallThickness, wallThickness,
         { isStatic: true, render: { fillStyle: "#1e293b" } }
       );
       const frameBottom = Bodies.rectangle(
-        offsetX + mazeWidth / 2, offsetY + mazeHeight, mazeWidth, wallThickness,
+        offsetX + mazeWidth / 2, offsetY + mazeHeight, mazeWidth + wallThickness, wallThickness,
         { isStatic: true, render: { fillStyle: "#1e293b" } }
       );
       const frameLeft = Bodies.rectangle(
-        offsetX, offsetY + mazeHeight / 2, wallThickness, mazeHeight,
+        offsetX, offsetY + mazeHeight / 2, wallThickness, mazeHeight + wallThickness,
         { isStatic: true, render: { fillStyle: "#1e293b" } }
       );
       const frameRight = Bodies.rectangle(
-        offsetX + mazeWidth, offsetY + mazeHeight / 2, wallThickness, mazeHeight,
+        offsetX + mazeWidth, offsetY + mazeHeight / 2, wallThickness, mazeHeight + wallThickness,
         { isStatic: true, render: { fillStyle: "#1e293b" } }
       );
       World.add(world, [frameTop, frameBottom, frameLeft, frameRight]);
@@ -446,7 +423,7 @@
             cellH + wallThickness,
             {
               isStatic: true,
-              render: { fillStyle: "#475569" }
+              render: { fillStyle: "#334155" }
             }
           );
           World.add(world, wall);
@@ -463,33 +440,67 @@
             wallThickness,
             {
               isStatic: true,
-              render: { fillStyle: "#475569" }
+              render: { fillStyle: "#334155" }
             }
           );
           World.add(world, wall);
         });
       });
 
-      const radius = Math.min(cellW, cellH) * 0.23;
+      const startCenterX = offsetX + cellW / 2;
+      const startCenterY = offsetY + cellH / 2;
+      const goalCenterX = offsetX + mazeWidth - cellW / 2;
+      const goalCenterY = offsetY + mazeHeight - cellH / 2;
+
+      startSensor = Bodies.rectangle(
+        startCenterX,
+        startCenterY,
+        cellW * 0.72,
+        cellH * 0.72,
+        {
+          isStatic: true,
+          isSensor: true,
+          label: "start",
+          render: { fillStyle: "#22c55e" }
+        }
+      );
+      World.add(world, startSensor);
+
+      goalSensor = Bodies.rectangle(
+        goalCenterX,
+        goalCenterY,
+        cellW * 0.72,
+        cellH * 0.72,
+        {
+          isStatic: true,
+          isSensor: true,
+          label: "goal",
+          render: { fillStyle: "#ef4444" }
+        }
+      );
+      World.add(world, goalSensor);
+
+      const radius = Math.min(cellW, cellH) * 0.20;
+
       ball = Bodies.circle(
-        offsetX + cellW / 2,
-        offsetY + cellH / 2,
+        startCenterX,
+        startCenterY,
         radius,
         {
           label: "player",
           frictionAir: 0.22,
-          restitution: 0.05,
+          restitution: 0.02,
           inertia: Infinity,
-          render: { fillStyle: "#3b82f6" }
+          render: { fillStyle: "#2563eb" }
         }
       );
+
       ball.moveSpeed = speed;
       World.add(world, ball);
 
       levelEnded = false;
       levelStartTs = performance.now();
       updateUI();
-
       showMessage(`第 ${level} 關開始`, 1200);
     }
 
@@ -600,10 +611,6 @@
     bindPad("pad-left", "left");
     bindPad("pad-right", "right");
 
-    document.body.addEventListener("touchend", (e) => {
-      if (!e.target.closest("#dpad")) return;
-    }, { passive: false });
-
     Events.on(engine, "beforeUpdate", () => {
       handleInput();
 
@@ -629,28 +636,40 @@
 
     Events.on(render, "afterRender", () => {
       const ctx = render.context;
-      if (!ball) return;
+      if (!ball || !mazeMetrics) return;
 
-      ctx.beginPath();
-      ctx.arc(ball.position.x, ball.position.y, ball.circleRadius + 6, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(59,130,246,0.16)";
-      ctx.fill();
-
-      const bodies = Composite.allBodies(world);
-      const startBody = bodies.find(b => b.label === "start");
+      const { offsetX, offsetY, mazeWidth, mazeHeight, cellW, cellH } = mazeMetrics;
 
       ctx.save();
-      ctx.font = "bold 18px Noto Sans TC, Microsoft JhengHei, sans-serif";
+
+      // 迷宮外框描邊，讓輪廓更清楚
+      ctx.strokeStyle = "#0f172a";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(
+        offsetX - 1.5,
+        offsetY - 1.5,
+        mazeWidth + 3,
+        mazeHeight + 3
+      );
+
+      // 球外光
+      ctx.beginPath();
+      ctx.arc(ball.position.x, ball.position.y, ball.circleRadius + 7, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(37,99,235,0.18)";
+      ctx.fill();
+
+      // 起點 / 終點文字
+      ctx.font = `bold ${Math.max(12, Math.min(cellW, cellH) * 0.28)}px Noto Sans TC, Microsoft JhengHei, sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
 
-      if (startBody) {
-        ctx.fillStyle = "#166534";
-        ctx.fillText("起點", startBody.position.x, startBody.position.y);
+      if (startSensor) {
+        ctx.fillStyle = "#14532d";
+        ctx.fillText("起點", startSensor.position.x, startSensor.position.y);
       }
 
       if (goalSensor) {
-        ctx.fillStyle = "#991b1b";
+        ctx.fillStyle = "#7f1d1d";
         ctx.fillText("終點", goalSensor.position.x, goalSensor.position.y);
       }
 
