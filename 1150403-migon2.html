@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>迷宮挑戰 v1.2 - 美化版</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      touch-action: none;
+      font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+      /* 更豐富的動態感漸層背景 */
+      background: radial-gradient(circle at 50% 0%, #e0eafc 0%, #cfdef3 100%);
+    }
+
+    /* 毛玻璃 UI 面板 */
+    #ui {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 30;
+      background: rgba(255, 255, 255, 0.65);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 16px;
+      padding: 14px 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      min-width: 190px;
+      max-width: min(84vw, 240px);
+      transition: all 0.3s ease;
+    }
+
+    #ui h1 {
+      margin: 0 0 4px 0;
+      font-size: 18px;
+      line-height: 1.2;
+      color: #1e293b;
+      text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+    }
+
+    #ui .ver {
+      font-size: 12px;
+      color: #64748b;
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+
+    #ui .row {
+      margin: 5px 0;
+      font-size: 14px;
+      color: #334155;
+      font-weight: 500;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    #ui .row span {
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    #ui .legend {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #475569;
+      text-align: center;
+      background: rgba(255,255,255,0.5);
+      padding: 4px;
+      border-radius: 6px;
+    }
+
+    #ui button {
+      margin-top: 12px;
+      width: 100%;
+      border: none;
+      border-radius: 12px;
+      padding: 10px;
+      font-size: 14px;
+      font-weight: bold;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: white;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+
+    #ui button:active {
+      transform: scale(0.96);
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+    }
+
+    /* 置中彈出訊息與動畫 */
+    @keyframes popIn {
+      0% { opacity: 0; transform: translate(-50%, -30%) scale(0.8); }
+      70% { transform: translate(-50%, -50%) scale(1.05); }
+      100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    }
+
+    #centerMessage {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 50;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 999px;
+      font-size: 20px;
+      font-weight: bold;
+      display: none;
+      white-space: nowrap;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    #centerMessage.show {
+      display: block;
+      animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    canvas { display: block; }
+
+    /* 現代化操控鍵盤 */
+    #dpad {
+      position: absolute;
+      left: 16px;
+      bottom: 16px;
+      z-index: 35;
+      width: 156px;
+      height: 156px;
+      user-select: none;
+      touch-action: none;
+    }
+
+    #dpad .pad-btn {
+      position: absolute;
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      background: rgba(255, 255, 255, 0.25);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: #1e293b;
+      font-size: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.08), inset 0 1px 1px rgba(255,255,255,0.8);
+      transition: all 0.1s;
+    }
+
+    #dpad .pad-btn.active {
+      background: rgba(59, 130, 246, 0.85);
+      color: white;
+      transform: scale(0.92);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15), inset 0 2px 4px rgba(0,0,0,0.2);
+      border-color: transparent;
+    }
+
+    #pad-up    { left: 52px; top: 0; }
+    #pad-left  { left: 0; top: 52px; }
+    #pad-right { right: 0; top: 52px; }
+    #pad-down  { left: 52px; bottom: 0; }
+
+    @media (min-width: 769px) {
+      #ui { left: 24px; top: 24px; min-width: 230px; }
+      #dpad {
+        width: 170px;
+        height: 170px;
+        left: 24px;
+        bottom: 24px;
+      }
+      #dpad .pad-btn { width: 56px; height: 56px; font-size: 24px; }
+      #pad-up    { left: 57px; top: 0; }
+      #pad-left  { left: 0; top: 57px; }
+      #pad-right { right: 0; top: 57px; }
+      #pad-down  { left: 57px; bottom: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div id="ui">
+    <h1>🧩 迷宮三關挑戰</h1>
+    <div class="ver">v1.2 Aesthetics Edition</div>
+    <div class="row">關卡進度 <span><span id="levelText">1</span> / 3</span></div>
+    <div class="row">本關時間 <span><span id="levelTime">0.00</span>s</span></div>
+    <div class="row">累計時間 <span><span id="totalTime">0.00</span>s</span></div>
+    <div class="legend"><span style="color:#10b981">● 起點</span>　<span style="color:#f43f5e">● 終點</span></div>
+    <button id="restartBtn">重新開始</button>
+  </div>
+
+  <div id="centerMessage"></div>
+
+  <div id="dpad">
+    <div class="pad-btn" id="pad-up">▲</div>
+    <div class="pad-btn" id="pad-left">◀</div>
+    <div class="pad-btn" id="pad-right">▶</div>
+    <div class="pad-btn" id="pad-down">▼</div>
+  </div>
+
+  <script>
+    const { Engine, Render, Runner, World, Bodies, Body, Composite, Events } = Matter;
+
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+
+    const engine = Engine.create();
+    engine.gravity.y = 0;
+    const world = engine.world;
+
+    const render = Render.create({
+      element: document.body,
+      engine,
+      options: {
+        width: W,
+        height: H,
+        wireframes: false,
+        background: "transparent"
+      }
+    });
+
+    Render.run(render);
+    const runner = Runner.create();
+    Runner.run(runner, engine);
+
+    const levelTextEl = document.getElementById("levelText");
+    const levelTimeEl = document.getElementById("levelTime");
+    const totalTimeEl = document.getElementById("totalTime");
+    const centerMessageEl = document.getElementById("centerMessage");
+    const restartBtn = document.getElementById("restartBtn");
+
+    const TOTAL_LEVELS = 3;
+    let currentLevel = 1;
+    let totalElapsed = 0;
+    let levelStartTs = 0;
+    let levelEnded = false;
+    let gameFinished = false;
+
+    let ball = null;
+    let goalSensor = null;
+    let startSensor = null;
+    let mazeMetrics = null;
+
+    const pressed = { up: false, down: false, left: false, right: false };
+
+    function randInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function showMessage(text, duration = 1200) {
+      centerMessageEl.textContent = text;
+      centerMessageEl.className = "show"; // 觸發 CSS 動畫
+      if (duration > 0) {
+        setTimeout(() => {
+          centerMessageEl.className = "";
+        }, duration);
+      }
+    }
+
+    function updateUI() {
+      levelTextEl.textContent = currentLevel;
+      totalTimeEl.textContent = totalElapsed.toFixed(2);
+    }
+
+    function clearLevelObjects() {
+      const allBodies = Composite.allBodies(world);
+      for (const body of allBodies) {
+        World.remove(world, body);
+      }
+      ball = null;
+      goalSensor = null;
+      startSensor = null;
+      mazeMetrics = null;
+    }
+
+    function createBoundaryWalls() {
+      const thickness = 40;
+      const wallColor = "#0f172a";
+      const walls = [
+        Bodies.rectangle(W / 2, -thickness / 2, W, thickness, { isStatic: true, render: { fillStyle: wallColor } }),
+        Bodies.rectangle(W / 2, H + thickness / 2, W, thickness, { isStatic: true, render: { fillStyle: wallColor } }),
+        Bodies.rectangle(-thickness / 2, H / 2, thickness, H, { isStatic: true, render: { fillStyle: wallColor } }),
+        Bodies.rectangle(W + thickness / 2, H / 2, thickness, H, { isStatic: true, render: { fillStyle: wallColor } })
+      ];
+      World.add(world, walls);
+    }
+
+    function generateMaze(rows, cols) {
+      const grid = Array(rows).fill(null).map(() => Array(cols).fill(false));
+      const verticals = Array(rows).fill(null).map(() => Array(cols - 1).fill(true));
+      const horizontals = Array(rows - 1).fill(null).map(() => Array(cols).fill(true));
+
+      function stepThroughCell(row, col) {
+        if (grid[row][col]) return;
+        grid[row][col] = true;
+
+        const neighbors = shuffle([
+          [row - 1, col, "up"],
+          [row, col + 1, "right"],
+          [row + 1, col, "down"],
+          [row, col - 1, "left"]
+        ]);
+
+        for (const [nextRow, nextCol, direction] of neighbors) {
+          if (nextRow < 0 || nextRow >= rows || nextCol < 0 || nextCol >= cols) continue;
+          if (grid[nextRow][nextCol]) continue;
+
+          if (direction === "left") verticals[row][col - 1] = false;
+          else if (direction === "right") verticals[row][col] = false;
+          else if (direction === "up") horizontals[row - 1][col] = false;
+          else if (direction === "down") horizontals[row][col] = false;
+
+          stepThroughCell(nextRow, nextCol);
+        }
+      }
+
+      stepThroughCell(randInt(0, rows - 1), randInt(0, cols - 1));
+      return { rows, cols, verticals, horizontals };
+    }
+
+    function buildMazeLevel(level) {
+      clearLevelObjects();
+      createBoundaryWalls();
+
+      let rows, cols, wallThickness, speed;
+      if (level === 1) {
+        rows = 7; cols = 10; wallThickness = 12; speed = 2.55;
+      } else if (level === 2) {
+        rows = 10; cols = 14; wallThickness = 10; speed = 2.40;
+      } else {
+        rows = 13; cols = 18; wallThickness = 8; speed = 2.20;
+      }
+
+      const maze = generateMaze(rows, cols);
+
+      const isMobile = W <= 768;
+      const leftPad = isMobile ? Math.max(92, W * 0.10) : Math.max(130, W * 0.11);
+      const rightPad = isMobile ? 28 : 50;
+      const topPad = isMobile ? 84 : 78;
+      const bottomPad = isMobile ? 84 : 66;
+
+      const mazeWidth = W - leftPad - rightPad;
+      const mazeHeight = H - topPad - bottomPad;
+
+      const cellW = mazeWidth / cols;
+      const cellH = mazeHeight / rows;
+
+      const offsetX = leftPad;
+      const offsetY = topPad;
+
+      mazeMetrics = { offsetX, offsetY, mazeWidth, mazeHeight, cellW, cellH };
+
+      // 迷宮底板 (更柔和的顏色)
+      const mazeBg = Bodies.rectangle(
+        offsetX + mazeWidth / 2,
+        offsetY + mazeHeight / 2,
+        mazeWidth,
+        mazeHeight,
+        { isStatic: true, render: { fillStyle: "rgba(241, 245, 249, 0.7)" } }
+      );
+      World.add(world, mazeBg);
+
+      const outerWallColor = "#1e293b";
+      const innerWallColor = "#475569";
+
+      const frameTop = Bodies.rectangle(offsetX + mazeWidth / 2, offsetY, mazeWidth + wallThickness, wallThickness, { isStatic: true, render: { fillStyle: outerWallColor } });
+      const frameBottom = Bodies.rectangle(offsetX + mazeWidth / 2, offsetY + mazeHeight, mazeWidth + wallThickness, wallThickness, { isStatic: true, render: { fillStyle: outerWallColor } });
+      
+      const entryGapHeight = cellH * 1.15;
+      const leftLowerH = mazeHeight - entryGapHeight;
+      const frameLeftLower = Bodies.rectangle(
+        offsetX, offsetY + entryGapHeight + leftLowerH / 2,
+        wallThickness, leftLowerH + wallThickness,
+        { isStatic: true, render: { fillStyle: outerWallColor } }
+      );
+
+      const frameRight = Bodies.rectangle(offsetX + mazeWidth, offsetY + mazeHeight / 2, wallThickness, mazeHeight + wallThickness, { isStatic: true, render: { fillStyle: outerWallColor } });
+
+      World.add(world, [frameTop, frameBottom, frameLeftLower, frameRight]);
+
+      maze.verticals.forEach((row, rowIndex) => {
+        row.forEach((isWall, colIndex) => {
+          if (!isWall) return;
+          if (rowIndex === 0 && colIndex === 0) return;
+
+          const wall = Bodies.rectangle(
+            offsetX + cellW * (colIndex + 1),
+            offsetY + cellH * rowIndex + cellH / 2,
+            wallThickness, cellH + wallThickness,
+            { isStatic: true, render: { fillStyle: innerWallColor } }
+          );
+          World.add(world, wall);
+        });
+      });
+
+      maze.horizontals.forEach((row, rowIndex) => {
+        row.forEach((isWall, colIndex) => {
+          if (!isWall) return;
+
+          const wall = Bodies.rectangle(
+            offsetX + cellW * colIndex + cellW / 2,
+            offsetY + cellH * (rowIndex + 1),
+            cellW + wallThickness, wallThickness,
+            { isStatic: true, render: { fillStyle: innerWallColor } }
+          );
+          World.add(world, wall);
+        });
+      });
+
+      const startCenterX = offsetX + cellW * 0.68;
+      const startCenterY = offsetY + cellH * 0.50;
+      const goalCenterX = offsetX + mazeWidth - cellW / 2;
+      const goalCenterY = offsetY + mazeHeight - cellH / 2;
+
+      // 起終點視覺優化 (改為半透明背景，文字在 afterRender 繪製)
+      startSensor = Bodies.rectangle(startCenterX, startCenterY, cellW * 0.62, cellH * 0.62, {
+        isStatic: true, isSensor: true, label: "start",
+        render: { fillStyle: "rgba(16, 185, 129, 0.2)" }
+      });
+      World.add(world, startSensor);
+
+      goalSensor = Bodies.rectangle(goalCenterX, goalCenterY, cellW * 0.72, cellH * 0.72, {
+        isStatic: true, isSensor: true, label: "goal",
+        render: { fillStyle: "rgba(244, 63, 94, 0.2)" }
+      });
+      World.add(world, goalSensor);
+
+      const radius = Math.min(cellW, cellH) * 0.22;
+
+      // 玩家球體 (隱藏預設渲染，改用 afterRender 自訂繪製光澤與陰影)
+      ball = Bodies.circle(startCenterX, startCenterY, radius, {
+        label: "player",
+        frictionAir: 0.22, restitution: 0.02, inertia: Infinity,
+        render: { visible: false } 
+      });
+      ball.moveSpeed = speed;
+      World.add(world, ball);
+
+      levelEnded = false;
+      levelStartTs = performance.now();
+      updateUI();
+      showMessage(`第 ${level} 關`);
+    }
+
+    function completeLevel() {
+      if (levelEnded || gameFinished) return;
+      levelEnded = true;
+
+      const now = performance.now();
+      const levelSeconds = (now - levelStartTs) / 1000;
+      totalElapsed += levelSeconds;
+      updateUI();
+
+      if (currentLevel < TOTAL_LEVELS) {
+        showMessage(`恭喜完成第 ${currentLevel} 關！ 🎉`);
+        setTimeout(() => {
+          currentLevel++;
+          buildMazeLevel(currentLevel);
+        }, 1500);
+      } else {
+        gameFinished = true;
+        showMessage(`🏆 挑戰成功！總時長：${totalElapsed.toFixed(2)}s`, 0);
+      }
+    }
+
+    function restartGame() {
+      currentLevel = 1;
+      totalElapsed = 0;
+      gameFinished = false;
+      centerMessageEl.className = "";
+      resetPressed();
+      buildMazeLevel(currentLevel);
+    }
+
+    function resetPressed() {
+      pressed.up = false;
+      pressed.down = false;
+      pressed.left = false;
+      pressed.right = false;
+      document.querySelectorAll(".pad-btn").forEach(btn => btn.classList.remove("active"));
+    }
+
+    function handleInput() {
+      if (!ball || levelEnded || gameFinished) return;
+
+      let vx = 0, vy = 0;
+      if (pressed.up) vy -= ball.moveSpeed;
+      if (pressed.down) vy += ball.moveSpeed;
+      if (pressed.left) vx -= ball.moveSpeed;
+      if (pressed.right) vx += ball.moveSpeed;
+
+      if (vx !== 0 && vy !== 0) {
+        vx *= 0.72;
+        vy *= 0.72;
+      }
+
+      Body.setVelocity(ball, { x: vx, y: vy });
+    }
+
+    window.addEventListener("keydown", (e) => {
+      const key = e.key.toLowerCase();
+      if (["arrowup", "w"].includes(key)) pressed.up = true;
+      if (["arrowdown", "s"].includes(key)) pressed.down = true;
+      if (["arrowleft", "a"].includes(key)) pressed.left = true;
+      if (["arrowright", "d"].includes(key)) pressed.right = true;
+    });
+
+    window.addEventListener("keyup", (e) => {
+      const key = e.key.toLowerCase();
+      if (["arrowup", "w"].includes(key)) pressed.up = false;
+      if (["arrowdown", "s"].includes(key)) pressed.down = false;
+      if (["arrowleft", "a"].includes(key)) pressed.left = false;
+      if (["arrowright", "d"].includes(key)) pressed.right = false;
+    });
+
+    restartBtn.addEventListener("click", restartGame);
+
+    function bindPad(id, dirKey) {
+      const el = document.getElementById(id);
+
+      const start = (ev) => {
+        ev.preventDefault();
+        pressed[dirKey] = true;
+        el.classList.add("active");
+      };
+
+      const end = (ev) => {
+        ev.preventDefault();
+        pressed[dirKey] = false;
+        el.classList.remove("active");
+      };
+
+      el.addEventListener("touchstart", start, { passive: false });
+      el.addEventListener("touchend", end, { passive: false });
+      el.addEventListener("touchcancel", end, { passive: false });
+
+      el.addEventListener("mousedown", start);
+      el.addEventListener("mouseup", end);
+      el.addEventListener("mouseleave", () => {
+        pressed[dirKey] = false;
+        el.classList.remove("active");
+      });
+    }
+
+    bindPad("pad-up", "up");
+    bindPad("pad-down", "down");
+    bindPad("pad-left", "left");
+    bindPad("pad-right", "right");
+
+    Events.on(engine, "beforeUpdate", () => {
+      handleInput();
+
+      if (!levelEnded && !gameFinished) {
+        const now = performance.now();
+        const levelSeconds = (now - levelStartTs) / 1000;
+        levelTimeEl.textContent = levelSeconds.toFixed(2);
+        totalTimeEl.textContent = (totalElapsed + levelSeconds).toFixed(2);
+      }
+    });
+
+    Events.on(engine, "collisionStart", (event) => {
+      if (!ball || !goalSensor || levelEnded || gameFinished) return;
+
+      for (const pair of event.pairs) {
+        const labels = [pair.bodyA.label, pair.bodyB.label];
+        if (labels.includes("player") && labels.includes("goal")) {
+          completeLevel();
+          break;
+        }
+      }
+    });
+
+    // 使用 afterRender 進行進階視覺渲染 (陰影、漸層球體、標示)
+    Events.on(render, "afterRender", () => {
+      const ctx = render.context;
+      if (!ball || !mazeMetrics) return;
+
+      const { offsetX, offsetY, mazeWidth, mazeHeight, cellW, cellH } = mazeMetrics;
+
+      ctx.save();
+
+      // 繪製球體 (3D 漸層與外發光)
+      const r = ball.circleRadius;
+      const x = ball.position.x;
+      const y = ball.position.y;
+      
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      
+      // 球體發光陰影
+      ctx.shadowColor = "#3b82f6";
+      ctx.shadowBlur = 12;
+      
+      // 球體漸層 (模擬立體光澤)
+      const gradient = ctx.createRadialGradient(x - r*0.3, y - r*0.3, r*0.1, x, y, r);
+      gradient.addColorStop(0, "#93c5fd");
+      gradient.addColorStop(0.5, "#2563eb");
+      gradient.addColorStop(1, "#1e3a8a");
+      
+      ctx.fillStyle = gradient;
+      ctx.fill();
+      
+      // 重置陰影以免影響其他繪製
+      ctx.shadowBlur = 0;
+
+      // 繪製起終點文字
+      ctx.font = `bold ${Math.max(14, Math.min(cellW, cellH) * 0.3)}px Noto Sans TC, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      if (startSensor) {
+        ctx.fillStyle = "#059669";
+        ctx.fillText("起", startSensor.position.x, startSensor.position.y);
+      }
+
+      if (goalSensor) {
+        ctx.fillStyle = "#e11d48";
+        ctx.fillText("終", goalSensor.position.x, goalSensor.position.y);
+        
+        // 終點小光環提示
+        ctx.beginPath();
+        ctx.arc(goalSensor.position.x, goalSensor.position.y, r * 1.5, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(225, 29, 72, 0.4)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    });
+
+    window.addEventListener("blur", resetPressed);
+    
+    // 防抖調整視窗大小重新載入
+    let resizeTimer;
+    window.addEventListener("resize", () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => location.reload(), 200);
+    });
+
+    restartGame();
+  </script>
+</body>
+</html>
