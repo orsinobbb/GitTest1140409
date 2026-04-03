@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Matter.js Slingshot Game</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+<style>
+body{
+    margin:0;
+    overflow:hidden;
+    background:#222;
+}
+canvas{
+    border:2px solid white;
+}
+</style>
+</head>
+
+<body>
+
+<script>
+
+const Engine = Matter.Engine
+const Render = Matter.Render
+const Runner = Matter.Runner
+const Bodies = Matter.Bodies
+const Composite = Matter.Composite
+const Constraint = Matter.Constraint
+const Mouse = Matter.Mouse
+const MouseConstraint = Matter.MouseConstraint
+
+// engine
+const engine = Engine.create()
+
+// renderer
+const render = Render.create({
+    element: document.body,
+    engine: engine,
+    options:{
+        width:900,
+        height:600,
+        wireframes:false,
+        background:"#333"
+    }
+})
+
+// 地面
+const ground = Bodies.rectangle(450,580,900,40,{isStatic:true})
+
+// 方塊塔
+const boxes = []
+
+for(let i=0;i<5;i++){
+    for(let j=0;j<3;j++){
+        boxes.push(
+            Bodies.rectangle(
+                650 + j*40,
+                540 - i*40,
+                35,
+                35
+            )
+        )
+    }
+}
+
+// 發射球
+let ball = Bodies.circle(200,450,20)
+
+// 投石器
+const sling = Constraint.create({
+    pointA:{x:200,y:450},
+    bodyB:ball,
+    stiffness:0.05
+})
+
+// 加入世界
+Composite.add(engine.world,[ground,ball,sling,...boxes])
+
+// 滑鼠控制
+const mouse = Mouse.create(render.canvas)
+
+const mouseConstraint = MouseConstraint.create(engine,{
+    mouse:mouse,
+    constraint:{
+        stiffness:0.02
+    }
+})
+
+Composite.add(engine.world,mouseConstraint)
+
+// 放開滑鼠後重生球
+Matter.Events.on(mouseConstraint,"enddrag",function(event){
+
+    if(event.body === ball){
+
+        setTimeout(()=>{
+            ball = Bodies.circle(200,450,20)
+            Composite.add(engine.world,ball)
+            sling.bodyB = ball
+        },1000)
+
+    }
+
+})
+
+Render.run(render)
+Runner.run(engine)
+
+</script>
+
+</body>
+</html>
