@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>迷宮挑戰 v1.4 - 完美版</title>
+  <title>迷宮挑戰 v1.5 - 暢通無阻版</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
@@ -32,18 +32,15 @@
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
       min-width: 190px;
       max-width: min(84vw, 240px);
-      /* 加入縮小動畫的過渡效果 */
       transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
       transform-origin: top left;
     }
 
-    /* 滾動時套用的縮小樣式 */
     #ui.minimized {
       transform: scale(0.65);
       opacity: 0.4;
     }
 
-    /* 如果在縮小狀態下點擊或滑鼠移入，暫時恢復 */
     #ui.minimized:hover, #ui.minimized:active {
       transform: scale(1);
       opacity: 1;
@@ -201,7 +198,7 @@
 <body>
   <div id="ui">
     <h1>🧩 迷宮三關挑戰</h1>
-    <div class="ver">v1.4 Stability Edition</div>
+    <div class="ver">v1.5 Smooth Engine</div>
     <div class="row">關卡進度 <span><span id="levelText">1</span> / 3</span></div>
     <div class="row">本關時間 <span><span id="levelTime">0.00</span>s</span></div>
     <div class="row">累計時間 <span><span id="totalTime">0.00</span>s</span></div>
@@ -258,9 +255,11 @@
     let gameFinished = false;
 
     let ball = null;
-    let goalSensor = null;
-    let startSensor = null;
     let mazeMetrics = null;
+    
+    // 改為純邏輯座標物件，不再加入物理引擎
+    let startZone = null;
+    let goalZone = null;
 
     const pressed = { up: false, down: false, left: false, right: false };
 
@@ -297,8 +296,8 @@
         World.remove(world, body);
       }
       ball = null;
-      goalSensor = null;
-      startSensor = null;
+      startZone = null;
+      goalZone = null;
       mazeMetrics = null;
     }
 
@@ -350,7 +349,7 @@
     function buildMazeLevel(level) {
       clearLevelObjects();
       createBoundaryWalls();
-      uiEl.classList.remove("minimized"); // 確保新關卡開始時 UI 展開
+      uiEl.classList.remove("minimized");
 
       let rows, cols, wallThickness, speed;
       if (level === 1) {
@@ -436,29 +435,19 @@
         });
       });
 
-      // 【修復】嚴格鎖定起點在第一格 (0,0) 的「正中心」
+      // 設定邏輯區塊：起點與終點 (完全脫離物理引擎)
       const startCenterX = offsetX + cellW * 0.5;
       const startCenterY = offsetY + cellH * 0.5;
-      
-      // 終點鎖定在最後一格的中心
       const goalCenterX = offsetX + mazeWidth - cellW / 2;
       const goalCenterY = offsetY + mazeHeight - cellH / 2;
+      const triggerRadius = Math.min(cellW, cellH) * 0.35; // 判斷進洞的半徑
 
-      startSensor = Bodies.rectangle(startCenterX, startCenterY, cellW * 0.62, cellH * 0.62, {
-        isStatic: true, isSensor: true, label: "start",
-        render: { fillStyle: "rgba(16, 185, 129, 0.2)" }
-      });
-      World.add(world, startSensor);
-
-      goalSensor = Bodies.rectangle(goalCenterX, goalCenterY, cellW * 0.72, cellH * 0.72, {
-        isStatic: true, isSensor: true, label: "goal",
-        render: { fillStyle: "rgba(244, 63, 94, 0.2)" }
-      });
-      World.add(world, goalSensor);
+      startZone = { x: startCenterX, y: startCenterY, radius: triggerRadius };
+      goalZone = { x: goalCenterX, y: goalCenterY, radius: triggerRadius };
 
       const radius = Math.min(cellW, cellH) * 0.22;
 
-      // 【修復】基於正中心，計算出安全的右下偏移量，避免生成時卡入牆壁被物理引擎彈飛
+      // 遊戲起始座標
       const spawnX = startCenterX + cellW * 0.15;
       const spawnY = startCenterY + cellH * 0.15;
 
@@ -480,7 +469,7 @@
     function completeLevel() {
       if (levelEnded || gameFinished) return;
       levelEnded = true;
-      uiEl.classList.remove("minimized"); // 過關時展開 UI
+      uiEl.classList.remove("minimized"); 
 
       const now = performance.now();
       const levelSeconds = (now - levelStartTs) / 1000;
@@ -593,111 +582,118 @@
         totalTimeEl.textContent = (totalElapsed + levelSeconds).toFixed(2);
       }
 
-      // 【新增】UI 縮小邏輯與球體旋轉
       if (ball && !levelEnded && !gameFinished) {
         const speed = Math.hypot(ball.velocity.x, ball.velocity.y);
         const isPressing = pressed.up || pressed.down || pressed.left || pressed.right;
         
-        // 如果有按壓方向鍵，或是球的速度大於一定值，就縮小看板
         if (speed > 0.5 || isPressing) {
           uiEl.classList.add("minimized");
         } else if (speed < 0.05) {
-          // 當球幾乎靜止時，恢復看板大小
           uiEl.classList.remove("minimized");
         }
 
-        // 視覺旋轉
         if (speed > 0.05) {
           Body.setAngle(ball, ball.angle + speed * 0.04);
         }
-      }
-    });
-
-    Events.on(engine, "collisionStart", (event) => {
-      if (!ball || !goalSensor || levelEnded || gameFinished) return;
-
-      for (const pair of event.pairs) {
-        const labels = [pair.bodyA.label, pair.bodyB.label];
-        if (labels.includes("player") && labels.includes("goal")) {
-          completeLevel();
-          break;
+        
+        // 【核心邏輯判定】取代物理碰撞：以數學距離來計算球是否進入終點
+        if (goalZone) {
+          const distToGoal = Math.hypot(ball.position.x - goalZone.x, ball.position.y - goalZone.y);
+          if (distToGoal < goalZone.radius) {
+            completeLevel();
+          }
         }
       }
     });
 
     Events.on(render, "afterRender", () => {
       const ctx = render.context;
-      if (!ball || !mazeMetrics) return;
-
-      const { offsetX, offsetY, mazeWidth, mazeHeight, cellW, cellH } = mazeMetrics;
+      if (!mazeMetrics) return;
+      const { cellW, cellH } = mazeMetrics;
 
       ctx.save();
-
+      
+      // === 繪製地板上的起終點標示 (畫在底層) ===
       ctx.font = `bold ${Math.max(14, Math.min(cellW, cellH) * 0.3)}px Noto Sans TC, sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
 
-      if (startSensor) {
-        ctx.fillStyle = "#059669";
-        ctx.fillText("起", startSensor.position.x, startSensor.position.y);
-      }
-      if (goalSensor) {
-        ctx.fillStyle = "#e11d48";
-        ctx.fillText("終", goalSensor.position.x, goalSensor.position.y);
+      if (startZone) {
         ctx.beginPath();
-        ctx.arc(goalSensor.position.x, goalSensor.position.y, ball.circleRadius * 1.5, 0, Math.PI * 2);
-        ctx.strokeStyle = "rgba(225, 29, 72, 0.4)";
+        ctx.arc(startZone.x, startZone.y, startZone.radius, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(16, 185, 129, 0.15)";
+        ctx.fill();
+
+        ctx.fillStyle = "#059669";
+        ctx.fillText("起", startZone.x, startZone.y);
+      }
+
+      if (goalZone) {
+        ctx.beginPath();
+        ctx.arc(goalZone.x, goalZone.y, goalZone.radius, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(244, 63, 94, 0.15)";
+        ctx.fill();
+
+        ctx.fillStyle = "#e11d48";
+        ctx.fillText("終", goalZone.x, goalZone.y);
+
+        ctx.beginPath();
+        ctx.arc(goalZone.x, goalZone.y, goalZone.radius * 1.2, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(225, 29, 72, 0.5)";
         ctx.lineWidth = 2;
         ctx.stroke();
       }
 
-      const r = ball.circleRadius;
-      const x = ball.position.x;
-      const y = ball.position.y;
-      
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(ball.angle);
-      
-      ctx.shadowColor = "#3b82f6";
-      ctx.shadowBlur = 12;
+      // === 繪製實體球 (畫在頂層，確保覆蓋地上的文字與標線) ===
+      if (ball) {
+        const r = ball.circleRadius;
+        const x = ball.position.x;
+        const y = ball.position.y;
+        
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(ball.angle);
+        
+        ctx.shadowColor = "#3b82f6";
+        ctx.shadowBlur = 12;
 
-      ctx.beginPath();
-      ctx.arc(0, 0, r, 0, Math.PI * 2);
-      ctx.fillStyle = "#1e3a8a"; 
-      ctx.fill();
-      
-      ctx.shadowBlur = 0; 
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.fillStyle = "#1e3a8a"; 
+        ctx.fill();
+        
+        ctx.shadowBlur = 0; 
 
-      ctx.beginPath();
-      ctx.arc(0, 0, r, 0, Math.PI);
-      ctx.fillStyle = "#60a5fa"; 
-      ctx.fill();
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI);
+        ctx.fillStyle = "#60a5fa"; 
+        ctx.fill();
 
-      ctx.beginPath();
-      ctx.arc(r / 2, 0, r / 2, 0, Math.PI, true);
-      ctx.fillStyle = "#1e3a8a"; 
-      ctx.fill();
+        ctx.beginPath();
+        ctx.arc(r / 2, 0, r / 2, 0, Math.PI, true);
+        ctx.fillStyle = "#1e3a8a"; 
+        ctx.fill();
 
-      ctx.beginPath();
-      ctx.arc(-r / 2, 0, r / 2, 0, Math.PI, false);
-      ctx.fillStyle = "#60a5fa"; 
-      ctx.fill();
-      
-      ctx.restore(); 
+        ctx.beginPath();
+        ctx.arc(-r / 2, 0, r / 2, 0, Math.PI, false);
+        ctx.fillStyle = "#60a5fa"; 
+        ctx.fill();
+        
+        ctx.restore(); 
 
-      ctx.save();
-      ctx.translate(x, y);
-      const gradient = ctx.createRadialGradient(-r * 0.3, -r * 0.3, r * 0.1, 0, 0, r);
-      gradient.addColorStop(0, "rgba(255, 255, 255, 0.7)");
-      gradient.addColorStop(0.4, "rgba(255, 255, 255, 0.1)");
-      gradient.addColorStop(1, "rgba(0, 0, 0, 0.6)");
-      
-      ctx.beginPath();
-      ctx.arc(0, 0, r, 0, Math.PI * 2);
-      ctx.fillStyle = gradient;
-      ctx.fill();
-      ctx.restore();
+        ctx.save();
+        ctx.translate(x, y);
+        const gradient = ctx.createRadialGradient(-r * 0.3, -r * 0.3, r * 0.1, 0, 0, r);
+        gradient.addColorStop(0, "rgba(255, 255, 255, 0.7)");
+        gradient.addColorStop(0.4, "rgba(255, 255, 255, 0.1)");
+        gradient.addColorStop(1, "rgba(0, 0, 0, 0.6)");
+        
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.fillStyle = gradient;
+        ctx.fill();
+        ctx.restore();
+      }
 
       ctx.restore(); 
     });
