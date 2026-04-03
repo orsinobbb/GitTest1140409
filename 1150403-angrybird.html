@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Matter.js 升級版投射攻城遊戲</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+      background: linear-gradient(to bottom, #7ec9ff 0%, #dff4ff 55%, #d9c39a 56%, #b98a54 100%);
+    }
+
+    #ui {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      z-index: 20;
+      background: rgba(255,255,255,0.92);
+      border-radius: 14px;
+      padding: 14px 16px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.16);
+      min-width: 240px;
+    }
+
+    #ui h1 {
+      margin: 0 0 8px 0;
+      font-size: 20px;
+    }
+
+    #ui .row {
+      margin: 6px 0;
+      font-size: 15px;
+    }
+
+    #ui button {
+      margin-top: 10px;
+      width: 100%;
+      padding: 10px 12px;
+      border: none;
+      border-radius: 10px;
+      background: #2563eb;
+      color: white;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    #ui button:hover {
+      background: #1d4ed8;
+    }
+
+    #msg {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 30;
+      padding: 10px 20px;
+      border-radius: 999px;
+      color: white;
+      background: rgba(0,0,0,0.7);
+      font-size: 18px;
+      display: none;
+    }
+
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <div id="ui">
+    <h1>🎯 升級版攻城遊戲</h1>
+    <div class="row">分數：<span id="score">0</span></div>
+    <div class="row">剩餘彈藥：<span id="ammo">5</span></div>
+    <div class="row">剩餘敵人：<span id="targets">0</span></div>
+    <div class="row">玩法：拖曳左側石球，放開發射</div>
+    <button id="restartBtn">重新開始</button>
+  </div>
+
+  <div id="msg"></div>
+
+  <script>
+    const {
+      Engine, Render, Runner, World, Bodies, Body, Composite, Constraint,
+      Mouse, MouseConstraint, Events, Vector
+    } = Matter;
+
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+
+    const engine = Engine.create();
+    engine.gravity.y = 1.05;
+    const world = engine.world;
+
+    const render = Render.create({
+      element: document.body,
+      engine,
+      options: {
+        width: W,
+        height: H,
+        wireframes: false,
+        background: 'transparent'
+      }
+    });
+
+    Render.run(render);
+    const runner = Runner.create();
+    Runner.run(runner, engine);
+
+    const scoreEl = document.getElementById("score");
+    const ammoEl = document.getElementById("ammo");
+    const targetsEl = document.getElementById("targets");
+    const msgEl = document.getElementById("msg");
+    const restartBtn = document.getElementById("restartBtn");
+
+    let score = 0;
+    let ammo = 5;
+    let currentBall = null;
+    let sling = null;
+    let mouseConstraint = null;
+    let gameEnded = false;
+
+    const slingAnchor = { x: 190, y: H - 180 };
+    const MAX_DRAG = 120;
+
+    const targets = [];
+    const particleEffects = [];
+    const ballTrails = new Map();
+    const countedBodies = new Set();
+
+    function updateUI() {
+      scoreEl.textContent = score;
+      ammoEl.textContent = ammo;
+      targetsEl.textContent = targets.filter(t => !t.dead).length;
+    }
+
+    function showMsg(text) {
+      msgEl.textContent = text;
+      msgEl.style.display = "block";
+    }
+
+    function hideMsg() {
+      msgEl.style.display = "none";
+    }
+
+    function addScore(v) {
+      score += v;
+      updateUI();
+    }
+
+    function createStaticScene() {
+      const ground = Bodies.rectangle(W / 2, H - 18, W, 36, {
+        isStatic: true,
+        render: { fillStyle: "#7a5a35" }
+      });
+
+      const leftWall = Bodies.rectangle(-20, H / 2, 40, H, { isStatic: true, render: { visible: false }});
+      const rightWall = Bodies.rectangle(W + 20, H / 2, 40, H, { isStatic: true, render: { visible: false }});
+      const topWall = Bodies.rectangle(W / 2, -20, W, 40, { isStatic: true, render: { visible: false }});
+
+      const slingBase = Bodies.rectangle(slingAnchor.x, slingAnchor.y + 45, 90, 18, {
+        isStatic: true,
+        render: { fillStyle: "#6b4f36" }
+      });
+
+      const leftWood = Bodies.rectangle(slingAnchor.x - 18, slingAnchor.y - 10, 16, 110, {
+        isStatic: true,
+        angle: -0.08,
+        render: { fillStyle: "#8b5e3c" }
+      });
+
+      const rightWood = Bodies.rectangle(slingAnchor.x + 18, slingAnchor.y - 10, 16, 110, {
+        isStatic: true,
+        angle: 0.08,
+        render: { fillStyle: "#8b5e3c" }
+      });
+
+      World.add(world, [ground, leftWall, rightWall, topWall, slingBase, leftWood, rightWood]);
+    }
+
+    function box(x, y, w, h, color = "#c58a47") {
+      return Bodies.rectangle(x, y, w, h, {
+        density: 0.002,
+        friction: 0.8,
+        frictionAir: 0.01,
+        restitution: 0.02,
+        render: { fillStyle: color }
+      });
+    }
+
+    function stone(x, y, r = 20) {
+      const b = Bodies.circle(x, y, r, {
+        density: 0.005,
+        friction: 0.01,
+        frictionAir: 0.002,
+        restitution: 0.15,
+        label: "ball",
+        render: { fillStyle: "#5aa9ff" }
+      });
+      b.isLaunched = false;
+      b.spawnedNext = false;
+      return b;
+    }
+
+    function enemy(x, y) {
+      const e = Bodies.circle(x, y, 19, {
+        density: 0.002,
+        friction: 0.6,
+        restitution: 0.15,
+        label: "enemy",
+        render: { fillStyle: "#7cb342" }
+      });
+      e.hp = 100;
+      e.dead = false;
+      targets.push(e);
+      return e;
+    }
+
+    function tnt(x, y) {
+      const b = Bodies.rectangle(x, y, 38, 38, {
+        density: 0.002,
+        friction: 0.6,
+        restitution: 0.05,
+        label: "tnt",
+        render: { fillStyle: "#d62828" }
+      });
+      b.exploded = false;
+      return b;
+    }
+
+    function buildCastle() {
+      const x = W - 310;
+      const y = H - 60;
+
+      const parts = [
+        box(x, y - 20, 42, 42),
+        box(x, y - 66, 42, 42),
+        box(x, y - 112, 42, 42),
+
+        box(x + 120, y - 20, 42, 42),
+        box(x + 120, y - 66, 42, 42),
+        box(x + 120, y - 112, 42, 42),
+
+        box(x + 60, y - 144, 170, 18, "#a86e3b"),
+        box(x + 60, y - 95, 110, 18, "#a86e3b"),
+        box(x + 60, y - 20, 110, 18, "#a86e3b"),
+
+        box(x + 60, y - 178, 20, 55, "#d7b47a"),
+        box(x + 60, y - 210, 120, 14, "#8e5d34"),
+
+        enemy(x, y - 154),
+        enemy(x + 120, y - 154),
+        enemy(x + 60, y - 118),
+
+        tnt(x + 60, y - 55)
+      ];
+
+      World.add(world, parts);
+    }
+
+    function spawnBall() {
+      if (ammo <= 0 || gameEnded) return;
+
+      currentBall = stone(slingAnchor.x, slingAnchor.y, 21);
+
+      sling = Constraint.create({
+        pointA: slingAnchor,
+        bodyB: currentBall,
+        stiffness: 0.12,
+        damping: 0.01,
+        length: 0,
+        render: {
+          strokeStyle: "#4a2f1b",
+          lineWidth: 6
+        }
+      });
+
+      World.add(world, [currentBall, sling]);
+      ballTrails.set(currentBall.id, []);
+    }
+
+    function releaseCurrentBall() {
+      if (!currentBall || currentBall.isLaunched) return;
+
+      currentBall.isLaunched = true;
+      sling.bodyB = null;
+    }
+
+    function limitDrag(body) {
+      const dx = body.position.x - slingAnchor.x;
+      const dy = body.position.y - slingAnchor.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist > MAX_DRAG) {
+        const ratio = MAX_DRAG / dist;
+        Body.setPosition(body, {
+          x: slingAnchor.x + dx * ratio,
+          y: slingAnchor.y + dy * ratio
+        });
+      }
+    }
+
+    function createParticles(x, y, color = "#ffcc33", count = 14, speed = 4) {
+      const arr = [];
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const v = Math.random() * speed + 1;
+        arr.push({
+          x, y,
+          vx: Math.cos(angle) * v,
+          vy: Math.sin(angle) * v,
+          life: 30 + Math.random() * 20,
+          color
+        });
+      }
+      particleEffects.push(...arr);
+    }
+
+    function explode(body, radius = 150, power = 0.045) {
+      if (!body || body.exploded) return;
+      body.exploded = true;
+      createParticles(body.position.x, body.position.y, "#ff6b00", 28, 6);
+
+      const all = Composite.allBodies(world);
+      for (const b of all) {
+        if (b.isStatic || b === body) continue;
+        const dx = b.position.x - body.position.x;
+        const dy = b.position.y - body.position.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist === 0 || dist > radius) continue;
+
+        const force = (1 - dist / radius) * power;
+        Body.applyForce(b, b.position, {
+          x: (dx / dist) * force,
+          y: (dy / dist) * force
+        });
+
+        if (b.label === "enemy") b.hp -= 90;
+      }
+
+      setTimeout(() => World.remove(world, body), 50);
+    }
+
+    function removeEnemy(e) {
+      if (!e || e.dead) return;
+      e.dead = true;
+      createParticles(e.position.x, e.position.y, "#9be564", 18, 3);
+      World.remove(world, e);
+      addScore(500);
+      updateUI();
+      checkGameEnd();
+    }
+
+    function setupMouse() {
+      const mouse = Mouse.create(render.canvas);
+
+      mouseConstraint = MouseConstraint.create(engine, {
+        mouse,
+        constraint: {
+          stiffness: 0.02,
+          render: { visible: false }
+        }
+      });
+
+      World.add(world, mouseConstraint);
+      render.mouse = mouse;
+
+      Events.on(mouseConstraint, "startdrag", e => {
+        if (e.body !== currentBall) return;
+        hideMsg();
+      });
+
+      Events.on(mouseConstraint, "mousemove", () => {
+        if (currentBall && !currentBall.isLaunched) {
+          limitDrag(currentBall);
+        }
+      });
+
+      Events.on(mouseConstraint, "enddrag", e => {
+        if (e.body === currentBall) {
+          releaseCurrentBall();
+        }
+      });
+    }
+
+    function cleanupOldBalls() {
+      const all = Composite.allBodies(world);
+      for (const b of all) {
+        if (b.label === "ball" && (b.position.y > H + 250 || b.position.x > W + 250 || b.position.x < -250)) {
+          World.remove(world, b);
+          ballTrails.delete(b.id);
+        }
+      }
+    }
+
+    function checkEnemyState() {
+      for (const e of targets) {
+        if (e.dead) continue;
+        if (e.hp <= 0 || e.position.y > H + 40) {
+          removeEnemy(e);
+        }
+      }
+    }
+
+    function checkCollapsedScore() {
+      const all = Composite.allBodies(world);
+      for (const b of all) {
+        if (b.isStatic || b.label === "ball" || b.label === "enemy" || b.label === "tnt") continue;
+        if (b.position.y > H - 26 && !countedBodies.has(b.id)) {
+          countedBodies.add(b.id);
+          addScore(50);
+        }
+      }
+    }
+
+    function checkGameEnd() {
+      const alive = targets.filter(t => !t.dead).length;
+      if (alive === 0) {
+        gameEnded = true;
+        showMsg("🎉 全數擊倒！");
+        return;
+      }
+
+      if (ammo <= 0 && !currentBall) {
+        const stillMoving = Composite.allBodies(world).some(b =>
+          b.label === "ball" && (Math.abs(b.velocity.x) > 0.6 || Math.abs(b.velocity.y) > 0.6)
+        );
+        if (!stillMoving) {
+          gameEnded = true;
+          showMsg("💥 彈藥用完");
+        }
+      }
+    }
+
+    Events.on(engine, "collisionStart", event => {
+      for (const pair of event.pairs) {
+        const a = pair.bodyA;
+        const b = pair.bodyB;
+
+        if (a.label === "enemy" && b.label === "ball") {
+          a.hp -= 38;
+          createParticles(a.position.x, a.position.y, "#ffffff", 8, 2);
+        }
+        if (b.label === "enemy" && a.label === "ball") {
+          b.hp -= 38;
+          createParticles(b.position.x, b.position.y, "#ffffff", 8, 2);
+        }
+
+        if (a.label === "tnt" && !a.exploded) explode(a);
+        if (b.label === "tnt" && !b.exploded) explode(b);
+      }
+    });
+
+    Events.on(engine, "beforeUpdate", () => {
+      if (currentBall && !currentBall.isLaunched) {
+        limitDrag(currentBall);
+      }
+    });
+
+    Events.on(engine, "afterUpdate", () => {
+      if (!gameEnded && currentBall) {
+        const trail = ballTrails.get(currentBall.id);
+        if (trail) {
+          trail.push({ x: currentBall.position.x, y: currentBall.position.y });
+          if (trail.length > 18) trail.shift();
+        }
+
+        const launchedFarEnough =
+          currentBall.isLaunched &&
+          (
+            Vector.magnitude(currentBall.velocity) > 2.5 ||
+            Math.abs(currentBall.position.x - slingAnchor.x) > 45 ||
+            Math.abs(currentBall.position.y - slingAnchor.y) > 45
+          );
+
+        if (launchedFarEnough && !currentBall.spawnedNext) {
+          currentBall.spawnedNext = true;
+          ammo--;
+          updateUI();
+
+          currentBall = null;
+
+          if (ammo > 0) spawnBall();
+        }
+      }
+
+      checkEnemyState();
+      checkCollapsedScore();
+      cleanupOldBalls();
+      checkGameEnd();
+    });
+
+    Events.on(render, "afterRender", () => {
+      const ctx = render.context;
+
+      // 畫彈弓前叉橡皮筋
+      if (sling && currentBall && !currentBall.isLaunched) {
+        ctx.beginPath();
+        ctx.moveTo(slingAnchor.x - 18, slingAnchor.y - 55);
+        ctx.lineTo(currentBall.position.x, currentBall.position.y);
+        ctx.lineTo(slingAnchor.x + 18, slingAnchor.y - 55);
+        ctx.strokeStyle = "#3c2415";
+        ctx.lineWidth = 6;
+        ctx.stroke();
+      }
+
+      // 球尾跡
+      for (const [id, trail] of ballTrails.entries()) {
+        if (!trail || trail.length < 2) continue;
+        for (let i = 0; i < trail.length; i++) {
+          const p = trail[i];
+          const alpha = i / trail.length * 0.35;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 4 + i * 0.18, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(90, 169, 255, ${alpha})`;
+          ctx.fill();
+        }
+      }
+
+      // 敵人簡單臉
+      for (const e of targets) {
+        if (e.dead) continue;
+        ctx.save();
+        ctx.translate(e.position.x, e.position.y);
+        ctx.rotate(e.angle);
+
+        ctx.beginPath();
+        ctx.arc(-6, -4, 2.5, 0, Math.PI * 2);
+        ctx.arc(6, -4, 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = "#1f2937";
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(0, 5, 6, 0.15, Math.PI - 0.15);
+        ctx.strokeStyle = "#1f2937";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      // 粒子
+      for (let i = particleEffects.length - 1; i >= 0; i--) {
+        const p = particleEffects[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vx *= 0.98;
+        p.vy *= 0.98;
+        p.vy += 0.05;
+        p.life--;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = Math.max(0, p.life / 40);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
+        if (p.life <= 0) particleEffects.splice(i, 1);
+      }
+    });
+
+    function clearAllDynamicBodies() {
+      const all = Composite.allBodies(world);
+      for (const b of all) {
+        World.remove(world, b);
+      }
+      const allConstraints = Composite.allConstraints(world);
+      for (const c of allConstraints) {
+        World.remove(world, c);
+      }
+    }
+
+    function init() {
+      clearAllDynamicBodies();
+
+      score = 0;
+      ammo = 5;
+      currentBall = null;
+      sling = null;
+      gameEnded = false;
+      targets.length = 0;
+      particleEffects.length = 0;
+      countedBodies.clear();
+      ballTrails.clear();
+      hideMsg();
+
+      createStaticScene();
+      buildCastle();
+
+      if (mouseConstraint) {
+        World.remove(world, mouseConstraint);
+      }
+      setupMouse();
+
+      spawnBall();
+      updateUI();
+    }
+
+    restartBtn.addEventListener("click", init);
+    window.addEventListener("resize", () => location.reload());
+
+    init();
+  </script>
+</body>
+</html>
