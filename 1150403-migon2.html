@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>迷宮挑戰 v1.2 - 美化版</title>
+  <title>迷宮挑戰 v1.2 - 美化版 (滾動升級)</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
@@ -15,11 +15,9 @@
       overflow: hidden;
       touch-action: none;
       font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
-      /* 更豐富的動態感漸層背景 */
       background: radial-gradient(circle at 50% 0%, #e0eafc 0%, #cfdef3 100%);
     }
 
-    /* 毛玻璃 UI 面板 */
     #ui {
       position: absolute;
       top: 16px;
@@ -96,7 +94,6 @@
       box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
     }
 
-    /* 置中彈出訊息與動畫 */
     @keyframes popIn {
       0% { opacity: 0; transform: translate(-50%, -30%) scale(0.8); }
       70% { transform: translate(-50%, -50%) scale(1.05); }
@@ -129,7 +126,6 @@
 
     canvas { display: block; }
 
-    /* 現代化操控鍵盤 */
     #dpad {
       position: absolute;
       left: 16px;
@@ -191,7 +187,7 @@
 <body>
   <div id="ui">
     <h1>🧩 迷宮三關挑戰</h1>
-    <div class="ver">v1.2 Aesthetics Edition</div>
+    <div class="ver">v1.3 Dynamic Rolling Edition</div>
     <div class="row">關卡進度 <span><span id="levelText">1</span> / 3</span></div>
     <div class="row">本關時間 <span><span id="levelTime">0.00</span>s</span></div>
     <div class="row">累計時間 <span><span id="totalTime">0.00</span>s</span></div>
@@ -267,7 +263,7 @@
 
     function showMessage(text, duration = 1200) {
       centerMessageEl.textContent = text;
-      centerMessageEl.className = "show"; // 觸發 CSS 動畫
+      centerMessageEl.className = "show";
       if (duration > 0) {
         setTimeout(() => {
           centerMessageEl.className = "";
@@ -368,7 +364,6 @@
 
       mazeMetrics = { offsetX, offsetY, mazeWidth, mazeHeight, cellW, cellH };
 
-      // 迷宮底板 (更柔和的顏色)
       const mazeBg = Bodies.rectangle(
         offsetX + mazeWidth / 2,
         offsetY + mazeHeight / 2,
@@ -430,7 +425,6 @@
       const goalCenterX = offsetX + mazeWidth - cellW / 2;
       const goalCenterY = offsetY + mazeHeight - cellH / 2;
 
-      // 起終點視覺優化 (改為半透明背景，文字在 afterRender 繪製)
       startSensor = Bodies.rectangle(startCenterX, startCenterY, cellW * 0.62, cellH * 0.62, {
         isStatic: true, isSensor: true, label: "start",
         render: { fillStyle: "rgba(16, 185, 129, 0.2)" }
@@ -445,10 +439,16 @@
 
       const radius = Math.min(cellW, cellH) * 0.22;
 
-      // 玩家球體 (隱藏預設渲染，改用 afterRender 自訂繪製光澤與陰影)
-      ball = Bodies.circle(startCenterX, startCenterY, radius, {
+      // 調整：將球的初始位置設定在起點中心的「右下方」
+      const spawnX = startCenterX + cellW * 0.15;
+      const spawnY = startCenterY + cellH * 0.25;
+
+      // 玩家球體 (移除 inertia: Infinity 以便球可以產生旋轉物理)
+      ball = Bodies.circle(spawnX, spawnY, radius, {
         label: "player",
-        frictionAir: 0.22, restitution: 0.02, inertia: Infinity,
+        frictionAir: 0.22, 
+        restitution: 0.02, 
+        // 隱藏預設物理渲染，全權交給 afterRender 自訂繪製
         render: { visible: false } 
       });
       ball.moveSpeed = speed;
@@ -574,6 +574,14 @@
         levelTimeEl.textContent = levelSeconds.toFixed(2);
         totalTimeEl.textContent = (totalElapsed + levelSeconds).toFixed(2);
       }
+
+      // 【新增】根據移動速度增加球體的視覺旋轉角度，創造滾動感
+      if (ball && !levelEnded && !gameFinished) {
+        const speed = Math.hypot(ball.velocity.x, ball.velocity.y);
+        if (speed > 0.05) {
+          Body.setAngle(ball, ball.angle + speed * 0.04);
+        }
+      }
     });
 
     Events.on(engine, "collisionStart", (event) => {
@@ -588,7 +596,7 @@
       }
     });
 
-    // 使用 afterRender 進行進階視覺渲染 (陰影、漸層球體、標示)
+    // 進階視覺渲染：雙層繪製（旋轉圖案底層 + 靜態高光上層）
     Events.on(render, "afterRender", () => {
       const ctx = render.context;
       if (!ball || !mazeMetrics) return;
@@ -597,31 +605,7 @@
 
       ctx.save();
 
-      // 繪製球體 (3D 漸層與外發光)
-      const r = ball.circleRadius;
-      const x = ball.position.x;
-      const y = ball.position.y;
-      
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, Math.PI * 2);
-      
-      // 球體發光陰影
-      ctx.shadowColor = "#3b82f6";
-      ctx.shadowBlur = 12;
-      
-      // 球體漸層 (模擬立體光澤)
-      const gradient = ctx.createRadialGradient(x - r*0.3, y - r*0.3, r*0.1, x, y, r);
-      gradient.addColorStop(0, "#93c5fd");
-      gradient.addColorStop(0.5, "#2563eb");
-      gradient.addColorStop(1, "#1e3a8a");
-      
-      ctx.fillStyle = gradient;
-      ctx.fill();
-      
-      // 重置陰影以免影響其他繪製
-      ctx.shadowBlur = 0;
-
-      // 繪製起終點文字
+      // === 繪製起點與終點標示 ===
       ctx.font = `bold ${Math.max(14, Math.min(cellW, cellH) * 0.3)}px Noto Sans TC, sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
@@ -630,25 +614,74 @@
         ctx.fillStyle = "#059669";
         ctx.fillText("起", startSensor.position.x, startSensor.position.y);
       }
-
       if (goalSensor) {
         ctx.fillStyle = "#e11d48";
         ctx.fillText("終", goalSensor.position.x, goalSensor.position.y);
-        
-        // 終點小光環提示
         ctx.beginPath();
-        ctx.arc(goalSensor.position.x, goalSensor.position.y, r * 1.5, 0, Math.PI * 2);
+        ctx.arc(goalSensor.position.x, goalSensor.position.y, ball.circleRadius * 1.5, 0, Math.PI * 2);
         ctx.strokeStyle = "rgba(225, 29, 72, 0.4)";
         ctx.lineWidth = 2;
         ctx.stroke();
       }
 
+      // === 繪製玩家球體 ===
+      const r = ball.circleRadius;
+      const x = ball.position.x;
+      const y = ball.position.y;
+      
+      // 第一層：旋轉底層 (依據物理引擎 Angle 旋轉)
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(ball.angle);
+      
+      // 外發光陰影
+      ctx.shadowColor = "#3b82f6";
+      ctx.shadowBlur = 12;
+
+      // 繪製 S 型科技感流線圖案 (類似太極結構，讓旋轉一目了然)
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fillStyle = "#1e3a8a"; // 深藍底
+      ctx.fill();
+      
+      ctx.shadowBlur = 0; // 關閉陰影，開始畫內部花紋
+
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI);
+      ctx.fillStyle = "#60a5fa"; // 淺藍半圓
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(r / 2, 0, r / 2, 0, Math.PI, true);
+      ctx.fillStyle = "#1e3a8a"; // 修正 S 型曲線
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(-r / 2, 0, r / 2, 0, Math.PI, false);
+      ctx.fillStyle = "#60a5fa"; // 修正 S 型曲線
+      ctx.fill();
+      
+      ctx.restore(); // 結束旋轉繪製區
+
+      // 第二層：靜態 3D 玻璃高光 (不隨球體旋轉，保持光源在左上方)
+      ctx.save();
+      ctx.translate(x, y);
+      const gradient = ctx.createRadialGradient(-r * 0.3, -r * 0.3, r * 0.1, 0, 0, r);
+      gradient.addColorStop(0, "rgba(255, 255, 255, 0.7)");
+      gradient.addColorStop(0.4, "rgba(255, 255, 255, 0.1)");
+      gradient.addColorStop(1, "rgba(0, 0, 0, 0.6)");
+      
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fillStyle = gradient;
+      ctx.fill();
       ctx.restore();
+
+      ctx.restore(); // 結束整個自訂繪製
     });
 
     window.addEventListener("blur", resetPressed);
     
-    // 防抖調整視窗大小重新載入
     let resizeTimer;
     window.addEventListener("resize", () => {
       clearTimeout(resizeTimer);
