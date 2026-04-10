@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>9x9 圍棋 + Kaya 遠端模型版</title>
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+  <style>
+    :root{
+      --bg:#f4f1ea;--panel:#fff;--text:#1f1f1f;--muted:#666;
+      --wood:#d9a85d;--wood-dark:#c79349;--btn:#2b5cff;--btn-hover:#1f49d1;
+      --danger:#d64141;--ok:#1f8f4d;--warn:#c98100;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;background:var(--bg);color:var(--text)}
+    .app{min-height:100vh;display:grid;grid-template-columns:minmax(320px,760px) 400px;gap:20px;padding:20px;align-items:start;justify-content:center}
+    .board-wrap,.panel{background:var(--panel);border-radius:16px;box-shadow:0 6px 24px rgba(0,0,0,.08);padding:18px}
+    .title{font-size:24px;font-weight:800;margin-bottom:8px}
+    .sub{color:var(--muted);font-size:14px;line-height:1.6;margin-bottom:12px}
+    .board-box{display:flex;justify-content:center;align-items:center;background:linear-gradient(180deg,var(--wood),var(--wood-dark));border-radius:14px;padding:12px}
+    canvas{width:min(92vw,680px);height:min(92vw,680px);max-width:680px;max-height:680px;display:block;cursor:pointer;touch-action:manipulation}
+    .panel h2{margin:0 0 10px;font-size:20px}
+    .section{margin-top:16px;padding-top:14px;border-top:1px solid #ececec}
+    .status-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .card{background:#f7f8fb;border-radius:12px;padding:12px}
+    .label{color:var(--muted);font-size:13px;margin-bottom:4px}
+    .value{font-size:18px;font-weight:700}
+    .controls{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}
+    button{border:0;border-radius:10px;padding:12px 14px;font-size:14px;font-weight:700;cursor:pointer;background:var(--btn);color:#fff;transition:.18s ease}
+    button:hover{background:var(--btn-hover)}
+    button.secondary{background:#eef2ff;color:#2443ad}
+    button.secondary:hover{background:#dfe7ff}
+    button.warn{background:#fff1f1;color:var(--danger)}
+    button.warn:hover{background:#ffe2e2}
+    .toggle-line{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0}
+    .toggle-line input[type="checkbox"]{transform:scale(1.2)}
+    .small-input{width:100%;border:1px solid #d8deea;border-radius:10px;padding:10px 12px;font-size:12px;font-family:monospace;background:#fafcff}
+    .badge{display:inline-block;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700;margin-left:6px;vertical-align:middle}
+    .badge.ok{background:#e9f8ef;color:var(--ok)}
+    .badge.warn{background:#fff5df;color:var(--warn)}
+    .badge.err{background:#fff0f0;color:var(--danger)}
+    .suggestion-list{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+    .suggestion-item{border-radius:12px;padding:12px;background:#f7f8fb;border-left:6px solid #cfd5e6;cursor:pointer}
+    .suggestion-item.top1{border-left-color:#2878ff}
+    .suggestion-item.top2{border-left-color:#32b45a}
+    .suggestion-item.top3{border-left-color:#7a7a7a}
+    .suggestion-main{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:700;margin-bottom:4px}
+    .suggestion-reason{color:var(--muted);font-size:13px;line-height:1.5}
+    .log{max-height:220px;overflow:auto;background:#fafafa;border-radius:12px;padding:10px;font-size:13px;line-height:1.6;white-space:pre-wrap}
+    .foot{margin-top:12px;color:var(--muted);font-size:12px;line-height:1.6}
+    @media (max-width:1080px){.app{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="board-wrap">
+      <div class="title">9x9 圍棋 + Kaya 遠端模型版</div>
+      <div class="sub">
+        預設載入 Kaya 的遠端 UINT8 ONNX 模型。<br>
+        若遠端模型載入失敗，會自動退回 heuristic 建議。
+      </div>
+      <div class="board-box">
+        <canvas id="board" width="680" height="680"></canvas>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>分析與控制</h2>
+
+      <div class="status-row">
+        <div class="card">
+          <div class="label">目前輪到</div>
+          <div class="value" id="currentPlayerText">黑棋</div>
+        </div>
+        <div class="card">
+          <div class="label">局面狀態</div>
+          <div class="value" id="gameStateText">進行中</div>
+        </div>
+      </div>
+
+      <div class="status-row" style="margin-top:10px;">
+        <div class="card">
+          <div class="label">黑棋提子</div>
+          <div class="value" id="blackCaptures">0</div>
+        </div>
+        <div class="card">
+          <div class="label">白棋提子</div>
+          <div class="value" id="whiteCaptures">0</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div style="font-weight:700;margin-bottom:8px;">遠端模型網址</div>
+        <input id="modelUrlInput" class="small-input" />
+        <div style="margin-top:8px;">
+          <button id="loadModelBtn">重新載入模型</button>
+          <button id="clearModelBtn" class="secondary">停用模型</button>
+          <span id="modelStatus" class="badge warn">未載入模型</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="toggle-line">
+          <div>
+            <div style="font-weight:700;">顯示 AI 建議</div>
+            <div style="font-size:12px;color:#666;">Top 3 候選手</div>
+          </div>
+          <input id="suggestionToggle" type="checkbox" checked />
+        </div>
+
+        <div class="toggle-line">
+          <div>
+            <div style="font-weight:700;">自動分析</div>
+            <div style="font-size:12px;color:#666;">每步落子後自動更新</div>
+          </div>
+          <input id="autoAnalyzeToggle" type="checkbox" checked />
+        </div>
+
+        <div class="controls">
+          <button id="passBtn">Pass</button>
+          <button id="undoBtn" class="secondary">悔棋</button>
+          <button id="restartBtn" class="warn">重新開始</button>
+          <button id="reanalyzeBtn" class="secondary">重新分析</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div style="font-weight:700;">AI 建議棋步</div>
+        <div class="suggestion-list" id="suggestionList"></div>
+      </div>
+
+      <div class="section">
+        <div style="font-weight:700; margin-bottom:8px;">對局紀錄</div>
+        <div class="log" id="moveLog"></div>
+      </div>
+
+      <div class="foot">
+        這版已對應 Kaya 模型的輸入名稱：<code>bin_input</code> / <code>global_input</code>。<br>
+        建議品質取決於 feature planes 是否與 KataGo/Kaya 的正式 encoder 完全一致。
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // -------------------------
+    // Kaya 遠端模型
+    // 根據 Hugging Face 檔案頁可用的 uint8 模型路徑整理
+    // -------------------------
+    const DEFAULT_MODEL_URL =
+      "https://huggingface.co/kaya-go/kaya/resolve/main/kata1-b28c512nbt-s12043015936-d5616446734/kata1-b28c512nbt-s12043015936-d5616446734.uint8.onnx";
+
+    const BOARD_SIZE = 9;
+    const PAD_TO = 19; // Kaya/KataGo 模型常態是 19x19，這裡把 9x9 盤面嵌入 19x19 中央
+    const PAD_OFFSET = 5; // (19 - 9) / 2
+
+    const EMPTY = 0;
+    const BLACK = 1;
+    const WHITE = 2;
+
+    const canvas = document.getElementById("board");
+    const ctx = canvas.getContext("2d");
+
+    const currentPlayerText = document.getElementById("currentPlayerText");
+    const gameStateText = document.getElementById("gameStateText");
+    const blackCapturesEl = document.getElementById("blackCaptures");
+    const whiteCapturesEl = document.getElementById("whiteCaptures");
+    const suggestionToggle = document.getElementById("suggestionToggle");
+    const autoAnalyzeToggle = document.getElementById("autoAnalyzeToggle");
+    const suggestionList = document.getElementById("suggestionList");
+    const moveLogEl = document.getElementById("moveLog");
+    const modelUrlInput = document.getElementById("modelUrlInput");
+    const modelStatus = document.getElementById("modelStatus");
+
+    const passBtn = document.getElementById("passBtn");
+    const undoBtn = document.getElementById("undoBtn");
+    const restartBtn = document.getElementById("restartBtn");
+    const reanalyzeBtn = document.getElementById("reanalyzeBtn");
+    const loadModelBtn = document.getElementById("loadModelBtn");
+    const clearModelBtn = document.getElementById("clearModelBtn");
+
+    let ortSession = null;
+    let modelEnabled = false;
+
+    let game = createNewGame();
+
+    modelUrlInput.value = DEFAULT_MODEL_URL;
+
+    function createNewGame() {
+      return {
+        board: createEmptyBoard(),
+        currentPlayer: BLACK,
+        captures: { black: 0, white: 0 },
+        history: [],
+        log: [],
+        passCount: 0,
+        gameOver: false,
+        lastMove: null,
+        koPoint: null,
+        suggestions: [],
+        moveHistory: []
+      };
+    }
+
+    function createEmptyBoard() {
+      return Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(EMPTY));
+    }
+
+    function cloneBoard(board) {
+      return board.map(row => [...row]);
+    }
+
+    function getOpponent(player) {
+      return player === BLACK ? WHITE : BLACK;
+    }
+
+    function inBounds(x, y) {
+      return x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE;
+    }
+
+    function getNeighbors(x, y) {
+      return [
+        [x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]
+      ].filter(([nx, ny]) => inBounds(nx, ny));
+    }
+
+    function getGroup(board, x, y) {
+      const color = board[y][x];
+      if (color === EMPTY) return { stones: [], liberties: new Set() };
+
+      const stack = [[x, y]];
+      const visited = new Set();
+      const stones = [];
+      const liberties = new Set();
+
+      while (stack.length) {
+        const [cx, cy] = stack.pop();
+        const key = `${cx},${cy}`;
+        if (visited.has(key)) continue;
+        visited.add(key);
+        stones.push([cx, cy]);
+
+        for (const [nx, ny] of getNeighbors(cx, cy)) {
+          if (board[ny][nx] === EMPTY) liberties.add(`${nx},${ny}`);
+          else if (board[ny][nx] === color) {
+            const nk = `${nx},${ny}`;
+            if (!visited.has(nk)) stack.push([nx, ny]);
+          }
+        }
+      }
+
+      return { stones, liberties };
+    }
+
+    function removeGroup(board, stones) {
+      for (const [x, y] of stones) board[y][x] = EMPTY;
+    }
+
+    function applyMove(board, x, y, player) {
+      const sim = cloneBoard(board);
+      sim[y][x] = player;
+      const opponent = getOpponent(player);
+      let capturedStones = [];
+
+      for (const [nx, ny] of getNeighbors(x, y)) {
+        if (sim[ny][nx] === opponent) {
+          const enemyGroup = getGroup(sim, nx, ny);
+          if (enemyGroup.liberties.size === 0) {
+            capturedStones = capturedStones.concat(enemyGroup.stones);
+            removeGroup(sim, enemyGroup.stones);
+          }
+        }
+      }
+
+      return { board: sim, capturedStones };
+    }
+
+    function isSuicideAfterMove(board, x, y, player) {
+      const sim = cloneBoard(board);
+      sim[y][x] = player;
+      const opponent = getOpponent(player);
+
+      for (const [nx, ny] of getNeighbors(x, y)) {
+        if (sim[ny][nx] === opponent) {
+          const enemyGroup = getGroup(sim, nx, ny);
+          if (enemyGroup.liberties.size === 0) removeGroup(sim, enemyGroup.stones);
+        }
+      }
+
+      const ownGroup = getGroup(sim, x, y);
+      return ownGroup.liberties.size === 0;
+    }
+
+    function isLegalMove(gameState, x, y, player) {
+      if (!inBounds(x, y)) return false;
+      if (gameState.board[y][x] !== EMPTY) return false;
+      if (gameState.koPoint && gameState.koPoint.x === x && gameState.koPoint.y === y) return false;
+      if (isSuicideAfterMove(gameState.board, x, y, player)) return false;
+      return true;
+    }
+
+    function playerText(player) {
+      return player === BLACK ? "黑棋" : "白棋";
+    }
+
+    function moveNumberLabel() {
+      return `#${game.log.filter(line => line.includes("：")).length + 1}`;
+    }
+
+    function toCoordText(x, y) {
+      const letters = "ABCDEFGHJ";
+      return `${letters[x]}${BOARD_SIZE - y}`;
+    }
+
+    function snapshotGame(state) {
+      return {
+        board: cloneBoard(state.board),
+        currentPlayer: state.currentPlayer,
+        captures: { ...state.captures },
+        history: [],
+        log: [...state.log],
+        passCount: state.passCount,
+        gameOver: state.gameOver,
+        lastMove: state.lastMove ? { ...state.lastMove } : null,
+        koPoint: state.koPoint ? { ...state.koPoint } : null,
+        suggestions: JSON.parse(JSON.stringify(state.suggestions)),
+        moveHistory: JSON.parse(JSON.stringify(state.moveHistory))
+      };
+    }
+
+    function restoreSnapshot(snapshot) {
+      return {
+        board: cloneBoard(snapshot.board),
+        currentPlayer: snapshot.currentPlayer,
+        captures: { ...snapshot.captures },
+        history: [],
+        log: [...snapshot.log],
+        passCount: snapshot.passCount,
+        gameOver: snapshot.gameOver,
+        lastMove: snapshot.lastMove ? { ...snapshot.lastMove } : null,
+        koPoint: snapshot.koPoint ? { ...snapshot.koPoint } : null,
+        suggestions: JSON.parse(JSON.stringify(snapshot.suggestions)),
+        moveHistory: JSON.parse(JSON.stringify(snapshot.moveHistory))
+      };
+    }
+
+    function makeMove(x, y) {
+      if (game.gameOver) return;
+      if (!isLegalMove(game, x, y, game.currentPlayer)) return;
+
+      game.history.push(snapshotGame(game));
+
+      const movingPlayer = game.currentPlayer;
+      const { board: newBoard, capturedStones } = applyMove(game.board, x, y, movingPlayer);
+
+      game.board = newBoard;
+      game.lastMove = { x, y, player: movingPlayer };
+      game.passCount = 0;
+
+      const side = movingPlayer === BLACK ? "black" : "white";
+      game.captures[side] += capturedStones.length;
+
+      game.koPoint = null;
+      if (capturedStones.length === 1) {
+        const ownGroup = getGroup(game.board, x, y);
+        if (ownGroup.liberties.size === 1) {
+          const [onlyLib] = [...ownGroup.liberties];
+          const [kx, ky] = onlyLib.split(",").map(Number);
+          const captured = capturedStones[0];
+          if (captured[0] === kx && captured[1] === ky) {
+            game.koPoint = { x: kx, y: ky };
+          }
+        }
+      }
+
+      game.log.push(`${moveNumberLabel()} ${playerText(movingPlayer)}：${toCoordText(x, y)}`);
+      game.moveHistory.push({ x, y, player: movingPlayer, pass: false });
+      game.currentPlayer = getOpponent(movingPlayer);
+
+      if (autoAnalyzeToggle.checked) updateSuggestions().then(renderAll);
+      else renderAll();
+    }
+
+    function passTurn() {
+      if (game.gameOver) return;
+
+      game.history.push(snapshotGame(game));
+      const movingPlayer = game.currentPlayer;
+      game.log.push(`${moveNumberLabel()} ${playerText(movingPlayer)}：Pass`);
+      game.moveHistory.push({ x: -1, y: -1, player: movingPlayer, pass: true });
+      game.passCount += 1;
+      game.koPoint = null;
+      game.lastMove = null;
+
+      if (game.passCount >= 2) {
+        game.gameOver = true;
+        game.log.push("雙方連續 Pass，對局結束。");
+      } else {
+        game.currentPlayer = getOpponent(movingPlayer);
+      }
+
+      if (autoAnalyzeToggle.checked) updateSuggestions().then(renderAll);
+      else renderAll();
+    }
+
+    function undoMove() {
+      if (!game.history.length) return;
+      const prev = game.history.pop();
+      game = restoreSnapshot(prev);
+      if (autoAnalyzeToggle.checked) updateSuggestions().then(renderAll);
+      else renderAll();
+    }
+
+    function restartGame() {
+      game = createNewGame();
+      updateSuggestions().then(renderAll);
+    }
+
+    function evaluateMove(board, x, y, player) {
+      let score = 0;
+      const opponent = getOpponent(player);
+      const simulated = applyMove(board, x, y, player);
+      const newBoard = simulated.board;
+      const capturedCount = simulated.capturedStones.length;
+
+      if (capturedCount > 0) score += 100 + capturedCount * 18;
+      const ownGroup = getGroup(newBoard, x, y);
+      const ownLib = ownGroup.liberties.size;
+      score += ownLib * 7;
+
+      let atariEnemyCount = 0;
+      for (const [nx, ny] of getNeighbors(x, y)) {
+        if (newBoard[ny][nx] === opponent) {
+          const enemyGroup = getGroup(newBoard, nx, ny);
+          if (enemyGroup.liberties.size === 1) atariEnemyCount += 1;
+        }
+      }
+      score += atariEnemyCount * 24;
+
+      let ownNeighborCount = 0;
+      for (const [nx, ny] of getNeighbors(x, y)) {
+        if (board[ny][nx] === player) ownNeighborCount += 1;
+      }
+      score += ownNeighborCount * 10;
+
+      const centerDistance = Math.abs(x - 4) + Math.abs(y - 4);
+      score += Math.max(8 - centerDistance, 0) * 1.5;
+
+      let reason = "平衡型落點";
+      if (capturedCount > 0) reason = `可提子 ${capturedCount} 顆`;
+      else if (atariEnemyCount > 0) reason = "可施加打吃壓力";
+      else if (ownNeighborCount >= 2) reason = "可連接己方棋形";
+      else if (centerDistance <= 2) reason = "爭取中央影響力";
+
+      return { score, reason };
+    }
+
+    function getHeuristicSuggestions(gameState, player, topN = 3) {
+      const suggestions = [];
+      for (let y = 0; y < BOARD_SIZE; y++) {
+        for (let x = 0; x < BOARD_SIZE; x++) {
+          if (!isLegalMove(gameState, x, y, player)) continue;
+          const result = evaluateMove(gameState.board, x, y, player);
+          suggestions.push({ x, y, score: result.score, reason: result.reason, source: "heuristic" });
+        }
+      }
+      suggestions.sort((a, b) => b.score - a.score);
+      return suggestions.slice(0, topN);
+    }
+
+    function setModelStatus(type, text) {
+      modelStatus.className = `badge ${type}`;
+      modelStatus.textContent = text;
+    }
+
+    async function loadRemoteModel(url) {
+      if (!url || !url.trim()) {
+        ortSession = null;
+        modelEnabled = false;
+        setModelStatus("warn", "未填模型網址");
+        return;
+      }
+
+      try {
+        setModelStatus("warn", "模型載入中...");
+        ortSession = await ort.InferenceSession.create(url.trim());
+        modelEnabled = true;
+        setModelStatus("ok", "模型已啟用");
+      } catch (err) {
+        console.error("模型載入失敗:", err);
+        ortSession = null;
+        modelEnabled = false;
+        setModelStatus("err", "模型載入失敗");
+      }
+    }
+
+    function disableModel() {
+      ortSession = null;
+      modelEnabled = false;
+      setModelStatus("warn", "未載入模型");
+    }
+
+    function padXY(x, y) {
+      return [x + PAD_OFFSET, y + PAD_OFFSET];
+    }
+
+    function isStoneInAtari(board, x, y) {
+      if (!inBounds(x, y) || board[y][x] === EMPTY) return false;
+      return getGroup(board, x, y).liberties.size === 1;
+    }
+
+    function isStoneTwoLibs(board, x, y) {
+      if (!inBounds(x, y) || board[y][x] === EMPTY) return false;
+      return getGroup(board, x, y).liberties.size === 2;
+    }
+
+    function buildApproxKayaInputs(gameState, player) {
+      // 近似 encoder：
+      // 22 x 19 x 19 的 binary planes + 19 維 global
+      // 可跑，但不保證與 Kaya 官方 encoder 完全一致
+      const planes = Array.from({ length: 22 }, () =>
+        Array.from({ length: PAD_TO }, () => Array(PAD_TO).fill(0))
+      );
+
+      const current = player;
+      const opponent = getOpponent(player);
+
+      for (let y = 0; y < BOARD_SIZE; y++) {
+        for (let x = 0; x < BOARD_SIZE; x++) {
+          const [px, py] = padXY(x, y);
+          const v = gameState.board[y][x];
+
+          // 0: current stones
+          if (v === current) planes[0][py][px] = 1;
+
+          // 1: opponent stones
+          if (v === opponent) planes[1][py][px] = 1;
+
+          // 2: empty on active board area
+          if (v === EMPTY) planes[2][py][px] = 1;
+
+          // 3: legal moves
+          if (isLegalMove(gameState, x, y, current)) planes[3][py][px] = 1;
+
+          // 4: ko point
+          if (gameState.koPoint && gameState.koPoint.x === x && gameState.koPoint.y === y) planes[4][py][px] = 1;
+
+          // 5~8: recent move history
+          for (let k = 0; k < 4; k++) {
+            const mv = gameState.moveHistory[gameState.moveHistory.length - 1 - k];
+            if (mv && !mv.pass && mv.x === x && mv.y === y) planes[5 + k][py][px] = 1;
+          }
+
+          // 9: current stones in atari
+          if (v === current && isStoneInAtari(gameState.board, x, y)) planes[9][py][px] = 1;
+
+          // 10: opponent stones in atari
+          if (v === opponent && isStoneInAtari(gameState.board, x, y)) planes[10][py][px] = 1;
+
+          // 11: current stones with 2 libs
+          if (v === current && isStoneTwoLibs(gameState.board, x, y)) planes[11][py][px] = 1;
+
+          // 12: opponent stones with 2 libs
+          if (v === opponent && isStoneTwoLibs(gameState.board, x, y)) planes[12][py][px] = 1;
+
+          // 13: board mask (active 9x9 area)
+          planes[13][py][px] = 1;
+        }
+      }
+
+      // 14: current is black
+      // 15: current is white
+      // 16: all active-board area
+      // 17: border ring of active area
+      // 18~21: reserved zeros
+      for (let y = 0; y < BOARD_SIZE; y++) {
+        for (let x = 0; x < BOARD_SIZE; x++) {
+          const [px, py] = padXY(x, y);
+          if (current === BLACK) planes[14][py][px] = 1;
+          if (current === WHITE) planes[15][py][px] = 1;
+          planes[16][py][px] = 1;
+          if (x === 0 || y === 0 || x === BOARD_SIZE - 1 || y === BOARD_SIZE - 1) {
+            planes[17][py][px] = 1;
+          }
+        }
+      }
+
+      const flatPlanes = [];
+      for (let c = 0; c < 22; c++) {
+        for (let y = 0; y < PAD_TO; y++) {
+          for (let x = 0; x < PAD_TO; x++) {
+            flatPlanes.push(planes[c][y][x]);
+          }
+        }
+      }
+
+      const global = new Float32Array(19);
+      global[0] = current === BLACK ? 1 : 0;
+      global[1] = current === WHITE ? 1 : 0;
+      global[2] = game.moveHistory.length / 200;
+      global[3] = game.captures.black / 100;
+      global[4] = game.captures.white / 100;
+      global[5] = game.passCount;
+      // 其餘先保留 0
+
+      return {
+        binInput: new ort.Tensor("float32", new Float32Array(flatPlanes), [1, 22, PAD_TO, PAD_TO]),
+        globalInput: new ort.Tensor("float32", global, [1, 19])
+      };
+    }
+
+    function decodeKayaPolicy(policyTensor, gameState, player, topN = 3) {
+      const data = policyTensor.data;
+      const dims = policyTensor.dims || [];
+      const movesDim = dims[dims.length - 1] || data.length;
+
+      const moves = [];
+
+      // 常見是 [1, 2, moves]，取第一個 policy head
+      const takeIndex = (moveIndex) => {
+        if (dims.length === 3 && dims[1] >= 1) {
+          return moveIndex; // batch 0, head 0
+        }
+        return moveIndex;
+      };
+
+      for (let y = 0; y < BOARD_SIZE; y++) {
+        for (let x = 0; x < BOARD_SIZE; x++) {
+          if (!isLegalMove(gameState, x, y, player)) continue;
+
+          const [px, py] = padXY(x, y);
+          const moveIndex = py * PAD_TO + px;
+          if (moveIndex >= movesDim) continue;
+
+          const score = Number(data[takeIndex(moveIndex)]);
+          moves.push({
+            x,
+            y,
+            score,
+            reason: "Kaya 模型推薦",
+            source: "model"
+          });
+        }
+      }
+
+      moves.sort((a, b) => b.score - a.score);
+      return moves.slice(0, topN);
+    }
+
+    async function getModelSuggestions(gameState, player) {
+      if (!ortSession) return getHeuristicSuggestions(gameState, player, 3);
+
+      try {
+        const { binInput, globalInput } = buildApproxKayaInputs(gameState, player);
+        const results = await ortSession.run({
+          bin_input: binInput,
+          global_input: globalInput
+        });
+
+        if (!results.policy) throw new Error("模型未回傳 policy");
+        const suggestions = decodeKayaPolicy(results.policy, gameState, player, 3);
+
+        if (!suggestions.length) return getHeuristicSuggestions(gameState, player, 3);
+        return suggestions;
+      } catch (err) {
+        console.error("模型推論失敗，改回 heuristic:", err);
+        return getHeuristicSuggestions(gameState, player, 3);
+      }
+    }
+
+    async function getAiSuggestions(gameState, player) {
+      if (modelEnabled && ortSession) return await getModelSuggestions(gameState, player);
+      return getHeuristicSuggestions(gameState, player, 3);
+    }
+
+    async function updateSuggestions() {
+      if (game.gameOver || !suggestionToggle.checked) {
+        game.suggestions = [];
+        renderSuggestions();
+        return;
+      }
+      game.suggestions = await getAiSuggestions(game, game.currentPlayer);
+      renderSuggestions();
+    }
+
+    function renderStatus() {
+      currentPlayerText.textContent = game.gameOver ? "-" : playerText(game.currentPlayer);
+      gameStateText.textContent = game.gameOver ? "已結束" : "進行中";
+      blackCapturesEl.textContent = String(game.captures.black);
+      whiteCapturesEl.textContent = String(game.captures.white);
+    }
+
+    function renderSuggestions() {
+      suggestionList.innerHTML = "";
+
+      if (!suggestionToggle.checked) {
+        suggestionList.innerHTML = `<div class="suggestion-item"><div class="suggestion-reason">AI 建議已關閉。</div></div>`;
+        drawBoard();
+        return;
+      }
+
+      if (game.suggestions.length === 0) {
+        suggestionList.innerHTML = `<div class="suggestion-item"><div class="suggestion-reason">目前無建議。</div></div>`;
+        drawBoard();
+        return;
+      }
+
+      game.suggestions.forEach((s, idx) => {
+        const div = document.createElement("div");
+        div.className = `suggestion-item ${idx === 0 ? "top1" : idx === 1 ? "top2" : "top3"}`;
+        div.innerHTML = `
+          <div class="suggestion-main">
+            <span>第 ${idx + 1} 手：${toCoordText(s.x, s.y)}</span>
+            <span>${Number.isFinite(s.score) ? s.score.toFixed(3) : s.score}</span>
+          </div>
+          <div class="suggestion-reason">${s.reason} / ${s.source}</div>
+        `;
+        div.addEventListener("click", () => makeMove(s.x, s.y));
+        suggestionList.appendChild(div);
+      });
+
+      drawBoard();
+    }
+
+    function renderLog() {
+      moveLogEl.textContent = game.log.length ? game.log.join("\n") : "尚未開始落子。";
+    }
+
+    function renderAll() {
+      drawBoard();
+      renderStatus();
+      renderSuggestions();
+      renderLog();
+    }
+
+    function drawBoard() {
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const pad = 50;
+      const cell = (w - pad * 2) / (BOARD_SIZE - 1);
+
+      ctx.fillStyle = "#d7a25d";
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.strokeStyle = "#2e2416";
+      ctx.lineWidth = 2;
+
+      for (let i = 0; i < BOARD_SIZE; i++) {
+        const pos = pad + i * cell;
+        ctx.beginPath();
+        ctx.moveTo(pad, pos);
+        ctx.lineTo(w - pad, pos);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(pos, pad);
+        ctx.lineTo(pos, h - pad);
+        ctx.stroke();
+      }
+
+      const stars = [[2,2],[6,2],[4,4],[2,6],[6,6]];
+      for (const [sx, sy] of stars) {
+        const px = pad + sx * cell;
+        const py = pad + sy * cell;
+        ctx.beginPath();
+        ctx.fillStyle = "#2a2116";
+        ctx.arc(px, py, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = "#2e2416";
+      ctx.font = "16px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      const letters = "ABCDEFGHJ";
+      for (let i = 0; i < BOARD_SIZE; i++) {
+        const pos = pad + i * cell;
+        ctx.fillText(letters[i], pos, 20);
+        ctx.fillText(String(BOARD_SIZE - i), 20, pos);
+      }
+
+      if (suggestionToggle.checked && game.suggestions.length > 0 && !game.gameOver) {
+        game.suggestions.forEach((s, idx) => {
+          const px = pad + s.x * cell;
+          const py = pad + s.y * cell;
+          ctx.beginPath();
+          ctx.strokeStyle = idx === 0 ? "rgba(40,120,255,.9)" : idx === 1 ? "rgba(50,180,90,.92)" : "rgba(120,120,120,.88)";
+          ctx.lineWidth = idx === 0 ? 6 : idx === 1 ? 5 : 4;
+          ctx.arc(px, py, idx === 0 ? 19 : idx === 1 ? 16 : 13, 0, Math.PI * 2);
+          ctx.stroke();
+        });
+      }
+
+      if (game.koPoint) {
+        const px = pad + game.koPoint.x * cell;
+        const py = pad + game.koPoint.y * cell;
+        ctx.beginPath();
+        ctx.strokeStyle = "rgba(214,65,65,.9)";
+        ctx.lineWidth = 3;
+        ctx.arc(px, py, 10, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      for (let y = 0; y < BOARD_SIZE; y++) {
+        for (let x = 0; x < BOARD_SIZE; x++) {
+          const stone = game.board[y][x];
+          if (stone === EMPTY) continue;
+
+          const px = pad + x * cell;
+          const py = pad + y * cell;
+          const gradient = ctx.createRadialGradient(px - 7, py - 7, 5, px, py, 24);
+
+          if (stone === BLACK) {
+            gradient.addColorStop(0, "#686868");
+            gradient.addColorStop(1, "#0f0f0f");
+          } else {
+            gradient.addColorStop(0, "#ffffff");
+            gradient.addColorStop(1, "#d8d8d8");
+          }
+
+          ctx.beginPath();
+          ctx.fillStyle = gradient;
+          ctx.arc(px, py, 24, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = stone === BLACK ? "#000" : "#aaa";
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+      }
+
+      if (game.lastMove) {
+        const px = pad + game.lastMove.x * cell;
+        const py = pad + game.lastMove.y * cell;
+        ctx.beginPath();
+        ctx.fillStyle = game.lastMove.player === BLACK ? "#ffffff" : "#111111";
+        ctx.arc(px, py, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function getBoardClickPos(evt) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      return {
+        mx: (evt.clientX - rect.left) * scaleX,
+        my: (evt.clientY - rect.top) * scaleY
+      };
+    }
+
+    function findNearestIntersection(mx, my) {
+      const w = canvas.width;
+      const pad = 50;
+      const cell = (w - pad * 2) / (BOARD_SIZE - 1);
+
+      let best = null;
+      let bestDist = Infinity;
+
+      for (let y = 0; y < BOARD_SIZE; y++) {
+        for (let x = 0; x < BOARD_SIZE; x++) {
+          const px = pad + x * cell;
+          const py = pad + y * cell;
+          const dist = Math.hypot(mx - px, my - py);
+          if (dist < bestDist) {
+            bestDist = dist;
+            best = { x, y, dist };
+          }
+        }
+      }
+
+      return best && best.dist <= cell * 0.42 ? best : null;
+    }
+
+    canvas.addEventListener("click", (evt) => {
+      const { mx, my } = getBoardClickPos(evt);
+      const point = findNearestIntersection(mx, my);
+      if (!point) return;
+      makeMove(point.x, point.y);
+    });
+
+    passBtn.addEventListener("click", passTurn);
+    undoBtn.addEventListener("click", undoMove);
+    restartBtn.addEventListener("click", restartGame);
+    reanalyzeBtn.addEventListener("click", async () => { await updateSuggestions(); renderAll(); });
+    suggestionToggle.addEventListener("change", async () => { await updateSuggestions(); renderAll(); });
+    loadModelBtn.addEventListener("click", async () => {
+      await loadRemoteModel(modelUrlInput.value);
+      await updateSuggestions();
+      renderAll();
+    });
+    clearModelBtn.addEventListener("click", async () => {
+      disableModel();
+      await updateSuggestions();
+      renderAll();
+    });
+
+    (async function init() {
+      await loadRemoteModel(DEFAULT_MODEL_URL);
+      await updateSuggestions();
+      renderAll();
+    })();
+  </script>
+</body>
+</html>
