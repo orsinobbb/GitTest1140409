@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>9x9 圍棋雙人對下 + 前端 AI 建議</title>
+  <style>
+    :root {
+      --bg: #f4f1ea;
+      --panel: #ffffff;
+      --line: #2f2f2f;
+      --wood: #d9a85d;
+      --wood-dark: #c79349;
+      --text: #1f1f1f;
+      --muted: #666;
+      --top1: rgba(40, 120, 255, 0.95);
+      --top2: rgba(50, 180, 90, 0.92);
+      --top3: rgba(120, 120, 120, 0.88);
+      --danger: #d64141;
+      --btn: #2b5cff;
+      --btn-hover: #1f49d1;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(320px, 720px) 360px;
+      gap: 20px;
+      padding: 20px;
+      align-items: start;
+      justify-content: center;
+    }
+
+    .board-wrap, .panel {
+      background: var(--panel);
+      border-radius: 16px;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+      padding: 18px;
+    }
+
+    .title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+
+    .board-box {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(180deg, var(--wood), var(--wood-dark));
+      border-radius: 14px;
+      padding: 12px;
+    }
+
+    canvas {
+      width: min(92vw, 640px);
+      height: min(92vw, 640px);
+      max-width: 640px;
+      max-height: 640px;
+      display: block;
+      background: transparent;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .panel h2 {
+      margin: 0 0 10px;
+      font-size: 20px;
+    }
+
+    .section {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid #ececec;
+    }
+
+    .status-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .card {
+      background: #f7f8fb;
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .label {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+
+    .value {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      background: var(--btn);
+      color: white;
+      transition: 0.18s ease;
+    }
+
+    button:hover {
+      background: var(--btn-hover);
+    }
+
+    button.secondary {
+      background: #eef2ff;
+      color: #2443ad;
+    }
+
+    button.secondary:hover {
+      background: #dfe7ff;
+    }
+
+    button.warn {
+      background: #fff1f1;
+      color: var(--danger);
+    }
+
+    button.warn:hover {
+      background: #ffe2e2;
+    }
+
+    .toggle-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 0;
+    }
+
+    .toggle-line input[type="checkbox"] {
+      transform: scale(1.2);
+    }
+
+    .suggestion-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .suggestion-item {
+      border-radius: 12px;
+      padding: 12px;
+      background: #f7f8fb;
+      border-left: 6px solid #cfd5e6;
+    }
+
+    .suggestion-item.top1 { border-left-color: #2878ff; }
+    .suggestion-item.top2 { border-left-color: #32b45a; }
+    .suggestion-item.top3 { border-left-color: #7a7a7a; }
+
+    .suggestion-main {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .suggestion-reason {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .log {
+      max-height: 220px;
+      overflow: auto;
+      background: #fafafa;
+      border-radius: 12px;
+      padding: 10px;
+      font-size: 13px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    .footer-note {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 1024px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .panel {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="board-wrap">
+      <div class="title">9x9 圍棋雙人對下 + 前端 AI 建議</div>
+      <div class="sub">點棋盤落子。藍 / 綠 / 灰 圈為推薦前三手。這版是前端 heuristic AI，已預留未來模型接口。</div>
+      <div class="board-box">
+        <canvas id="board" width="640" height="640"></canvas>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>分析與控制</h2>
+
+      <div class="status-row">
+        <div class="card">
+          <div class="label">目前輪到</div>
+          <div class="value" id="currentPlayerText">黑棋</div>
+        </div>
+        <div class="card">
+          <div class="label">局面狀態</div>
+          <div class="value" id="gameStateText">進行中</div>
+        </div>
+      </div>
+
+      <div class="status-row" style="margin-top:10px;">
+        <div class="card">
+          <div class="label">黑棋提子</div>
+          <div class="value" id="blackCaptures">0</div>
+        </div>
+        <div class="card">
+          <div class="label">白棋提子</div>
+          <div class="value" id="whiteCaptures">0</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="toggle-line">
+          <div>
+            <div style="font-weight:700;">顯示 AI 建議</div>
+            <div style="font-size:12px;color:#666;">前端即時計算 Top 3</div>
+          </div>
+          <input id="suggestionToggle" type="checkbox" checked />
+        </div>
+
+        <div class="controls">
+          <button id="passBtn">Pass</button>
+          <button id="undoBtn" class="secondary">悔棋</button>
+          <button id="restartBtn" class="warn">重新開始</button>
+          <button id="reanalyzeBtn" class="secondary">重新分析</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div style="font-weight:700;">AI 建議棋步</div>
+        <div class="suggestion-list" id="suggestionList"></div>
+      </div>
+
+      <div class="section">
+        <div style="font-weight:700; margin-bottom:8px;">對局紀錄</div>
+        <div class="log" id="moveLog"></div>
+      </div>
+
+      <div class="footer-note">
+        下一步若要升級成真正前端模型，只要把 <code>getAiSuggestions()</code> 換成 ONNX / TensorFlow.js 推論即可。
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const BOARD_SIZE = 9;
+    const EMPTY = 0;
+    const BLACK = 1;
+    const WHITE = 2;
+
+    const canvas = document.getElementById("board");
+    const ctx = canvas.getContext("2d");
+
+    const currentPlayerText = document.getElementById("currentPlayerText");
+    const gameStateText = document.getElementById("gameStateText");
+    const blackCapturesEl = document.getElementById("blackCaptures");
+    const whiteCapturesEl = document.getElementById("whiteCaptures");
+    const suggestionToggle = document.getElementById("suggestionToggle");
+    const suggestionList = document.getElementById("suggestionList");
+    const moveLogEl = document.getElementById("moveLog");
+
+    const passBtn = document.getElementById("passBtn");
+    const undoBtn = document.getElementById("undoBtn");
+    const restartBtn = document.getElementById("restartBtn");
+    const reanalyzeBtn = document.getElementById("reanalyzeBtn");
+
+    let game = createNewGame();
+
+    function createNewGame() {
+      return {
+        board: createEmptyBoard(),
+        currentPlayer: BLACK,
+        captures: { black: 0, white: 0 },
+        history: [],
+        log: [],
+        passCount: 0,
+        gameOver: false,
+        lastMove: null,
+        koPoint: null,
+        suggestions: []
+      };
+    }
+
+    function createEmptyBoard() {
+      return Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(EMPTY));
+    }
+
+    function cloneBoard(board) {
+      return board.map(row => [...row]);
+    }
+
+    function getOpponent(player) {
+      return player === BLACK ? WHITE : BLACK;
+    }
+
+    function inBounds(x, y) {
+      return x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE;
+    }
+
+    function getNeighbors(x, y) {
+      return [
+        [x - 1, y],
+        [x + 1, y],
+        [x, y - 1],
+        [x, y + 1]
+      ].filter(([nx, ny]) => inBounds(nx, ny));
+    }
+
+    function boardToSimpleString(board) {
+      return board.map(row => row.join("")).join("|");
+    }
+
+    function getGroup(board, x, y) {
+      const color = board[y][x];
+      if (color === EMPTY) {
+        return { stones: [], liberties: new Set() };
+      }
+
+      const stack = [[x, y]];
+      const visited = new Set();
+      const stones = [];
+      const liberties = new Set();
+
+      while (stack.length > 0) {
+        const [cx, cy] = stack.pop();
+        const key = `${cx},${cy}`;
+        if (visited.has(key)) continue;
+        visited.add(key);
+        stones.push([cx, cy]);
+
+        for (const [nx, ny] of getNeighbors(cx, cy)) {
+          if (board[ny][nx] === EMPTY) {
+            liberties.add(`${nx},${ny}`);
+          } else if (board[ny][nx] === color) {
+            const nk = `${nx},${ny}`;
+            if (!visited.has(nk)) stack.push([nx, ny]);
+          }
+        }
+      }
+
+      return { stones, liberties };
+    }
+
+    function removeGroup(board, stones) {
+      for (const [x, y] of stones) {
+        board[y][x] = EMPTY;
+      }
+    }
+
+    function isSuicideAfterMove(board, x, y, player) {
+      const sim = cloneBoard(board);
+      sim[y][x] = player;
+      const opponent = getOpponent(player);
+
+      for (const [nx, ny] of getNeighbors(x, y)) {
+        if (sim[ny][nx] === opponent) {
+          const enemyGroup = getGroup(sim, nx, ny);
+          if (enemyGroup.liberties.size === 0) {
+            removeGroup(sim, enemyGroup.stones);
+          }
+        }
+      }
+
+      const ownGroup = getGroup(sim, x, y);
+      return ownGroup.liberties.size === 0;
+    }
+
+    function applyMove(board, x, y, player) {
+      const sim = cloneBoard(board);
+      sim[y][x] = player;
+      const opponent = getOpponent(player);
+
+      let capturedStones = [];
+
+      for (const [nx, ny] of getNeighbors(x, y)) {
+        if (sim[ny][nx] === opponent) {
+          const enemyGroup = getGroup(sim, nx, ny);
+          if (enemyGroup.liberties.size === 0) {
+            capturedStones = capturedStones.concat(enemyGroup.stones);
+            removeGroup(sim, enemyGroup.stones);
+          }
+        }
+      }
+
+      return { board: sim, capturedStones };
+    }
+
+    function isLegalMove(gameState, x, y, player) {
+      const { board, koPoint } = gameState;
+      if (!inBounds(x, y)) return false;
+      if (board[y][x] !== EMPTY) return false;
+      if (koPoint && koPoint.x === x && koPoint.y === y) return false;
+      if (isSuicideAfterMove(board, x, y, player)) return false;
+      return true;
+    }
+
+    function makeMove(x, y) {
+      if (game.gameOver) return;
+      if (!isLegalMove(game, x, y, game.currentPlayer)) return;
+
+      const prevState = snapshotGame(game);
+
+      const { board: newBoard, capturedStones } = applyMove(game.board, x, y, game.currentPlayer);
+
+      game.board = newBoard;
+      game.lastMove = { x, y, player: game.currentPlayer };
+      game.passCount = 0;
+
+      const currentSide = game.currentPlayer === BLACK ? "black" : "white";
+      game.captures[currentSide] += capturedStones.length;
+
+      // 簡化 Ko：若只提一子，且自己新落子群只有一口氣，則那一點視為 ko
+      game.koPoint = null;
+      if (capturedStones.length === 1) {
+        const ownGroup = getGroup(game.board, x, y);
+        if (ownGroup.liberties.size === 1) {
+          const [onlyLib] = [...ownGroup.liberties];
+          const [kx, ky] = onlyLib.split(",").map(Number);
+          const captured = capturedStones[0];
+          if (captured[0] === kx && captured[1] === ky) {
+            game.koPoint = { x: kx, y: ky };
+          }
+        }
+      }
+
+      game.history.push(prevState);
+      game.log.push(`${moveNumberLabel()} ${playerText(game.currentPlayer)}：${toCoordText(x, y)}`);
+      game.currentPlayer = getOpponent(game.currentPlayer);
+
+      updateSuggestions();
+      renderAll();
+    }
+
+    function passTurn() {
+      if (game.gameOver) return;
+
+      const prevState = snapshotGame(game);
+      game.history.push(prevState);
+
+      game.log.push(`${moveNumberLabel()} ${playerText(game.currentPlayer)}：Pass`);
+      game.passCount += 1;
+      game.koPoint = null;
+      game.lastMove = null;
+
+      if (game.passCount >= 2) {
+        game.gameOver = true;
+        game.log.push("雙方連續 Pass，對局結束。");
+      } else {
+        game.currentPlayer = getOpponent(game.currentPlayer);
+      }
+
+      updateSuggestions();
+      renderAll();
+    }
+
+    function undoMove() {
+      if (game.history.length === 0) return;
+      const prev = game.history.pop();
+      game = restoreSnapshot(prev);
+
+      if (game.log.length > 0) {
+        game.log.pop();
+      }
+
+      updateSuggestions();
+      renderAll();
+    }
+
+    function restartGame() {
+      game = createNewGame();
+      updateSuggestions();
+      renderAll();
+    }
+
+    function snapshotGame(state) {
+      return {
+        board: cloneBoard(state.board),
+        currentPlayer: state.currentPlayer,
+        captures: { ...state.captures },
+        history: state.history.map(s => ({
+          board: cloneBoard(s.board),
+          currentPlayer: s.currentPlayer,
+          captures: { ...s.captures },
+          history: [],
+          log: [...s.log],
+          passCount: s.passCount,
+          gameOver: s.gameOver,
+          lastMove: s.lastMove ? { ...s.lastMove } : null,
+          koPoint: s.koPoint ? { ...s.koPoint } : null,
+          suggestions: s.suggestions ? JSON.parse(JSON.stringify(s.suggestions)) : []
+        })),
+        log: [...state.log],
+        passCount: state.passCount,
+        gameOver: state.gameOver,
+        lastMove: state.lastMove ? { ...state.lastMove } : null,
+        koPoint: state.koPoint ? { ...state.koPoint } : null,
+        suggestions: state.suggestions ? JSON.parse(JSON.stringify(state.suggestions)) : []
+      };
+    }
+
+    function restoreSnapshot(snapshot) {
+      return {
+        board: cloneBoard(snapshot.board),
+        currentPlayer: snapshot.currentPlayer,
+        captures: { ...snapshot.captures },
+        history: snapshot.history.map(s => ({
+          board: cloneBoard(s.board),
+          currentPlayer: s.currentPlayer,
+          captures: { ...s.captures },
+          history: [],
+          log: [...s.log],
+          passCount: s.passCount,
+          gameOver: s.gameOver,
+          lastMove: s.lastMove ? { ...s.lastMove } : null,
+          koPoint: s.koPoint ? { ...s.koPoint } : null,
+          suggestions: s.suggestions ? JSON.parse(JSON.stringify(s.suggestions)) : []
+        })),
+        log: [...snapshot.log],
+        passCount: snapshot.passCount,
+        gameOver: snapshot.gameOver,
+        lastMove: snapshot.lastMove ? { ...snapshot.lastMove } : null,
+        koPoint: snapshot.koPoint ? { ...snapshot.koPoint } : null,
+        suggestions: snapshot.suggestions ? JSON.parse(JSON.stringify(snapshot.suggestions)) : []
+      };
+    }
+
+    function playerText(player) {
+      return player === BLACK ? "黑棋" : "白棋";
+    }
+
+    function moveNumberLabel() {
+      return `#${game.log.filter(line => line.includes("：")).length + 1}`;
+    }
+
+    function toCoordText(x, y) {
+      const letters = "ABCDEFGHJ";
+      return `${letters[x]}${BOARD_SIZE - y}`;
+    }
+
+    function evaluateMove(board, x, y, player) {
+      let score = 0;
+      const opponent = getOpponent(player);
+
+      if (board[y][x] !== EMPTY) {
+        return { score: -9999, reason: "非空點" };
+      }
+
+      const simulated = applyMove(board, x, y, player);
+      const newBoard = simulated.board;
+      const capturedCount = simulated.capturedStones.length;
+
+      if (capturedCount > 0) {
+        score += 100 + capturedCount * 18;
+      }
+
+      const ownGroup = getGroup(newBoard, x, y);
+      const ownLib = ownGroup.liberties.size;
+      score += ownLib * 7;
+
+      let atariEnemyCount = 0;
+      for (const [nx, ny] of getNeighbors(x, y)) {
+        if (newBoard[ny][nx] === opponent) {
+          const enemyGroup = getGroup(newBoard, nx, ny);
+          if (enemyGroup.liberties.size === 1) {
+            atariEnemyCount += 1;
+          }
+        }
+      }
+      score += atariEnemyCount * 24;
+
+      let connectBonus = 0;
+      let ownNeighborCount = 0;
+      for (const [nx, ny] of getNeighbors(x, y)) {
+        if (board[ny][nx] === player) {
+          ownNeighborCount += 1;
+        }
+      }
+      connectBonus += ownNeighborCount * 10;
+      score += connectBonus;
+
+      const centerDistance = Math.abs(x - 4) + Math.abs(y - 4);
+      const centrality = 8 - centerDistance;
+      score += Math.max(centrality, 0) * 1.5;
+
+      const cornerBonus = (
+        (x <= 2 && y <= 2) ||
+        (x >= 6 && y <= 2) ||
+        (x <= 2 && y >= 6) ||
+        (x >= 6 && y >= 6)
+      ) ? 6 : 0;
+      score += cornerBonus;
+
+      const edgeBonus = (x === 0 || x === 8 || y === 0 || y === 8) ? 2 : 0;
+      score += edgeBonus;
+
+      if (ownLib <= 1 && capturedCount === 0) {
+        score -= 55;
+      }
+
+      const emptyNeighbors = getNeighbors(x, y).filter(([nx, ny]) => board[ny][nx] === EMPTY).length;
+      if (emptyNeighbors >= 3) score += 5;
+
+      let reason = "平衡型落點";
+      if (capturedCount > 0) reason = `可提子 ${capturedCount} 顆`;
+      else if (atariEnemyCount > 0) reason = "可對對手形成打吃壓力";
+      else if (ownNeighborCount >= 2) reason = "可連接己方棋形";
+      else if (cornerBonus > 0) reason = "角地穩定";
+      else if (centerDistance <= 2) reason = "爭取中央影響力";
+      else if (ownLib >= 4) reason = "可擴大己方氣";
+
+      return { score, reason };
+    }
+
+    function getHeuristicSuggestions(gameState, player, topN = 3) {
+      const suggestions = [];
+
+      for (let y = 0; y < BOARD_SIZE; y++) {
+        for (let x = 0; x < BOARD_SIZE; x++) {
+          if (!isLegalMove(gameState, x, y, player)) continue;
+          const result = evaluateMove(gameState.board, x, y, player);
+          suggestions.push({
+            x,
+            y,
+            score: result.score,
+            reason: result.reason
+          });
+        }
+      }
+
+      suggestions.sort((a, b) => b.score - a.score);
+      return suggestions.slice(0, topN);
+    }
+
+    /**
+     * 未來可替換成真正前端模型推論：
+     * - ONNX Runtime Web
+     * - TensorFlow.js
+     *
+     * 只要回傳格式一致即可：
+     * [{ x, y, score, reason }, ...]
+     */
+    async function getAiSuggestions(gameState, player) {
+      // 這裡先用 heuristic 當前端 AI
+      return getHeuristicSuggestions(gameState, player, 3);
+
+      // ===== 之後可替換成模型 =====
+      // return await getModelSuggestions(gameState, player);
+    }
+
+    async function updateSuggestions() {
+      if (game.gameOver || !suggestionToggle.checked) {
+        game.suggestions = [];
+        renderSuggestions();
+        return;
+      }
+      game.suggestions = await getAiSuggestions(game, game.currentPlayer);
+      renderSuggestions();
+    }
+
+    function renderAll() {
+      drawBoard();
+      renderStatus();
+      renderSuggestions();
+      renderLog();
+    }
+
+    function renderStatus() {
+      currentPlayerText.textContent = game.gameOver ? "-" : playerText(game.currentPlayer);
+      gameStateText.textContent = game.gameOver ? "已結束" : "進行中";
+      blackCapturesEl.textContent = String(game.captures.black);
+      whiteCapturesEl.textContent = String(game.captures.white);
+    }
+
+    function renderSuggestions() {
+      suggestionList.innerHTML = "";
+      if (!suggestionToggle.checked) {
+        suggestionList.innerHTML = `<div class="suggestion-item"><div class="suggestion-reason">AI 建議已關閉。</div></div>`;
+        drawBoard();
+        return;
+      }
+
+      if (game.suggestions.length === 0) {
+        suggestionList.innerHTML = `<div class="suggestion-item"><div class="suggestion-reason">目前無建議。</div></div>`;
+        drawBoard();
+        return;
+      }
+
+      game.suggestions.forEach((s, idx) => {
+        const rankClass = idx === 0 ? "top1" : idx === 1 ? "top2" : "top3";
+        const div = document.createElement("div");
+        div.className = `suggestion-item ${rankClass}`;
+        div.innerHTML = `
+          <div class="suggestion-main">
+            <span>第 ${idx + 1} 手：${toCoordText(s.x, s.y)}</span>
+            <span>${s.score.toFixed(1)}</span>
+          </div>
+          <div class="suggestion-reason">${s.reason}</div>
+        `;
+        div.addEventListener("click", () => {
+          if (!game.gameOver) {
+            makeMove(s.x, s.y);
+          }
+        });
+        suggestionList.appendChild(div);
+      });
+
+      drawBoard();
+    }
+
+    function renderLog() {
+      moveLogEl.textContent = game.log.length ? game.log.join("\n") : "尚未開始落子。";
+    }
+
+    function drawBoard() {
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const pad = 46;
+      const cell = (w - pad * 2) / (BOARD_SIZE - 1);
+
+      // 木紋底
+      ctx.fillStyle = "#d7a25d";
+      ctx.fillRect(0, 0, w, h);
+
+      // 格線
+      ctx.strokeStyle = "#2e2416";
+      ctx.lineWidth = 2;
+      for (let i = 0; i < BOARD_SIZE; i++) {
+        const pos = pad + i * cell;
+        ctx.beginPath();
+        ctx.moveTo(pad, pos);
+        ctx.lineTo(w - pad, pos);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(pos, pad);
+        ctx.lineTo(pos, h - pad);
+        ctx.stroke();
+      }
+
+      // 星位（9x9）
+      const stars = [
+        [2, 2], [6, 2],
+        [4, 4],
+        [2, 6], [6, 6]
+      ];
+      for (const [sx, sy] of stars) {
+        const px = pad + sx * cell;
+        const py = pad + sy * cell;
+        ctx.beginPath();
+        ctx.fillStyle = "#2a2116";
+        ctx.arc(px, py, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 座標
+      ctx.fillStyle = "#2e2416";
+      ctx.font = "16px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      const letters = "ABCDEFGHJ";
+      for (let i = 0; i < BOARD_SIZE; i++) {
+        const pos = pad + i * cell;
+        ctx.fillText(letters[i], pos, 20);
+        ctx.fillText(String(BOARD_SIZE - i), 20, pos);
+      }
+
+      // 建議手
+      if (suggestionToggle.checked && game.suggestions.length > 0 && !game.gameOver) {
+        game.suggestions.forEach((s, idx) => {
+          const px = pad + s.x * cell;
+          const py = pad + s.y * cell;
+
+          let color = "rgba(40,120,255,0.9)";
+          let radius = 19;
+          let lineWidth = 6;
+
+          if (idx === 1) {
+            color = "rgba(50,180,90,0.92)";
+            radius = 16;
+            lineWidth = 5;
+          } else if (idx === 2) {
+            color = "rgba(120,120,120,0.88)";
+            radius = 13;
+            lineWidth = 4;
+          }
+
+          ctx.beginPath();
+          ctx.strokeStyle = color;
+          ctx.lineWidth = lineWidth;
+          ctx.arc(px, py, radius, 0, Math.PI * 2);
+          ctx.stroke();
+        });
+      }
+
+      // Ko 點標示
+      if (game.koPoint) {
+        const px = pad + game.koPoint.x * cell;
+        const py = pad + game.koPoint.y * cell;
+        ctx.beginPath();
+        ctx.strokeStyle = "rgba(214,65,65,0.9)";
+        ctx.lineWidth = 3;
+        ctx.arc(px, py, 10, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // 棋子
+      for (let y = 0; y < BOARD_SIZE; y++) {
+        for (let x = 0; x < BOARD_SIZE; x++) {
+          const stone = game.board[y][x];
+          if (stone === EMPTY) continue;
+
+          const px = pad + x * cell;
+          const py = pad + y * cell;
+
+          const gradient = ctx.createRadialGradient(px - 7, py - 7, 5, px, py, 24);
+          if (stone === BLACK) {
+            gradient.addColorStop(0, "#686868");
+            gradient.addColorStop(1, "#0f0f0f");
+          } else {
+            gradient.addColorStop(0, "#ffffff");
+            gradient.addColorStop(1, "#d8d8d8");
+          }
+
+          ctx.beginPath();
+          ctx.fillStyle = gradient;
+          ctx.arc(px, py, 24, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.strokeStyle = stone === BLACK ? "#000" : "#aaa";
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+      }
+
+      // 最後一手標記
+      if (game.lastMove) {
+        const px = pad + game.lastMove.x * cell;
+        const py = pad + game.lastMove.y * cell;
+        ctx.beginPath();
+        ctx.fillStyle = game.lastMove.player === BLACK ? "#ffffff" : "#111111";
+        ctx.arc(px, py, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function getBoardClickPos(evt) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const mx = (evt.clientX - rect.left) * scaleX;
+      const my = (evt.clientY - rect.top) * scaleY;
+      return { mx, my };
+    }
+
+    function findNearestIntersection(mx, my) {
+      const w = canvas.width;
+      const pad = 46;
+      const cell = (w - pad * 2) / (BOARD_SIZE - 1);
+
+      let best = null;
+      let bestDist = Infinity;
+
+      for (let y = 0; y < BOARD_SIZE; y++) {
+        for (let x = 0; x < BOARD_SIZE; x++) {
+          const px = pad + x * cell;
+          const py = pad + y * cell;
+          const dist = Math.hypot(mx - px, my - py);
+          if (dist < bestDist) {
+            bestDist = dist;
+            best = { x, y, dist };
+          }
+        }
+      }
+
+      if (best && best.dist <= cell * 0.42) {
+        return best;
+      }
+      return null;
+    }
+
+    canvas.addEventListener("click", (evt) => {
+      const { mx, my } = getBoardClickPos(evt);
+      const point = findNearestIntersection(mx, my);
+      if (!point) return;
+      makeMove(point.x, point.y);
+    });
+
+    passBtn.addEventListener("click", passTurn);
+    undoBtn.addEventListener("click", undoMove);
+    restartBtn.addEventListener("click", restartGame);
+    reanalyzeBtn.addEventListener("click", async () => {
+      await updateSuggestions();
+      renderAll();
+    });
+
+    suggestionToggle.addEventListener("change", async () => {
+      await updateSuggestions();
+      renderAll();
+    });
+
+    // 初始渲染
+    updateSuggestions().then(renderAll);
+
+    // ===== 未來模型版接口範例 =====
+    async function getModelSuggestions(gameState, player) {
+      // 1. encodeBoard(gameState)
+      // 2. model inference (ONNX / tfjs)
+      // 3. decode policy map
+      // 4. filter illegal moves
+      // 5. return top 3
+      return [];
+    }
+
+    function encodeBoardForModel(gameState) {
+      const current = gameState.currentPlayer;
+      const opponent = getOpponent(current);
+
+      const channels = Array.from({ length: 6 }, () =>
+        Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(0))
+      );
+
+      for (let y = 0; y < BOARD_SIZE; y++) {
+        for (let x = 0; x < BOARD_SIZE; x++) {
+          const v = gameState.board[y][x];
+          if (v === current) channels[0][y][x] = 1;
+          if (v === opponent) channels[1][y][x] = 1;
+          channels[2][y][x] = current === BLACK ? 1 : 0;
+          if (gameState.lastMove && gameState.lastMove.x === x && gameState.lastMove.y === y) {
+            channels[3][y][x] = 1;
+          }
+          if (isLegalMove(gameState, x, y, current)) {
+            channels[4][y][x] = 1;
+          }
+          if (gameState.koPoint && gameState.koPoint.x === x && gameState.koPoint.y === y) {
+            channels[5][y][x] = 1;
+          }
+        }
+      }
+
+      return channels;
+    }
+  </script>
+</body>
+</html>
