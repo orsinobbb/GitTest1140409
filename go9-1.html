@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>9x9 圍棋 + 前端 AI</title>
+
+<!-- ONNX Runtime Web CDN -->
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+
+<style>
+body{
+font-family:sans-serif;
+background:#f4f4f4;
+text-align:center
+}
+
+canvas{
+background:#d8a65a;
+border-radius:10px
+}
+
+.panel{
+width:300px;
+margin:auto;
+}
+
+button{
+margin:5px;
+padding:10px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>9x9 圍棋 + 前端 AI 建議</h2>
+
+<canvas id="board" width="600" height="600"></canvas>
+
+<div class="panel">
+
+<p id="turn">黑棋</p>
+
+<button onclick="pass()">PASS</button>
+<button onclick="undo()">悔棋</button>
+<button onclick="restart()">重新開始</button>
+
+<h3>AI建議</h3>
+
+<div id="suggest"></div>
+
+</div>
+
+<script>
+
+const SIZE=9
+const EMPTY=0
+const BLACK=1
+const WHITE=2
+
+let board=[]
+let current=BLACK
+let history=[]
+let suggestions=[]
+
+let ortSession=null
+
+const canvas=document.getElementById("board")
+const ctx=canvas.getContext("2d")
+
+function initBoard(){
+board=[]
+for(let y=0;y<SIZE;y++){
+board.push(Array(SIZE).fill(0))
+}
+}
+
+initBoard()
+
+async function loadModel(){
+
+try{
+
+ortSession=await ort.InferenceSession.create("./models/go9x9.onnx")
+
+console.log("AI模型載入成功")
+
+}catch(e){
+
+console.log("未載入模型，使用 heuristic AI")
+
+}
+
+}
+
+loadModel()
+
+function draw(){
+
+ctx.clearRect(0,0,600,600)
+
+let pad=40
+let cell=(600-pad*2)/(SIZE-1)
+
+ctx.lineWidth=2
+
+for(let i=0;i<SIZE;i++){
+
+let p=pad+i*cell
+
+ctx.beginPath()
+ctx.moveTo(pad,p)
+ctx.lineTo(600-pad,p)
+ctx.stroke()
+
+ctx.beginPath()
+ctx.moveTo(p,pad)
+ctx.lineTo(p,600-pad)
+ctx.stroke()
+
+}
+
+for(let y=0;y<SIZE;y++)
+for(let x=0;x<SIZE;x++){
+
+if(board[y][x]==EMPTY)continue
+
+let px=pad+x*cell
+let py=pad+y*cell
+
+ctx.beginPath()
+
+ctx.fillStyle=board[y][x]==BLACK?"black":"white"
+
+ctx.arc(px,py,20,0,Math.PI*2)
+
+ctx.fill()
+
+ctx.stroke()
+
+}
+
+drawSuggestions()
+
+}
+
+function drawSuggestions(){
+
+if(!suggestions)return
+
+let pad=40
+let cell=(600-pad*2)/(SIZE-1)
+
+suggestions.forEach((m,i)=>{
+
+let px=pad+m.x*cell
+let py=pad+m.y*cell
+
+ctx.beginPath()
+
+ctx.lineWidth=4
+
+if(i==0)ctx.strokeStyle="blue"
+if(i==1)ctx.strokeStyle="green"
+if(i==2)ctx.strokeStyle="gray"
+
+ctx.arc(px,py,15,0,Math.PI*2)
+
+ctx.stroke()
+
+})
+
+}
+
+canvas.onclick=e=>{
+
+let rect=canvas.getBoundingClientRect()
+
+let x=e.clientX-rect.left
+let y=e.clientY-rect.top
+
+let pad=40
+let cell=(600-pad*2)/(SIZE-1)
+
+let bx=Math.round((x-pad)/cell)
+let by=Math.round((y-pad)/cell)
+
+if(bx<0||bx>=SIZE||by<0||by>=SIZE)return
+
+play(bx,by)
+
+}
+
+function play(x,y){
+
+if(board[y][x]!=EMPTY)return
+
+save()
+
+board[y][x]=current
+
+current=current==BLACK?WHITE:BLACK
+
+updateAI()
+
+draw()
+
+}
+
+function save(){
+
+history.push(JSON.stringify(board))
+
+}
+
+function undo(){
+
+if(history.length==0)return
+
+board=JSON.parse(history.pop())
+
+current=current==BLACK?WHITE:BLACK
+
+updateAI()
+
+draw()
+
+}
+
+function restart(){
+
+initBoard()
+
+history=[]
+
+current=BLACK
+
+updateAI()
+
+draw()
+
+}
+
+function pass(){
+
+current=current==BLACK?WHITE:BLACK
+
+updateAI()
+
+draw()
+
+}
+
+function getLegal(){
+
+let moves=[]
+
+for(let y=0;y<SIZE;y++)
+for(let x=0;x<SIZE;x++){
+
+if(board[y][x]==EMPTY){
+
+moves.push({x,y})
+
+}
+
+}
+
+return moves
+
+}
+
+function heuristicAI(){
+
+let moves=getLegal()
+
+moves.forEach(m=>{
+
+let score=0
+
+let dist=Math.abs(m.x-4)+Math.abs(m.y-4)
+
+score+=10-dist
+
+m.score=score
+
+})
+
+moves.sort((a,b)=>b.score-a.score)
+
+return moves.slice(0,3)
+
+}
+
+async function modelAI(){
+
+let input=new Float32Array(1*1*9*9)
+
+for(let y=0;y<SIZE;y++)
+for(let x=0;x<SIZE;x++){
+
+input[y*9+x]=board[y][x]
+
+}
+
+let tensor=new ort.Tensor("float32",input,[1,1,9,9])
+
+let feeds={input:tensor}
+
+let results=await ortSession.run(feeds)
+
+let out=results.policy.data
+
+let moves=[]
+
+for(let i=0;i<81;i++){
+
+let x=i%9
+let y=Math.floor(i/9)
+
+if(board[y][x]==EMPTY){
+
+moves.push({
+
+x,y,
+score:out[i]
+
+})
+
+}
+
+}
+
+moves.sort((a,b)=>b.score-a.score)
+
+return moves.slice(0,3)
+
+}
+
+async function updateAI(){
+
+if(ortSession){
+
+suggestions=await modelAI()
+
+}else{
+
+suggestions=heuristicAI()
+
+}
+
+renderSuggest()
+
+}
+
+function renderSuggest(){
+
+let el=document.getElementById("suggest")
+
+el.innerHTML=""
+
+suggestions.forEach((m,i)=>{
+
+let div=document.createElement("div")
+
+div.innerHTML=`${i+1}. (${m.x},${m.y}) score:${m.score.toFixed(2)}`
+
+el.appendChild(div)
+
+})
+
+}
+
+draw()
+
+updateAI()
+
+</script>
+
+</body>
+</html>
