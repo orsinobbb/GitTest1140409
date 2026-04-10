@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>9x9 圍棋 + Kaya/KataGo Browser AI v4</title>
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+  <style>
+    :root{
+      --bg:#f4f1ea;--panel:#fff;--text:#1f1f1f;--muted:#666;
+      --wood:#d9a85d;--wood-dark:#c79349;--btn:#2b5cff;--btn-hover:#1f49d1;
+      --danger:#d64141;--ok:#1f8f4d;--warn:#c98100;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;background:var(--bg);color:var(--text)}
+    .app{min-height:100vh;display:grid;grid-template-columns:minmax(320px,760px) 420px;gap:20px;padding:20px;align-items:start;justify-content:center}
+    .board-wrap,.panel{background:var(--panel);border-radius:16px;box-shadow:0 6px 24px rgba(0,0,0,.08);padding:18px}
+    .title{font-size:24px;font-weight:800;margin-bottom:8px}
+    .sub{color:var(--muted);font-size:14px;line-height:1.6;margin-bottom:12px}
+    .board-box{display:flex;justify-content:center;align-items:center;background:linear-gradient(180deg,var(--wood),var(--wood-dark));border-radius:14px;padding:12px}
+    canvas{width:min(92vw,680px);height:min(92vw,680px);max-width:680px;max-height:680px;display:block;cursor:pointer;touch-action:manipulation}
+    .panel h2{margin:0 0 10px;font-size:20px}
+    .section{margin-top:16px;padding-top:14px;border-top:1px solid #ececec}
+    .status-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .card{background:#f7f8fb;border-radius:12px;padding:12px}
+    .label{color:var(--muted);font-size:13px;margin-bottom:4px}
+    .value{font-size:18px;font-weight:700}
+    .small{font-size:12px;color:var(--muted)}
+    .controls{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}
+    button{border:0;border-radius:10px;padding:12px 14px;font-size:14px;font-weight:700;cursor:pointer;background:var(--btn);color:#fff;transition:.18s ease}
+    button:hover{background:var(--btn-hover)}
+    button.secondary{background:#eef2ff;color:#2443ad}
+    button.secondary:hover{background:#dfe7ff}
+    button.warn{background:#fff1f1;color:var(--danger)}
+    button.warn:hover{background:#ffe2e2}
+    button.good{background:#e9f8ef;color:#16683a}
+    button.good:hover{background:#d9f1e1}
+    .toggle-line{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0}
+    .toggle-line input[type="checkbox"]{transform:scale(1.2)}
+    .small-input{width:100%;border:1px solid #d8deea;border-radius:10px;padding:10px 12px;font-size:12px;font-family:monospace;background:#fafcff}
+    .badge{display:inline-block;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700;margin-left:6px;vertical-align:middle}
+    .badge.ok{background:#e9f8ef;color:var(--ok)}
+    .badge.warn{background:#fff5df;color:var(--warn)}
+    .badge.err{background:#fff0f0;color:var(--danger)}
+    .suggestion-list{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+    .suggestion-item{border-radius:12px;padding:12px;background:#f7f8fb;border-left:6px solid #cfd5e6;cursor:pointer}
+    .suggestion-item.top1{border-left-color:#2878ff}
+    .suggestion-item.top2{border-left-color:#32b45a}
+    .suggestion-item.top3{border-left-color:#7a7a7a}
+    .suggestion-main{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:700;margin-bottom:4px}
+    .suggestion-reason{color:var(--muted);font-size:13px;line-height:1.5}
+    .log{max-height:220px;overflow:auto;background:#fafafa;border-radius:12px;padding:10px;font-size:13px;line-height:1.6;white-space:pre-wrap}
+    .foot{margin-top:12px;color:var(--muted);font-size:12px;line-height:1.6}
+    @media (max-width:1080px){.app{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="board-wrap">
+      <div class="title">9x9 圍棋 + Kaya/KataGo Browser AI v4</div>
+      <div class="sub">
+        修正 NaN、加入 heatmap、value、AI 下一手、SGF 匯出。<br>
+        預設載入遠端 Kaya UINT8 ONNX，失敗時退回 heuristic。
+      </div>
+      <div class="board-box">
+        <canvas id="board" width="680" height="680"></canvas>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>分析與控制</h2>
+
+      <div class="status-row">
+        <div class="card">
+          <div class="label">目前輪到</div>
+          <div class="value" id="currentPlayerText">黑棋</div>
+        </div>
+        <div class="card">
+          <div class="label">局面狀態</div>
+          <div class="value" id="gameStateText">進行中</div>
+        </div>
+      </div>
+
+      <div class="status-row" style="margin-top:10px;">
+        <div class="card">
+          <div class="label">黑棋提子</div>
+          <div class="value" id="blackCaptures">0</div>
+        </div>
+        <div class="card">
+          <div class="label">白棋提子</div>
+          <div class="value" id="whiteCaptures">0</div>
+        </div>
+      </div>
+
+      <div class="status-row" style="margin-top:10px;">
+        <div class="card">
+          <div class="label">模型勝率傾向</div>
+          <div class="value" id="winrateText">-</div>
+          <div class="small" id="valueText">尚無 value</div>
+        </div>
+        <div class="card">
+          <div class="label">目前模式</div>
+          <div class="value" id="modeText">heuristic</div>
+          <div class="small" id="policyInfoText">尚未分析</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div style="font-weight:700;margin-bottom:8px;">遠端模型網址</div>
+        <input id="modelUrlInput" class="small-input" />
+        <div style="margin-top:8px;">
+          <button id="loadModelBtn">重新載入模型</button>
+          <button id="clearModelBtn" class="secondary">停用模型</button>
+          <span id="modelStatus" class="badge warn">未載入模型</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="toggle-line">
+          <div>
+            <div style="font-weight:700;">顯示 AI 建議</div>
+            <div class="small">Top 3 候選手</div>
+          </div>
+          <input id="suggestionToggle" type="checkbox" checked />
+        </div>
+
+        <div class="toggle-line">
+          <div>
+            <div style="font-weight:700;">顯示 Heatmap</div>
+            <div class="small">模型或 heuristic 熱度</div>
+          </div>
+          <input id="heatmapToggle" type="checkbox" checked />
+        </div>
+
+        <div class="toggle-line">
+          <div>
+            <div style="font-weight:700;">自動分析</div>
+            <div class="small">每步落子後更新</div>
+          </div>
+          <input id="autoAnalyzeToggle" type="checkbox" checked />
+        </div>
+
+        <div class="controls">
+          <button id="passBtn">Pass</button>
+          <button id="undoBtn" class="secondary">悔棋</button>
+          <button id="restartBtn" class="warn">重新開始</button>
+          <button id="reanalyzeBtn" class="secondary">重新分析</button>
+          <button id="aiMoveBtn" class="good">AI 幫我下一手</button>
+          <button id="exportSgfBtn" class="secondary">匯出 SGF</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div style="font-weight:700;">AI 建議棋步</div>
+        <div class="suggestion-list" id="suggestionList"></div>
+      </div>
+
+      <div class="section">
+        <div style="font-weight:700; margin-bottom:8px;">對局紀錄</div>
+        <div class="log" id="moveLog"></div>
+      </div>
+
+      <div class="foot">
+        這版是可用的 browser 版本。若想再逼近官方 KataGo/Kaya，下一步就是把 encoder 完全對齊正式特徵定義。
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const DEFAULT_MODEL_URL =
+      "https://huggingface.co/kaya-go/kaya/resolve/main/kata1-b28c512nbt-s12043015936-d5616446734/kata1-b28c512nbt-s12043015936-d5616446734.uint8.onnx";
+
+    const BOARD_SIZE = 9;
+    const PAD_TO = 19;
+    const PAD_OFFSET = 5;
+    const EMPTY = 0;
+    const BLACK = 1;
+    const WHITE = 2;
+
+    const canvas = document.getElementById("board");
+    const ctx = canvas.getContext("2d");
+
+    const currentPlayerText = document.getElementById("currentPlayerText");
+    const gameStateText = document.getElementById("gameStateText");
+    const blackCapturesEl = document.getElementById("blackCaptures");
+    const whiteCapturesEl = document.getElementById("whiteCaptures");
+    const winrateText = document.getElementById("winrateText");
+    const valueText = document.getElementById("valueText");
+    const modeText = document.getElementById("modeText");
+    const policyInfoText = document.getElementById("policyInfoText");
+    const suggestionToggle = document.getElementById("suggestionToggle");
+    const heatmapToggle = document.getElementById("heatmapToggle");
+    const autoAnalyzeToggle = document.getElementById("autoAnalyzeToggle");
+    const suggestionList = document.getElementById("suggestionList");
+    const moveLogEl = document.getElementById("moveLog");
+    const modelUrlInput = document.getElementById("modelUrlInput");
+    const modelStatus = document.getElementById("modelStatus");
+
+    const passBtn = document.getElementById("passBtn");
+    const undoBtn = document.getElementById("undoBtn");
+    const restartBtn = document.getElementById("restartBtn");
+    const reanalyzeBtn = document.getElementById("reanalyzeBtn");
+    const loadModelBtn = document.getElementById("loadModelBtn");
+    const clearModelBtn = document.getElementById("clearModelBtn");
+    const aiMoveBtn = document.getElementById("aiMoveBtn");
+    const exportSgfBtn = document.getElementById("exportSgfBtn");
+
+    let ortSession = null;
+    let modelEnabled = false;
+    let game = createNewGame();
+
+    modelUrlInput.value = DEFAULT_MODEL_URL;
+
+    function createNewGame() {
+      const board = createEmptyBoard();
+      return {
+        board,
+        currentPlayer: BLACK,
+        captures: { black: 0, white: 0 },
+        history: [],
+        log: [],
+        passCount: 0,
+        gameOver: false,
+        lastMove: null,
+        koPoint: null,
+        suggestions: [],
+        heatmap: [],
+        moveHistory: [],
+        boardHistory: [cloneBoard(board)],
+        lastAnalysis: {
+          mode: "heuristic",
+          value: null,
+          winrate: null,
+          rawPolicyCount: 0
+        }
+      };
+    }
+
+    function createEmptyBoard() {
+      return Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(EMPTY));
+    }
+
+    function cloneBoard(board) {
+      return board.map(row => [...row]);
+    }
+
+    function getOpponent(player) {
+      return player === BLACK ? WHITE : BLACK;
+    }
+
+    function inBounds(x, y) {
+      return x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE;
+    }
+
+    function getNeighbors(x, y) {
+      return [[x-1,y],[x+1,y],[x,y-1],[x,y+1]].filter(([nx, ny]) => inBounds(nx, ny));
+    }
+
+    function padXY(x, y) {
+      return [x + PAD_OFFSET, y + PAD_OFFSET];
+    }
+
+    function getGroup(board, x, y) {
+      const color = board[y][x];
+      if (color === EMPTY) return { stones: [], liberties: new Set() };
+
+      const stack = [[x, y]];
+      const visited = new Set();
+      const stones = [];
+      const liberties = new Set();
+
+      while (stack.length) {
+        const [cx, cy] = stack.pop();
+        const key = `${cx},${cy}`;
+        if (visited.has(key)) continue;
+        visited.add(key);
+        stones.push([cx, cy]);
+
+        for (const [nx, ny] of getNeighbors(cx, cy)) {
+          if (board[ny][nx] === EMPTY) liberties.add(`${nx},${ny}`);
+          else if (board[ny][nx] === color) {
+            const nk = `${nx},${ny}`;
+            if (!visited.has(nk)) stack.push([nx, ny]);
+          }
+        }
+      }
+
+      return { stones, liberties };
+    }
+
+    function removeGroup(board, stones) {
+      for (const [x, y] of stones) board[y][x] = EMPTY;
+    }
+
+    function applyMove(board, x, y, player) {
+      const sim = cloneBoard(board);
+      sim[y][x] = player;
+      const opponent = getOpponent(player);
+      let capturedStones = [];
+
+      for (const [nx, ny] of getNeighbors(x, y)) {
+        if (sim[ny][nx] === opponent) {
+          const enemyGroup = getGroup(sim, nx, ny);
+          if (enemyGroup.liberties.size === 0) {
+            capturedStones = capturedStones.concat(enemyGroup.stones);
+            removeGroup(sim, enemyGroup.stones);
+          }
+        }
+      }
+
+      return { board: sim, capturedStones };
+    }
+
+    function isSuicideAfterMove(board, x, y, player) {
+      const sim = cloneBoard(board);
+      sim[y][x] = player;
+      const opponent = getOpponent(player);
+
+      for (const [nx, ny] of getNeighbors(x, y)) {
+        if (sim[ny][nx] === opponent) {
+          const enemyGroup = getGroup(sim, nx, ny);
+          if (enemyGroup.liberties.size === 0) removeGroup(sim, enemyGroup.stones);
+        }
+      }
+
+      return getGroup(sim, x, y).liberties.size === 0;
+    }
+
+    function isLegalMove(gameState, x, y, player) {
+      if (!inBounds(x, y)) return false;
+      if (gameState.board[y][x] !== EMPTY) return false;
+      if (gameState.koPoint && gameState.koPoint.x === x && gameState.koPoint.y === y) return false;
+      if (isSuicideAfterMove(gameState.board, x, y, player)) return false;
+      return true;
+    }
+
+    function playerText(player) {
+      return player === BLACK ? "黑棋" : "白棋";
+    }
+
+    function moveNumberLabel() {
+      return `#${game.log.filter(line => line.includes("：")).length + 1}`;
+    }
+
+    function toCoordText(x, y) {
+      const letters = "ABCDEFGHJ";
+      return `${letters[x]}${BOARD_SIZE - y}`;
+    }
+
+    function toSgfCoord(x, y) {
+      const letters = "abcdefghijklmnopqrstuvwxyz";
+      return `${letters[x]}${letters[y]}`;
+    }
+
+    function boardEquals(a, b) {
+      for (let y = 0; y < BOARD_SIZE; y++) {
+        for (let x = 0; x < BOARD_SIZE; x++) {
+          if (a[y][x] !== b[y][x]) return false;
+        }
+      }
+      return true;
+    }
+
+    function snapshotGame(state) {
+      return JSON.parse(JSON.stringify({
+        board: state.board,
+        currentPlayer: state.currentPlayer,
+        captures: state.captures,
+        log: state.log,
+        passCount: state.passCount,
+        gameOver: state.gameOver,
+        lastMove: state.lastMove,
+        koPoint: state.koPoint,
+        suggestions: state.suggestions,
+        heatmap: state.heatmap,
+        moveHistory: state.moveHistory,
+        boardHistory: state.boardHistory,
+        lastAnalysis: state.lastAnalysis
+      }));
+    }
+
+    function restoreSnapshot(snapshot) {
+      return {
+        board: cloneBoard(snapshot.board),
+        currentPlayer: snapshot.currentPlayer,
+        captures: { ...snapshot.captures },
+        history: [],
+        log: [...snapshot.log],
+        passCount: snapshot.passCount,
+        gameOver: snapshot.gameOver,
+        lastMove: snapshot.lastMove ? { ...snapshot.lastMove } : null,
+        koPoint: snapshot.koPoint ? { ...snapshot.koPoint } : null,
+        suggestions: JSON.parse(JSON.stringify(snapshot.suggestions || [])),
+        heatmap: JSON.parse(JSON.stringify(snapshot.heatmap || [])),
+        moveHistory: JSON.parse(JSON.stringify(snapshot.moveHistory || [])),
+        boardHistory: (snapshot.boardHistory || []).map(cloneBoard),
+        lastAnalysis: snapshot.lastAnalysis || { mode: "heuristic", value: null, winrate: null, rawPolicyCount: 0 }
+      };
+    }
+
+    function makeMove(x, y) {
+      if (game.gameOver) return;
+      if (!isLegalMove(game, x, y, game.currentPlayer)) return;
+
+      game.history.push(snapshotGame(game));
+      const movingPlayer = game.currentPlayer;
+      const { board: newBoard, capturedStones } = applyMove(game.board, x, y, movingPlayer);
+
+      game.board = newBoard;
+      game.lastMove = { x, y, player: movingPlayer };
+      game.passCount = 0;
+      const side = movingPlayer === BLACK ? "black" : "white";
+      game.captures[side] += capturedStones.length;
+
+      game.koPoint = null;
+      if (capturedStones.length === 1) {
+        const ownGroup = getGroup(game.board, x, y);
+        if (ownGroup.liberties.size === 1) {
+          const [onlyLib] = [...ownGroup.liberties];
+          const [kx, ky] = onlyLib.split(",").map(Number);
+          const captured = capturedStones[0];
+          if (captured[0] === kx && captured[1] === ky) {
+            game.koPoint = { x: kx, y: ky };
+          }
+        }
+      }
+
+      game.log.push(`${moveNumberLabel()} ${playerText(movingPlayer)}：${toCoordText(x, y)}`);
+      game.moveHistory.push({ x, y, player: movingPlayer, pass: false });
+      game.boardHistory.push(cloneBoard(game.board));
+      game.currentPlayer = getOpponent(movingPlayer);
+
+      if (autoAnalyzeToggle.checked) updateSuggestions().then(renderAll);
+      else renderAll();
+    }
+
+    function passTurn() {
+      if (game.gameOver) return;
+
+      game.history.push(snapshotGame(game));
+      const movingPlayer = game.currentPlayer;
+      game.log.push(`${moveNumberLabel()} ${playerText(movingPlayer)}：Pass`);
+      game.moveHistory.push({ x: -1, y: -1, player: movingPlayer, pass: true });
+      game.boardHistory.push(cloneBoard(game.board));
+      game.passCount += 1;
+      game.koPoint = null;
+      game.lastMove = null;
+
+      if (game.passCount >= 2) {
+        game.gameOver = true;
+        game.log.push("雙方連續 Pass，對局結束。");
+      } else {
+        game.currentPlayer = getOpponent(movingPlayer);
+      }
+
+      if (autoAnalyzeToggle.checked) updateSuggestions().then(renderAll);
+      else renderAll();
+    }
+
+    function undoMove() {
+      if (!game.history.length) return;
+      game = restoreSnapshot(game.history.pop());
+      if (autoAnalyzeToggle.checked) updateSuggestions().then(renderAll);
+      else renderAll();
+    }
+
+    function restartGame() {
+      game = createNewGame();
+      updateSuggestions().then(renderAll);
+    }
+
+    function isStoneInAtari(board, x, y) {
+      if (!inBounds(x, y) || board[y][x] === EMPTY) return false;
+      return getGroup(board, x, y).liberties.size === 1;
+    }
+
+    function libertyBucket(board, x, y) {
+      if (!inBounds(x, y) || board[y][x] === EMPTY) return 0;
+      const libs = getGroup(board, x, y).liberties.size;
+      if (libs <= 1) return 1;
+      if (libs === 2) return 2;
+      return 3;
+    }
+
+    function getBoardAtHistoryOffset(offsetFromNow) {
+      const idx = game.boardHistory.length - 1 - offsetFromNow;
+      if (idx < 0 || idx >= game.boardHistory.length) return null;
+      return game.boardHistory[idx];
+    }
+
+    function stoneAt(board, x, y) {
+      if (!board || !inBounds(x, y)) return EMPTY;
+      return board[y][x];
+    }
+
+    function buildApproxKayaInputs(gameState, player) {
+      const current = player;
+      const opponent = getOpponent(player);
+
+      const planes = Array.from({ length: 22 }, () =>
+        Array.from({ length: PAD_TO }, () => Array(PAD_TO).fill(0))
+      );
+
+      for (let y = 0; y < BOARD_SIZE; y++) {
+        for (let x = 0; x < BOARD_SIZE; x++) {
+          const [px, py] = padXY(x, y);
+          const v = gameState.board[y][x];
+
+          if (v === current) planes[0][py][px] = 1;
+          if (v === opponent) planes[1][py][px] = 1;
+          if (v === EMPTY) planes[2][py][px] = 1;
+          if (isLegalMove(gameState, x, y, current)) planes[3][py][px] = 1;
+          if (gameState.koPoint && gameState.koPoint.x === x && gameState.koPoint.y === y) planes[4][py][px] = 1;
+
+          const b1 = getBoardAtHistoryOffset(1);
+          const b2 = getBoardAtHistoryOffset(2);
+          const b3 = getBoardAtHistoryOffset(3);
+          const b4 = getBoardAtHistoryOffset(4);
+
+          if (stoneAt(b1, x, y) === current) planes[5][py][px] = 1;
+          if (stoneAt(b1, x, y) === opponent) planes[6][py][px] = 1;
+          if (stoneAt(b2, x, y) === current) planes[7][py][px] = 1;
+          if (stoneAt(b2, x, y) === opponent) planes[8][py][px] = 1;
+          if (stoneAt(b3, x, y) === current) planes[9][py][px] = 1;
+          if (stoneAt(b3, x, y) === opponent) planes[10][py][px] = 1;
+          if (stoneAt(b4, x, y) === current) planes[11][py][px] = 1;
+          if (stoneAt(b4, x, y) === opponent) planes[12][py][px] = 1;
+
+          const bucket = libertyBucket(gameState.board, x, y);
+          if (v === current && bucket === 1) planes[13][py][px] = 1;
+          if (v === current && bucket === 2) planes[14][py][px] = 1;
+          if (v === current && bucket === 3) planes[15][py][px] = 1;
+          if (v === opponent && bucket === 1) planes[16][py][px] = 1;
+          if (v === opponent && bucket === 2) planes[17][py][px] = 1;
+          if (v === opponent && bucket === 3) planes[18][py][px] = 1;
+
+          planes[19][py][px] = 1; // board mask
+
+          if (gameState.lastMove && gameState.lastMove.x === x && gameState.lastMove.y === y) {
+            planes[20][py][px] = 1;
+          }
+
+          if (x === 0 || y === 0 || x === BOARD_SIZE - 1 || y === BOARD_SIZE - 1) {
+            planes[21][py][px] = 1;
+          }
+        }
+      }
+
+      const flatPlanes = [];
+      for (let c = 0; c < 22; c++) {
+        for (let y = 0; y < PAD_TO; y++) {
+          for (let x = 0; x < PAD_TO; x++) {
+            flatPlanes.push(planes[c][y][x]);
+          }
+        }
+      }
+
+      const global = new Float32Array(19);
+      global[0] = current === BLACK ? 1 : 0;
+      global[1] = current === WHITE ? 1 : 0;
+      global[2] = Math.min(game.moveHistory.length / 100, 1);
+      global[3] = Math.min(game.captures.black / 50, 1);
+      global[4] = Math.min(game.captures.white / 50, 1);
+      global[5] = game.passCount;
+      global[6] = 0.5; // komi-ish placeholder
+      global[7] = game.currentPlayer === BLACK ? 1 : 0;
+      global[8] = game.currentPlayer === WHITE ? 1 : 0;
+
+      return {
+        binInput: new ort.Tensor("float32", new Float32Array(flatPlanes), [1, 22, PAD_TO, PAD_TO]),
+        globalInput: new ort.Tensor("float32", global, [1, 19])
+      };
+    }
+
+    function setModelStatus(type, text) {
+      modelStatus.className = `badge ${type}`;
+      modelStatus.textContent = text;
+    }
+
+    async function loadRemoteModel(url) {
+      if (!url || !url.trim()) {
+        ortSession = null;
+        modelEnabled = false;
+        setModelStatus("warn", "未填模型網址");
+        return;
+      }
+      try {
+        setModelStatus("warn", "模型載入中...");
+        ortSession = await ort.InferenceSession.create(url.trim());
+        modelEnabled = true;
+        setModelStatus("ok", "模型已啟用");
+      } catch (err) {
+        console.error("模型載入失敗:", err);
+        ortSession = null;
+        modelEnabled = false;
+        setModelStatus("err", "模型載入失敗");
+      }
+    }
+
+    function disableModel() {
+      ortSession = null;
+      modelEnabled = false;
+      setModelStatus("warn", "未載入模型");
+    }
+
+    function normalizeHeatmap(moves) {
+      if (!moves.length) return [];
+      const vals = moves.map(m => m.score).filter(Number.isFinite);
+      if (!vals.length) return [];
+      const min = Math.min(...vals);
+      const max = Math.max(...vals);
+      const range = Math.max(max - min, 1e-9);
+      return moves.map(m => ({
+        ...m,
+        heat: Number.isFinite(m.score) ? (m.score - min) / range : 0
+      }));
+    }
+
+    function softmax(arr) {
+      const valid = arr.filter(Number.isFinite);
+      if (!valid.length) return arr.map(_ => 0);
+      const max = Math.max(...valid);
+      const exps = arr.map(v => Number.isFinite(v) ? Math.exp(v - max) : 0);
+      const sum = exps.reduce((a, b) => a + b, 0) || 1;
+      return exps.map(v => v / sum);
+    }
+
+    function extractValue(results) {
+      for (const key of ["value", "values", "scorevalue"]) {
+        if (results[key]?.data) {
+          const arr = Array.from(results[key].data).filter(Number.isFinite);
+          if (arr.length) return arr[0];
+        }
+      }
+      return null;
+    }
+
+    function decodeKayaPolicy(policyTensor, gameState, player, topN = 3) {
+      const data = Array.from(policyTensor.data || []);
+      const dims = policyTensor.dims || [];
+      let movesDim = data.length;
+      let heads = 1;
+      let offset = 0;
+
+      if (dims.length === 3) {
+        heads = dims[1];
+        movesDim = dims[2];
+        offset = 0; // first head
+      } else if (dims.length === 2) {
+        movesDim = dims[1];
+        offset = 0;
+      } else if (dims.length === 1) {
+        movesDim = dims[0];
+        offset = 0;
+      }
+
+      const scoredMoves = [];
+      for (let y = 0; y < BOARD_SIZE; y++) {
+        for (let x = 0; x < BOARD_SIZE; x++) {
+          if (!isLegalMove(gameState, x, y, player)) continue;
+          const [px, py] = padXY(x, y);
+          const moveIndex = py * PAD_TO + px;
+          if (moveIndex >= movesDim) continue;
+          let score = data[offset + moveIndex];
+          if (!Number.isFinite(score)) score = 0;
+          scoredMoves.push({
+            x, y, score,
+            reason: "Kaya 模型推薦",
+            source: "model"
+          });
+        }
+      }
+
+      const probs = softmax(scoredMoves.map(m => m.score));
+      for (let i = 0; i < scoredMoves.length; i++) {
+        scoredMoves[i].prob = probs[i];
+      }
+
+      const heatmap = normalizeHeatmap(scoredMoves);
+      const suggestions = [...scoredMoves].sort((a, b) => b.score - a.score).slice(0, topN);
+      return { suggestions, heatmap, rawCount: scoredMoves.length };
+    }
+
+    function evaluateMove(board, x, y, player) {
+      let score = 0;
+      const opponent = getOpponent(player);
+      const simulated = applyMove(board, x, y, player);
+      const newBoard = simulated.board;
+      const capturedCount = simulated.capturedStones.length;
+
+      if (capturedCount > 0) score += 100 + capturedCount * 18;
+      const ownGroup = getGroup(newBoard, x, y);
+      const ownLib = ownGroup.liberties.size;
+      score += ownLib * 7;
+
+      let atariEnemyCount = 0;
+      for (const [nx, ny] of getNeighbors(x, y)) {
+        if (newBoard[ny][nx] === opponent) {
+          const enemyGroup = getGroup(newBoard, nx, ny);
+          if (enemyGroup.liberties.size === 1) atariEnemyCount += 1;
+        }
+      }
+      score += atariEnemyCount * 24;
+
+      let ownNeighborCount = 0;
+      for (const [nx, ny] of getNeighbors(x, y)) {
+        if (board[ny][nx] === player) ownNeighborCount += 1;
+      }
+      score += ownNeighborCount * 10;
+
+      const centerDistance = Math.abs(x - 4) + Math.abs(y - 4);
+      score += Math.max(8 - centerDistance, 0) * 1.5;
+
+      let reason = "平衡型落點";
+      if (capturedCount > 0) reason = `可提子 ${capturedCount} 顆`;
+      else if (atariEnemyCount > 0) reason = "可施加打吃壓力";
+      else if (ownNeighborCount >= 2) reason = "可連接己方棋形";
+      else if (centerDistance <= 2) reason = "爭取中央影響力";
+
+      return { score, reason };
+    }
+
+    function getHeuristicSuggestions(gameState, player, topN = 3) {
+      const scoredMoves = [];
+      for (let y = 0; y < BOARD_SIZE; y++) {
+        for (let x = 0; x < BOARD_SIZE; x++) {
+          if (!isLegalMove(gameState, x, y, player)) continue;
+          const result = evaluateMove(gameState.board, x, y, player);
+          scoredMoves.push({
+            x, y,
+            score: result.score,
+            reason: result.reason,
+            source: "heuristic"
+          });
+        }
+      }
+      const probs = softmax(scoredMoves.map(m => m.score));
+      for (let i = 0; i < scoredMoves.length; i++) scoredMoves[i].prob = probs[i];
+      return {
+        suggestions: [...scoredMoves].sort((a, b) => b.score - a.score).slice(0, topN),
+        heatmap: normalizeHeatmap(scoredMoves),
+        value: null,
+        winrate: null,
+        mode: "heuristic",
+        rawCount: scoredMoves.length
+      };
+    }
+
+    async function getModelSuggestions(gameState, player) {
+      if (!ortSession) return getHeuristicSuggestions(gameState, player, 3);
+      try {
+        const { binInput, globalInput } = buildApproxKayaInputs(gameState, player);
+        const results = await ortSession.run({
+          bin_input: binInput,
+          global_input: globalInput
+        });
+
+        if (!results.policy) throw new Error("模型未回傳 policy");
+
+        const decoded = decodeKayaPolicy(results.policy, gameState, player, 3);
+        const value = extractValue(results);
+        const winrate = Number.isFinite(value) ? Math.max(0, Math.min(1, (value + 1) / 2)) : null;
+
+        return {
+          suggestions: decoded.suggestions,
+          heatmap: decoded.heatmap,
+          value,
+          winrate,
+          mode: "model",
+          rawCount: decoded.rawCount
+        };
+      } catch (err) {
+        console.error("模型推論失敗，改回 heuristic:", err);
+        return getHeuristicSuggestions(gameState, player, 3);
+      }
+    }
+
+    async function updateSuggestions() {
+      if (game.gameOver || !suggestionToggle.checked) {
+        game.suggestions = [];
+        game.heatmap = [];
+        renderSuggestions();
+        renderStatus();
+        return;
+      }
+
+      const result = (modelEnabled && ortSession)
+        ? await getModelSuggestions(game, game.currentPlayer)
+        : getHeuristicSuggestions(game, game.currentPlayer, 3);
+
+      game.suggestions = result.suggestions || [];
+      game.heatmap = result.heatmap || [];
+      game.lastAnalysis = {
+        mode: result.mode || "heuristic",
+        value: result.value ?? null,
+        winrate: result.winrate ?? null,
+        rawPolicyCount: result.rawCount || 0
+      };
+
+      renderSuggestions();
+      renderStatus();
+    }
+
+    function renderStatus() {
+      currentPlayerText.textContent = game.gameOver ? "-" : playerText(game.currentPlayer);
+      gameStateText.textContent = game.gameOver ? "已結束" : "進行中";
+      blackCapturesEl.textContent = String(game.captures.black);
+      whiteCapturesEl.textContent = String(game.captures.white);
+      modeText.textContent = game.lastAnalysis.mode;
+      policyInfoText.textContent = `候選數 ${game.lastAnalysis.rawPolicyCount || 0}`;
+
+      if (Number.isFinite(game.lastAnalysis.winrate)) {
+        const side = game.currentPlayer === BLACK ? "黑" : "白";
+        winrateText.textContent = `${side} ${(game.lastAnalysis.winrate * 100).toFixed(1)}%`;
+      } else {
+        winrateText.textContent = "-";
+      }
+
+      if (Number.isFinite(game.lastAnalysis.value)) {
+        valueText.textContent = `value = ${game.lastAnalysis.value.toFixed(4)}`;
+      } else {
+        valueText.textContent = "尚無 value";
+      }
+    }
+
+    function renderSuggestions() {
+      suggestionList.innerHTML = "";
+
+      if (!suggestionToggle.checked) {
+        suggestionList.innerHTML = `<div class="suggestion-item"><div class="suggestion-reason">AI 建議已關閉。</div></div>`;
+        drawBoard();
+        return;
+      }
+
+      if (!game.suggestions.length) {
+        suggestionList.innerHTML = `<div class="suggestion-item"><div class="suggestion-reason">目前無建議。</div></div>`;
+        drawBoard();
+        return;
+      }
+
+      game.suggestions.forEach((s, idx) => {
+        const div = document.createElement("div");
+        div.className = `suggestion-item ${idx === 0 ? "top1" : idx === 1 ? "top2" : "top3"}`;
+        div.innerHTML = `
+          <div class="suggestion-main">
+            <span>第 ${idx + 1} 手：${toCoordText(s.x, s.y)}</span>
+            <span>${Number.isFinite(s.prob) ? (s.prob * 100).toFixed(1) + "%" : s.score.toFixed(3)}</span>
+          </div>
+          <div class="suggestion-reason">${s.reason} / ${s.source}</div>
+        `;
+        div.addEventListener("click", () => makeMove(s.x, s.y));
+        suggestionList.appendChild(div);
+      });
+
+      drawBoard();
+    }
+
+    function renderLog() {
+      moveLogEl.textContent = game.log.length ? game.log.join("\n") : "尚未開始落子。";
+    }
+
+    function renderAll() {
+      drawBoard();
+      renderStatus();
+      renderSuggestions();
+      renderLog();
+    }
+
+    function drawHeatmap(pad, cell) {
+      if (!heatmapToggle.checked || !game.heatmap.length) return;
+      for (const m of game.heatmap) {
+        if (!Number.isFinite(m.heat) || m.heat <= 0) continue;
+        const px = pad + m.x * cell;
+        const py = pad + m.y * cell;
+        const alpha = 0.08 + m.heat * 0.35;
+        const r = 13 + m.heat * 14;
+        ctx.beginPath();
+        ctx.fillStyle = `rgba(255, 60, 60, ${alpha})`;
+        ctx.arc(px, py, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function drawBoard() {
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const pad = 50;
+      const cell = (w - pad * 2) / (BOARD_SIZE - 1);
+
+      ctx.fillStyle = "#d7a25d";
+      ctx.fillRect(0, 0, w, h);
+
+      drawHeatmap(pad, cell);
+
+      ctx.strokeStyle = "#2e2416";
+      ctx.lineWidth = 2;
+      for (let i = 0; i < BOARD_SIZE; i++) {
+        const pos = pad + i * cell;
+        ctx.beginPath();
+        ctx.moveTo(pad, pos);
+        ctx.lineTo(w - pad, pos);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(pos, pad);
+        ctx.lineTo(pos, h - pad);
+        ctx.stroke();
+      }
+
+      const stars = [[2,2],[6,2],[4,4],[2,6],[6,6]];
+      for (const [sx, sy] of stars) {
+        const px = pad + sx * cell;
+        const py = pad + sy * cell;
+        ctx.beginPath();
+        ctx.fillStyle = "#2a2116";
+        ctx.arc(px, py, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = "#2e2416";
+      ctx.font = "16px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      const letters = "ABCDEFGHJ";
+      for (let i = 0; i < BOARD_SIZE; i++) {
+        const pos = pad + i * cell;
+        ctx.fillText(letters[i], pos, 20);
+        ctx.fillText(String(BOARD_SIZE - i), 20, pos);
+      }
+
+      if (suggestionToggle.checked && game.suggestions.length > 0 && !game.gameOver) {
+        game.suggestions.forEach((s, idx) => {
+          const px = pad + s.x * cell;
+          const py = pad + s.y * cell;
+          ctx.beginPath();
+          ctx.strokeStyle = idx === 0 ? "rgba(40,120,255,.95)" : idx === 1 ? "rgba(50,180,90,.92)" : "rgba(120,120,120,.88)";
+          ctx.lineWidth = idx === 0 ? 6 : idx === 1 ? 5 : 4;
+          ctx.arc(px, py, idx === 0 ? 19 : idx === 1 ? 16 : 13, 0, Math.PI * 2);
+          ctx.stroke();
+        });
+      }
+
+      if (game.koPoint) {
+        const px = pad + game.koPoint.x * cell;
+        const py = pad + game.koPoint.y * cell;
+        ctx.beginPath();
+        ctx.strokeStyle = "rgba(214,65,65,.9)";
+        ctx.lineWidth = 3;
+        ctx.arc(px, py, 10, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      for (let y = 0; y < BOARD_SIZE; y++) {
+        for (let x = 0; x < BOARD_SIZE; x++) {
+          const stone = game.board[y][x];
+          if (stone === EMPTY) continue;
+
+          const px = pad + x * cell;
+          const py = pad + y * cell;
+          const gradient = ctx.createRadialGradient(px - 7, py - 7, 5, px, py, 24);
+
+          if (stone === BLACK) {
+            gradient.addColorStop(0, "#686868");
+            gradient.addColorStop(1, "#0f0f0f");
+          } else {
+            gradient.addColorStop(0, "#ffffff");
+            gradient.addColorStop(1, "#d8d8d8");
+          }
+
+          ctx.beginPath();
+          ctx.fillStyle = gradient;
+          ctx.arc(px, py, 24, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = stone === BLACK ? "#000" : "#aaa";
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+      }
+
+      if (game.lastMove) {
+        const px = pad + game.lastMove.x * cell;
+        const py = pad + game.lastMove.y * cell;
+        ctx.beginPath();
+        ctx.fillStyle = game.lastMove.player === BLACK ? "#ffffff" : "#111111";
+        ctx.arc(px, py, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function getBoardClickPos(evt) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      return {
+        mx: (evt.clientX - rect.left) * scaleX,
+        my: (evt.clientY - rect.top) * scaleY
+      };
+    }
+
+    function findNearestIntersection(mx, my) {
+      const w = canvas.width;
+      const pad = 50;
+      const cell = (w - pad * 2) / (BOARD_SIZE - 1);
+
+      let best = null;
+      let bestDist = Infinity;
+      for (let y = 0; y < BOARD_SIZE; y++) {
+        for (let x = 0; x < BOARD_SIZE; x++) {
+          const px = pad + x * cell;
+          const py = pad + y * cell;
+          const dist = Math.hypot(mx - px, my - py);
+          if (dist < bestDist) {
+            bestDist = dist;
+            best = { x, y, dist };
+          }
+        }
+      }
+      return best && best.dist <= cell * 0.42 ? best : null;
+    }
+
+    function exportSgf() {
+      const moves = game.moveHistory.map(m => {
+        const color = m.player === BLACK ? "B" : "W";
+        if (m.pass) return `;${color}[]`;
+        return `;${color}[${toSgfCoord(m.x, m.y)}]`;
+      }).join("");
+      const sgf = `(;GM[1]FF[4]CA[UTF-8]AP[ChatGPT-Go9]SZ[9]KM[0]PB[Black]PW[White]${moves})`;
+
+      const blob = new Blob([sgf], { type: "application/x-go-sgf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "game.sgf";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function aiPlayBestMove() {
+      if (game.gameOver) return;
+      if (!game.suggestions.length) await updateSuggestions();
+      if (game.suggestions.length) makeMove(game.suggestions[0].x, game.suggestions[0].y);
+    }
+
+    canvas.addEventListener("click", (evt) => {
+      const { mx, my } = getBoardClickPos(evt);
+      const point = findNearestIntersection(mx, my);
+      if (!point) return;
+      makeMove(point.x, point.y);
+    });
+
+    passBtn.addEventListener("click", passTurn);
+    undoBtn.addEventListener("click", undoMove);
+    restartBtn.addEventListener("click", restartGame);
+    reanalyzeBtn.addEventListener("click", async () => { await updateSuggestions(); renderAll(); });
+    loadModelBtn.addEventListener("click", async () => {
+      await loadRemoteModel(modelUrlInput.value);
+      await updateSuggestions();
+      renderAll();
+    });
+    clearModelBtn.addEventListener("click", async () => {
+      disableModel();
+      await updateSuggestions();
+      renderAll();
+    });
+    aiMoveBtn.addEventListener("click", aiPlayBestMove);
+    exportSgfBtn.addEventListener("click", exportSgf);
+    suggestionToggle.addEventListener("change", async () => { await updateSuggestions(); renderAll(); });
+    heatmapToggle.addEventListener("change", renderAll);
+
+    (async function init() {
+      await loadRemoteModel(DEFAULT_MODEL_URL);
+      await updateSuggestions();
+      renderAll();
+    })();
+  </script>
+</body>
+</html>
