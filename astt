@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Azure Speech-to-Text 前端測試工具</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel2: #1f2937;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --border: #374151;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --bad: #ef4444;
+      --accent: #60a5fa;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #1e293b, var(--bg));
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .wrap {
+      width: min(1180px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 28px 0 48px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      letter-spacing: .02em;
+    }
+    .desc {
+      color: var(--muted);
+      margin: 0 0 22px;
+      line-height: 1.7;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 410px 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: rgba(17, 24, 39, .92);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    }
+    .card h2 {
+      margin: 0 0 14px;
+      font-size: 18px;
+    }
+    label {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      margin: 12px 0 6px;
+    }
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #0b1220;
+      color: var(--text);
+      padding: 11px 12px;
+      font-size: 15px;
+      outline: none;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(96,165,250,.12);
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 11px 14px;
+      font-weight: 700;
+      cursor: pointer;
+      color: #07111f;
+      background: var(--accent);
+    }
+    button.secondary {
+      background: #334155;
+      color: var(--text);
+    }
+    button.danger {
+      background: var(--bad);
+      color: white;
+    }
+    button.ok {
+      background: var(--ok);
+      color: #052e16;
+    }
+    button:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+    .status {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 12px 0 0;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+      border: 1px solid var(--border);
+      background: #0b1220;
+      color: var(--muted);
+      padding: 7px 9px;
+      border-radius: 999px;
+    }
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: var(--muted);
+    }
+    .dot.ok { background: var(--ok); }
+    .dot.warn { background: var(--warn); }
+    .dot.bad { background: var(--bad); }
+    .partial {
+      min-height: 72px;
+      background: rgba(96,165,250,.08);
+      border: 1px dashed rgba(96,165,250,.5);
+      color: #bfdbfe;
+      border-radius: 14px;
+      padding: 14px;
+      line-height: 1.7;
+      font-size: 18px;
+      margin-bottom: 14px;
+    }
+    .final {
+      min-height: 280px;
+      max-height: 440px;
+      overflow: auto;
+      background: #0b1220;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      line-height: 1.7;
+    }
+    .final-item {
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(55,65,81,.7);
+    }
+    .final-item:last-child { border-bottom: 0; }
+    .meta {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+    .text {
+      font-size: 18px;
+      white-space: pre-wrap;
+    }
+    .translation {
+      color: #a7f3d0;
+      margin-top: 6px;
+      white-space: pre-wrap;
+    }
+    .logs {
+      max-height: 220px;
+      overflow: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      color: #cbd5e1;
+      background: #020617;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      white-space: pre-wrap;
+    }
+    .help {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.65;
+      margin-top: 14px;
+    }
+    .warnbox {
+      border: 1px solid rgba(245,158,11,.45);
+      background: rgba(245,158,11,.08);
+      color: #fde68a;
+      border-radius: 14px;
+      padding: 12px;
+      line-height: 1.6;
+      font-size: 14px;
+      margin-top: 14px;
+    }
+    code {
+      background: rgba(148,163,184,.16);
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Azure Speech-to-Text 前端測試工具</h1>
+    <p class="desc">
+      單檔 HTML 測試：輸入 Azure Speech 連線資訊，存到 localStorage，直接用瀏覽器麥克風做 continuous recognition。
+      可測逐字稿，也可選擇 Speech Translation 模式。
+    </p>
+
+    <div class="grid">
+      <section class="card">
+        <h2>連線設定</h2>
+
+        <label for="speechKey">Azure Speech Key</label>
+        <input id="speechKey" type="password" placeholder="貼上 Speech resource key" autocomplete="off" />
+
+        <div class="row">
+          <div>
+            <label for="region">Region</label>
+            <input id="region" type="text" placeholder="例如 eastus2" />
+          </div>
+          <div>
+            <label for="language">辨識語言</label>
+            <select id="language">
+              <option value="zh-TW">zh-TW 繁體中文</option>
+              <option value="zh-CN">zh-CN 簡體中文</option>
+              <option value="en-US">en-US 英文美國</option>
+              <option value="ja-JP">ja-JP 日文</option>
+              <option value="ko-KR">ko-KR 韓文</option>
+              <option value="vi-VN">vi-VN 越南文</option>
+              <option value="th-TH">th-TH 泰文</option>
+              <option value="id-ID">id-ID 印尼文</option>
+            </select>
+          </div>
+        </div>
+
+        <label for="mode">測試模式</label>
+        <select id="mode">
+          <option value="stt">只測 Speech-to-Text</option>
+          <option value="translation">Speech Translation：語音 → 文字 + 翻譯</option>
+        </select>
+
+        <label for="targetLang">翻譯目標語言，Translation 模式才會用</label>
+        <select id="targetLang">
+          <option value="en">en 英文</option>
+          <option value="zh-Hant">zh-Hant 繁體中文</option>
+          <option value="ja">ja 日文</option>
+          <option value="ko">ko 韓文</option>
+          <option value="vi">vi 越南文</option>
+          <option value="th">th 泰文</option>
+          <option value="id">id 印尼文</option>
+        </select>
+
+        <div class="btns">
+          <button id="saveBtn" class="secondary">儲存設定</button>
+          <button id="testMicBtn" class="secondary">測試麥克風權限</button>
+          <button id="startBtn" class="ok">開始辨識</button>
+          <button id="stopBtn" class="danger" disabled>停止</button>
+          <button id="clearBtn" class="secondary">清除畫面</button>
+        </div>
+
+        <div class="status">
+          <span class="pill"><span id="sdkDot" class="dot"></span><span id="sdkStatus">SDK 載入中</span></span>
+          <span class="pill"><span id="micDot" class="dot"></span><span id="micStatus">麥克風未測試</span></span>
+          <span class="pill"><span id="recDot" class="dot"></span><span id="recStatus">尚未開始</span></span>
+        </div>
+
+        <div class="warnbox">
+          注意：這是純前端測試版，Speech Key 會暴露在瀏覽器裡，只適合本機 PoC。
+          正式版應改成後端簽發短效 token。
+        </div>
+
+        <div class="help">
+          建議執行方式：把此檔放在資料夾，執行
+          <code>python3 -m http.server 8000</code>，
+          再開 <code>http://localhost:8000/azure-speech-frontend-test.html</code>。
+        </div>
+      </section>
+
+      <main class="card">
+        <h2>即時結果</h2>
+        <div id="partial" class="partial">等待開始辨識...</div>
+        <div id="final" class="final"></div>
+
+        <h2 style="margin-top:18px;">事件紀錄</h2>
+        <div id="logs" class="logs"></div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://aka.ms/csspeech/jsbrowserpackageraw"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    const fields = {
+      speechKey: $("speechKey"),
+      region: $("region"),
+      language: $("language"),
+      mode: $("mode"),
+      targetLang: $("targetLang"),
+    };
+
+    let recognizer = null;
+    let startedAt = null;
+
+    function nowText() {
+      return new Date().toLocaleTimeString("zh-TW", { hour12: false });
+    }
+
+    function log(message, type = "info") {
+      const line = `[${nowText()}] ${type.toUpperCase()} ${message}\n`;
+      $("logs").textContent += line;
+      $("logs").scrollTop = $("logs").scrollHeight;
+    }
+
+    function setDot(dotId, statusId, state, text) {
+      const dot = $(dotId);
+      dot.className = "dot";
+      if (state) dot.classList.add(state);
+      $(statusId).textContent = text;
+    }
+
+    function saveSettings() {
+      const data = {};
+      Object.keys(fields).forEach(k => data[k] = fields[k].value.trim());
+      localStorage.setItem("azureSpeechTestConfig", JSON.stringify(data));
+      log("設定已儲存到 localStorage");
+    }
+
+    function loadSettings() {
+      const raw = localStorage.getItem("azureSpeechTestConfig");
+      if (!raw) {
+        fields.region.value = "eastus2";
+        fields.language.value = "zh-TW";
+        fields.mode.value = "stt";
+        fields.targetLang.value = "en";
+        return;
+      }
+      try {
+        const data = JSON.parse(raw);
+        Object.keys(fields).forEach(k => {
+          if (data[k] !== undefined) fields[k].value = data[k];
+        });
+        log("已從 localStorage 載入設定");
+      } catch (e) {
+        log("localStorage 設定解析失敗，使用預設值", "warn");
+      }
+    }
+
+    async function testMicrophone() {
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error("目前環境沒有 navigator.mediaDevices.getUserMedia。請用 localhost 或 HTTPS 開啟。");
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        });
+        stream.getTracks().forEach(t => t.stop());
+        setDot("micDot", "micStatus", "ok", "麥克風可用");
+        log("麥克風權限測試成功");
+      } catch (e) {
+        setDot("micDot", "micStatus", "bad", "麥克風不可用");
+        log("麥克風測試失敗：" + e.message, "error");
+      }
+    }
+
+    function validateConfig() {
+      if (!window.SpeechSDK) throw new Error("Azure Speech SDK 尚未載入成功");
+      if (!fields.speechKey.value.trim()) throw new Error("請輸入 Azure Speech Key");
+      if (!fields.region.value.trim()) throw new Error("請輸入 Azure Speech Region，例如 eastus2");
+    }
+
+    function appendFinal({ text, translation, reason, offset, duration }) {
+      const item = document.createElement("div");
+      item.className = "final-item";
+
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      const latency = startedAt ? Math.round(performance.now() - startedAt) : "-";
+      meta.textContent = `${nowText()}｜${reason || "final"}｜latency ${latency}ms`;
+
+      const body = document.createElement("div");
+      body.className = "text";
+      body.textContent = text || "(空白結果)";
+
+      item.appendChild(meta);
+      item.appendChild(body);
+
+      if (translation) {
+        const trans = document.createElement("div");
+        trans.className = "translation";
+        trans.textContent = "翻譯：" + translation;
+        item.appendChild(trans);
+      }
+
+      $("final").appendChild(item);
+      $("final").scrollTop = $("final").scrollHeight;
+    }
+
+    function createRecognizer() {
+      const SpeechSDK = window.SpeechSDK;
+      const key = fields.speechKey.value.trim();
+      const region = fields.region.value.trim();
+      const language = fields.language.value;
+      const mode = fields.mode.value;
+      const targetLang = fields.targetLang.value;
+
+      const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+
+      if (mode === "translation") {
+        const translationConfig = SpeechSDK.SpeechTranslationConfig.fromSubscription(key, region);
+        translationConfig.speechRecognitionLanguage = language;
+        translationConfig.addTargetLanguage(targetLang);
+        return new SpeechSDK.TranslationRecognizer(translationConfig, audioConfig);
+      }
+
+      const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(key, region);
+      speechConfig.speechRecognitionLanguage = language;
+      speechConfig.outputFormat = SpeechSDK.OutputFormat.Detailed;
+      return new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
+    }
+
+    function getTranslationFromResult(result) {
+      try {
+        const targetLang = fields.targetLang.value;
+        if (!result.translations) return "";
+        return result.translations.get(targetLang) || "";
+      } catch (_) {
+        return "";
+      }
+    }
+
+    async function startRecognition() {
+      try {
+        validateConfig();
+        saveSettings();
+
+        if (recognizer) {
+          log("已有 recognizer 執行中，請先停止", "warn");
+          return;
+        }
+
+        recognizer = createRecognizer();
+        startedAt = performance.now();
+
+        $("startBtn").disabled = true;
+        $("stopBtn").disabled = false;
+        setDot("recDot", "recStatus", "warn", "啟動中");
+        $("partial").textContent = "啟動中，請開始說話...";
+
+        recognizer.recognizing = (s, e) => {
+          const translation = getTranslationFromResult(e.result);
+          const text = e.result.text || "";
+          $("partial").textContent = translation
+            ? `辨識中：${text}\n翻譯中：${translation}`
+            : `辨識中：${text}`;
+        };
+
+        recognizer.recognized = (s, e) => {
+          const SDK = window.SpeechSDK;
+          if (e.result.reason === SDK.ResultReason.RecognizedSpeech || e.result.reason === SDK.ResultReason.TranslatedSpeech) {
+            const translation = getTranslationFromResult(e.result);
+            appendFinal({
+              text: e.result.text,
+              translation,
+              reason: e.result.reason === SDK.ResultReason.TranslatedSpeech ? "translated" : "recognized",
+              offset: e.result.offset,
+              duration: e.result.duration
+            });
+            $("partial").textContent = "等待下一句...";
+          } else if (e.result.reason === SDK.ResultReason.NoMatch) {
+            log("NoMatch：Azure 沒有辨識到可用語音", "warn");
+          }
+        };
+
+        recognizer.canceled = (s, e) => {
+          setDot("recDot", "recStatus", "bad", "已取消 / 發生錯誤");
+          log(`Canceled：reason=${e.reason}, error=${e.errorDetails || ""}`, "error");
+          $("partial").textContent = "發生錯誤：" + (e.errorDetails || e.reason);
+        };
+
+        recognizer.sessionStarted = () => {
+          setDot("recDot", "recStatus", "ok", "辨識中");
+          log("Azure Speech session started");
+        };
+
+        recognizer.sessionStopped = () => {
+          setDot("recDot", "recStatus", "", "已停止");
+          log("Azure Speech session stopped");
+        };
+
+        recognizer.speechStartDetected = () => log("偵測到開始說話");
+        recognizer.speechEndDetected = () => log("偵測到語音結束");
+
+        recognizer.startContinuousRecognitionAsync(
+          () => {
+            setDot("recDot", "recStatus", "ok", "辨識中");
+            log("startContinuousRecognitionAsync 成功");
+          },
+          (err) => {
+            setDot("recDot", "recStatus", "bad", "啟動失敗");
+            log("啟動失敗：" + err, "error");
+            cleanupRecognizer();
+          }
+        );
+      } catch (e) {
+        log(e.message, "error");
+        $("partial").textContent = "錯誤：" + e.message;
+        cleanupRecognizer();
+      }
+    }
+
+    function stopRecognition() {
+      if (!recognizer) return;
+
+      $("stopBtn").disabled = true;
+      $("partial").textContent = "停止中...";
+      log("正在停止辨識...");
+
+      recognizer.stopContinuousRecognitionAsync(
+        () => {
+          log("停止成功");
+          cleanupRecognizer();
+          $("partial").textContent = "已停止";
+        },
+        (err) => {
+          log("停止失敗：" + err, "error");
+          cleanupRecognizer();
+        }
+      );
+    }
+
+    function cleanupRecognizer() {
+      try {
+        if (recognizer) recognizer.close();
+      } catch (_) {}
+      recognizer = null;
+      $("startBtn").disabled = false;
+      $("stopBtn").disabled = true;
+      if ($("recStatus").textContent !== "已取消 / 發生錯誤") {
+        setDot("recDot", "recStatus", "", "尚未開始");
+      }
+    }
+
+    function clearScreen() {
+      $("partial").textContent = "等待開始辨識...";
+      $("final").innerHTML = "";
+      $("logs").textContent = "";
+    }
+
+    $("saveBtn").addEventListener("click", saveSettings);
+    $("testMicBtn").addEventListener("click", testMicrophone);
+    $("startBtn").addEventListener("click", startRecognition);
+    $("stopBtn").addEventListener("click", stopRecognition);
+    $("clearBtn").addEventListener("click", clearScreen);
+
+    loadSettings();
+
+    const sdkTimer = setInterval(() => {
+      if (window.SpeechSDK) {
+        setDot("sdkDot", "sdkStatus", "ok", "SDK 已載入");
+        log("Azure Speech SDK 已載入");
+        clearInterval(sdkTimer);
+      }
+    }, 200);
+
+    setTimeout(() => {
+      if (!window.SpeechSDK) {
+        setDot("sdkDot", "sdkStatus", "bad", "SDK 載入失敗");
+        log("Azure Speech SDK 載入失敗，請確認網路可連到 https://aka.ms/csspeech/jsbrowserpackageraw", "error");
+      }
+    }, 6000);
+
+    window.addEventListener("beforeunload", () => {
+      try {
+        if (recognizer) recognizer.close();
+      } catch (_) {}
+    });
+  </script>
+</body>
+</html>
