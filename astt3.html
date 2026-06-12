@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Azure Speech Translation + Phrase List + Azure OpenAI 句子合理化測試</title>
+  <style>
+    :root{
+      --bg:#06111f; --panel:rgba(15,23,42,.94); --panel2:#0b1220; --line:#334155;
+      --text:#e5e7eb; --muted:#94a3b8; --blue:#60a5fa; --green:#34d399;
+      --yellow:#fbbf24; --red:#f87171; --purple:#a78bfa;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; min-height:100vh; color:var(--text);
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;
+      background:
+        radial-gradient(circle at 15% 0%,rgba(96,165,250,.25),transparent 30%),
+        radial-gradient(circle at 90% 5%,rgba(167,139,250,.18),transparent 30%),
+        radial-gradient(circle at 75% 35%,rgba(52,211,153,.12),transparent 26%),
+        var(--bg);
+    }
+    .wrap{width:min(1320px,calc(100vw - 28px)); margin:0 auto; padding:22px 0 46px}
+    h1{font-size:27px; margin:0 0 6px; letter-spacing:.02em}
+    .sub{color:var(--muted); margin:0 0 16px; line-height:1.6}
+    .grid{display:grid; grid-template-columns:430px 1fr; gap:16px; align-items:start}
+    @media(max-width:980px){.grid{grid-template-columns:1fr}}
+    .card{
+      background:var(--panel); border:1px solid rgba(148,163,184,.22); border-radius:20px;
+      padding:16px; box-shadow:0 24px 70px rgba(0,0,0,.32); backdrop-filter:blur(12px)
+    }
+    .card h2{font-size:17px; margin:0 0 12px}
+    .card h3{font-size:14px; margin:18px 0 8px; color:#cbd5e1}
+    label{display:block; margin:10px 0 5px; color:var(--muted); font-size:13px}
+    input,select,textarea{
+      width:100%; border:1px solid var(--line); border-radius:13px; background:#020617; color:var(--text);
+      padding:10px 11px; font-size:14px; outline:none;
+    }
+    textarea{min-height:126px; resize:vertical; line-height:1.45; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    input:focus,select:focus,textarea:focus{border-color:var(--blue); box-shadow:0 0 0 4px rgba(96,165,250,.12)}
+    .row{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+    .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px}
+    .btns{display:flex; flex-wrap:wrap; gap:9px; margin-top:14px}
+    button{
+      border:0; border-radius:13px; padding:10px 12px; font-weight:800; cursor:pointer;
+      background:var(--blue); color:#061020
+    }
+    button.green{background:var(--green); color:#052e1a}
+    button.red{background:var(--red); color:white}
+    button.gray{background:#334155; color:var(--text)}
+    button.purple{background:var(--purple); color:#160b35}
+    button:disabled{opacity:.45; cursor:not-allowed}
+    .pills{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px}
+    .pill{
+      display:inline-flex; gap:7px; align-items:center; color:var(--muted); border:1px solid rgba(148,163,184,.22);
+      background:#020617; padding:7px 9px; border-radius:999px; font-size:12px
+    }
+    .dot{width:8px; height:8px; border-radius:50%; background:var(--muted)}
+    .dot.ok{background:var(--green)} .dot.warn{background:var(--yellow)} .dot.bad{background:var(--red)}
+    .notice{
+      margin-top:12px; padding:11px 12px; border-radius:14px; border:1px solid rgba(251,191,36,.42);
+      color:#fde68a; background:rgba(251,191,36,.08); line-height:1.62; font-size:13px
+    }
+    .small{color:var(--muted); font-size:12px; line-height:1.62; margin-top:9px}
+    code{background:rgba(148,163,184,.14); padding:2px 6px; border-radius:7px}
+    .switch{display:flex; gap:8px; align-items:center; margin:10px 0 3px; color:var(--muted); font-size:13px}
+    .switch input{width:auto}
+    .liveGrid{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px}
+    @media(max-width:760px){.liveGrid{grid-template-columns:1fr}}
+    .box{
+      min-height:160px; border-radius:18px; border:1px dashed rgba(148,163,184,.35);
+      background:rgba(2,6,23,.7); padding:14px; position:relative; overflow:hidden
+    }
+    .box::before{content:""; position:absolute; inset:0; background:radial-gradient(circle at 100% 0%,rgba(96,165,250,.13),transparent 45%); pointer-events:none}
+    .box.trans::before{background:radial-gradient(circle at 100% 0%,rgba(52,211,153,.13),transparent 45%)}
+    .box.llm::before{background:radial-gradient(circle at 100% 0%,rgba(167,139,250,.14),transparent 45%)}
+    .boxTitle{color:var(--muted); font-size:13px; margin-bottom:10px; position:relative; z-index:1}
+    .bigText{font-size:22px; line-height:1.55; font-weight:760; white-space:pre-wrap; position:relative; z-index:1}
+    .origin .bigText{color:#bfdbfe}.trans .bigText{color:#bbf7d0}.llm .bigText{color:#ddd6fe}
+    .timeline{
+      min-height:330px; max-height:560px; overflow:auto; border:1px solid rgba(148,163,184,.22);
+      background:#020617; border-radius:18px; padding:12px
+    }
+    .item{border-bottom:1px solid rgba(148,163,184,.18); padding:13px 4px}
+    .item:last-child{border-bottom:0}
+    .meta{font-size:12px; color:var(--muted); margin-bottom:6px; display:flex; flex-wrap:wrap; gap:8px}
+    .source{font-size:17px; line-height:1.55; color:#dbeafe; white-space:pre-wrap}
+    .target{font-size:18px; line-height:1.55; color:#bbf7d0; white-space:pre-wrap; margin-top:7px}
+    .clean{font-size:18px; line-height:1.55; color:#ddd6fe; white-space:pre-wrap; margin-top:8px; font-weight:760}
+    .formal{font-size:18px; line-height:1.55; color:#fef3c7; white-space:pre-wrap; margin-top:8px}
+    .error{color:#fecaca}
+    .logs{
+      max-height:230px; overflow:auto; margin-top:12px; background:#020617; border:1px solid rgba(148,163,184,.22);
+      color:#cbd5e1; border-radius:16px; padding:11px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+      font-size:12px; white-space:pre-wrap
+    }
+    details{border:1px solid rgba(148,163,184,.18); border-radius:14px; padding:10px 12px; background:rgba(2,6,23,.35); margin-top:10px}
+    summary{cursor:pointer; color:#cbd5e1; font-weight:750}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Azure 即時翻譯 + 詞庫 + Azure OpenAI 句子合理化測試</h1>
+  <p class="sub">純前端 PoC：Speech Translation 負責低延遲原文/翻譯；Phrase List 提升 ASR 專有詞辨識；Azure OpenAI 只處理 final 句子的整理與正式翻譯。</p>
+
+  <div class="grid">
+    <section class="card">
+      <h2>1. Azure Speech Translation</h2>
+      <label>Azure Speech Key</label>
+      <input id="speechKey" type="password" placeholder="Speech resource key" autocomplete="off" />
+
+      <div class="row">
+        <div>
+          <label>Region</label>
+          <input id="speechRegion" type="text" placeholder="eastus2" />
+        </div>
+        <div>
+          <label>Phrase List 權重</label>
+          <input id="phraseWeight" type="number" min="0" max="2" step="0.1" value="1.5" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>輸入語言</label>
+          <select id="sourceLang">
+            <option value="zh-TW">zh-TW 繁體中文</option>
+            <option value="en-US">en-US 英文</option>
+            <option value="ja-JP">ja-JP 日文</option>
+            <option value="ko-KR">ko-KR 韓文</option>
+            <option value="zh-CN">zh-CN 簡體中文</option>
+            <option value="vi-VN">vi-VN 越南文</option>
+            <option value="th-TH">th-TH 泰文</option>
+            <option value="id-ID">id-ID 印尼文</option>
+          </select>
+        </div>
+        <div>
+          <label>翻譯目標語言</label>
+          <select id="targetLang">
+            <option value="en">en 英文</option>
+            <option value="zh-Hant">zh-Hant 繁中</option>
+            <option value="ja">ja 日文</option>
+            <option value="ko">ko 韓文</option>
+            <option value="vi">vi 越南文</option>
+            <option value="th">th 泰文</option>
+            <option value="id">id 印尼文</option>
+            <option value="fr">fr 法文</option>
+            <option value="de">de 德文</option>
+            <option value="es">es 西文</option>
+          </select>
+        </div>
+      </div>
+
+      <label>Phrase List 詞庫，每行一個詞或片語；也可逗號分隔</label>
+      <textarea id="phrases" spellcheck="false" placeholder="例如：
+TQRACE
+AI8D
+KAM10
+PCP
+CAN
+Fusheng
+Cpk
+SOLO
+報廢
+回修
+設變"></textarea>
+
+      <details>
+        <summary>Phrase List 格式說明</summary>
+        <div class="small">
+          它不是翻譯詞典，而是 ASR 的「辨識提示詞」。格式上就是字串陣列；在此工具中用「一行一詞」輸入，程式會轉成 <code>addPhrases([&quot;AI8D&quot;,&quot;KAM10&quot;])</code>。
+          適合公司名、人名、產品名、縮寫、同音易錯詞。不要放太長的文章。
+        </div>
+      </details>
+
+      <h2 style="margin-top:18px;">2. Azure OpenAI 4o 後處理</h2>
+      <label class="switch"><input id="enableLlm" type="checkbox" checked /> 啟用：final 句子送 Azure OpenAI 做合理化</label>
+
+      <label>Azure OpenAI Endpoint</label>
+      <input id="aoaiEndpoint" type="text" placeholder="https://你的資源.openai.azure.com" />
+
+      <div class="row">
+        <div>
+          <label>Azure OpenAI API Key</label>
+          <input id="aoaiKey" type="password" placeholder="Azure OpenAI key" autocomplete="off" />
+        </div>
+        <div>
+          <label>Deployment Name</label>
+          <input id="aoaiDeployment" type="text" placeholder="例如 gpt-4o 或 gpt-4o-prod" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>API Version</label>
+          <input id="aoaiApiVersion" type="text" value="2024-10-21" />
+        </div>
+        <div>
+          <label>LLM 最大輸出 tokens</label>
+          <input id="maxTokens" type="number" value="500" />
+        </div>
+      </div>
+
+      <label>整理規則 / 系統提示</label>
+      <textarea id="llmPrompt" spellcheck="false">你是會議逐字稿整理器與翻譯校對器。只能根據輸入文字整理，不可新增事實。
+任務：
+1. 修正標點、斷句、專有名詞大小寫與明顯 ASR 誤字。
+2. 保留原意，不要改變說話者意思。
+3. 若有 Azure 即時翻譯，根據整理後原文產生更自然但忠實的正式翻譯。
+4. 若原文資訊不足，不要腦補。
+請只輸出 JSON：
+{
+  "clean_source": "整理後原文",
+  "formal_translation": "正式翻譯",
+  "risk_note": "若有不確定處，簡短說明；沒有則空字串"
+}</textarea>
+
+      <div class="btns">
+        <button id="saveBtn" class="gray">儲存設定</button>
+        <button id="micBtn" class="gray">測試麥克風</button>
+        <button id="testLlmBtn" class="purple">測試 LLM</button>
+        <button id="startBtn" class="green">開始</button>
+        <button id="stopBtn" class="red" disabled>停止</button>
+        <button id="clearBtn" class="gray">清除</button>
+        <button id="exportBtn" class="gray">匯出 TXT</button>
+      </div>
+
+      <div class="pills">
+        <span class="pill"><span id="sdkDot" class="dot"></span><span id="sdkText">Speech SDK 載入中</span></span>
+        <span class="pill"><span id="micDot" class="dot"></span><span id="micText">麥克風未測</span></span>
+        <span class="pill"><span id="runDot" class="dot"></span><span id="runText">尚未開始</span></span>
+        <span class="pill"><span id="llmDot" class="dot"></span><span id="llmText">LLM 未測</span></span>
+      </div>
+
+      <div class="notice">
+        純前端會暴露 Speech Key 與 Azure OpenAI Key，只適合本機 PoC。正式版請改成後端簽發短效 token / proxy。
+        若 Azure OpenAI 被瀏覽器 CORS 擋住，也需要加一層後端 proxy。
+      </div>
+
+      <div class="small">
+        建議執行：<code>python3 -m http.server 8000</code><br>
+        開啟：<code>http://localhost:8000/azure-speech-translation-llm-v3.html</code>
+      </div>
+
+      <h2 style="margin-top:18px;">事件紀錄</h2>
+      <div id="logs" class="logs"></div>
+    </section>
+
+    <main class="card">
+      <h2>即時區域：低延遲，不等待 LLM</h2>
+      <div class="liveGrid">
+        <div class="box origin">
+          <div class="boxTitle">A. 原始辨識 partial（Azure Speech recognizing）</div>
+          <div id="sourcePartial" class="bigText">等待開始...</div>
+        </div>
+        <div class="box trans">
+          <div class="boxTitle">B. 即時翻譯 partial（Azure Speech Translation）</div>
+          <div id="targetPartial" class="bigText">等待開始...</div>
+        </div>
+        <div class="box origin">
+          <div class="boxTitle">C. 原始 final（Azure Speech recognized）</div>
+          <div id="sourceFinalLive" class="bigText">等待 final...</div>
+        </div>
+        <div class="box llm">
+          <div class="boxTitle">D. LLM 整理後（只處理 final，非即時 partial）</div>
+          <div id="llmLive" class="bigText">等待 LLM...</div>
+        </div>
+      </div>
+
+      <h2>Final 時間軸：原始、即時翻譯、LLM 整理、正式翻譯</h2>
+      <div id="timeline" class="timeline"></div>
+    </main>
+  </div>
+</div>
+
+<script src="https://aka.ms/csspeech/jsbrowserpackageraw"></script>
+<script>
+const $ = id => document.getElementById(id);
+
+const fields = [
+  "speechKey","speechRegion","sourceLang","targetLang","phraseWeight","phrases",
+  "enableLlm","aoaiEndpoint","aoaiKey","aoaiDeployment","aoaiApiVersion","maxTokens","llmPrompt"
+];
+
+let recognizer = null;
+let rows = [];
+let phraseListRef = null;
+
+function now(){ return new Date().toLocaleTimeString("zh-TW",{hour12:false}); }
+function log(msg,level="INFO"){
+  $("logs").textContent += `[${now()}] ${level} ${msg}\n`;
+  $("logs").scrollTop = $("logs").scrollHeight;
+}
+function setDot(dotId,textId,state,text){
+  const d=$(dotId); d.className="dot"; if(state)d.classList.add(state);
+  $(textId).textContent=text;
+}
+function getValue(id){
+  const el=$(id);
+  if(el.type==="checkbox") return el.checked;
+  return el.value;
+}
+function setValue(id,val){
+  const el=$(id);
+  if(el.type==="checkbox") el.checked=!!val;
+  else if(val!==undefined && val!==null) el.value=val;
+}
+function saveSettings(){
+  const data={};
+  fields.forEach(id=>data[id]=getValue(id));
+  localStorage.setItem("azureSpeechTranslationLlmV3Config", JSON.stringify(data));
+  log("設定已儲存到 localStorage");
+}
+function loadSettings(){
+  const raw=localStorage.getItem("azureSpeechTranslationLlmV3Config");
+  if(!raw){
+    $("speechRegion").value="eastus2";
+    $("sourceLang").value="zh-TW";
+    $("targetLang").value="en";
+    $("phraseWeight").value="1.5";
+    $("aoaiApiVersion").value="2024-10-21";
+    $("maxTokens").value="500";
+    $("phrases").value=["TQRACE","AI8D","KAM10","PCP","CAN","Fusheng","Cpk","SOLO","報廢","回修","設變"].join("\n");
+    return;
+  }
+  try{
+    const data=JSON.parse(raw);
+    fields.forEach(id=>setValue(id,data[id]));
+    log("已從 localStorage 載入設定");
+  }catch(e){ log("localStorage 讀取失敗，使用預設值","WARN"); }
+}
+function parsePhrases(){
+  const raw=$("phrases").value || "";
+  return raw.split(/[\n,，;；]/g)
+    .map(s=>s.trim())
+    .filter(Boolean)
+    .filter((v,i,a)=>a.indexOf(v)===i)
+    .slice(0,500);
+}
+async function testMic(){
+  try{
+    if(!navigator.mediaDevices?.getUserMedia) throw new Error("getUserMedia 不可用，請用 localhost 或 HTTPS。");
+    const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+    stream.getTracks().forEach(t=>t.stop());
+    setDot("micDot","micText","ok","麥克風可用");
+    log("麥克風權限 OK");
+  }catch(e){
+    setDot("micDot","micText","bad","麥克風失敗");
+    log("麥克風測試失敗："+e.message,"ERROR");
+  }
+}
+function validateSpeech(){
+  if(!window.SpeechSDK) throw new Error("Azure Speech SDK 尚未載入");
+  if(!$("speechKey").value.trim()) throw new Error("請輸入 Azure Speech Key");
+  if(!$("speechRegion").value.trim()) throw new Error("請輸入 Azure Speech Region");
+}
+function validateLlm(){
+  if(!$("aoaiEndpoint").value.trim()) throw new Error("請輸入 Azure OpenAI Endpoint");
+  if(!$("aoaiKey").value.trim()) throw new Error("請輸入 Azure OpenAI API Key");
+  if(!$("aoaiDeployment").value.trim()) throw new Error("請輸入 Azure OpenAI Deployment Name");
+  if(!$("aoaiApiVersion").value.trim()) throw new Error("請輸入 Azure OpenAI API Version");
+}
+function createRecognizer(){
+  const SDK=window.SpeechSDK;
+  const config=SDK.SpeechTranslationConfig.fromSubscription($("speechKey").value.trim(), $("speechRegion").value.trim());
+  config.speechRecognitionLanguage=$("sourceLang").value;
+  config.addTargetLanguage($("targetLang").value);
+  const audioConfig=SDK.AudioConfig.fromDefaultMicrophoneInput();
+  const rec=new SDK.TranslationRecognizer(config,audioConfig);
+
+  const phrases=parsePhrases();
+  if(phrases.length){
+    try{
+      phraseListRef=SDK.PhraseListGrammar.fromRecognizer(rec);
+      phraseListRef.addPhrases(phrases);
+      const w=Math.max(0,Math.min(2,Number($("phraseWeight").value || 1.5)));
+      if(phraseListRef.setWeight) phraseListRef.setWeight(w);
+      log(`Phrase List 已加入 ${phrases.length} 個詞，權重 ${w}`);
+    }catch(e){
+      log("Phrase List 加入失敗：" + e.message, "WARN");
+    }
+  }
+  return rec;
+}
+function getTranslation(result){
+  try{return result.translations?.get($("targetLang").value) || "";}catch{return "";}
+}
+function extractJson(text){
+  if(!text) return null;
+  let s=text.trim();
+  const fence=s.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if(fence) s=fence[1].trim();
+  const first=s.indexOf("{"), last=s.lastIndexOf("}");
+  if(first>=0 && last>first) s=s.slice(first,last+1);
+  return JSON.parse(s);
+}
+async function callAzureOpenAI(sourceText, azureTranslation){
+  validateLlm();
+
+  const endpoint=$("aoaiEndpoint").value.trim().replace(/\/$/,"");
+  const deployment=encodeURIComponent($("aoaiDeployment").value.trim());
+  const apiVersion=encodeURIComponent($("aoaiApiVersion").value.trim());
+  const url=`${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
+
+  const sourceLang=$("sourceLang").value;
+  const targetLang=$("targetLang").value;
+  const phrases=parsePhrases();
+
+  const body={
+    messages:[
+      {role:"system", content:$("llmPrompt").value},
+      {role:"user", content:
+`來源語言：${sourceLang}
+目標語言：${targetLang}
+Phrase List / 術語提示：${phrases.join("、") || "無"}
+
+原始 ASR final：
+${sourceText}
+
+Azure 即時翻譯 final：
+${azureTranslation || "(無)"}
+`
+      }
+    ],
+    temperature:0.1,
+    max_tokens:Number($("maxTokens").value || 500)
+  };
+
+  const res=await fetch(url,{
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "api-key":$("aoaiKey").value.trim()
+    },
+    body:JSON.stringify(body)
+  });
+
+  const text=await res.text();
+  if(!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0,500)}`);
+
+  const json=JSON.parse(text);
+  const content=json.choices?.[0]?.message?.content || "";
+  try{
+    const parsed=extractJson(content);
+    return {
+      clean_source: parsed.clean_source || "",
+      formal_translation: parsed.formal_translation || "",
+      risk_note: parsed.risk_note || "",
+      raw: content
+    };
+  }catch{
+    return {clean_source: content, formal_translation:"", risk_note:"JSON 解析失敗，已顯示原始輸出", raw:content};
+  }
+}
+async function testLlm(){
+  try{
+    validateLlm();
+    setDot("llmDot","llmText","warn","測試中");
+    log("開始測試 Azure OpenAI...");
+    const result=await callAzureOpenAI("這個 CPK 欸要看 KAM ten 跟 problem sheet 的資料，明天三點半討論。", "This CPK needs to look at KAM ten and problem sheet data, discuss tomorrow at 3:30.");
+    setDot("llmDot","llmText","ok","LLM 可用");
+    log("LLM 測試成功：" + JSON.stringify(result));
+  }catch(e){
+    setDot("llmDot","llmText","bad","LLM 失敗");
+    log("LLM 測試失敗：" + e.message, "ERROR");
+  }
+}
+function addTimeline(row){
+  rows.push(row);
+  const item=document.createElement("div");
+  item.className="item";
+  item.id=row.id;
+
+  item.innerHTML=`
+    <div class="meta">${row.time}｜${row.sourceLang} → ${row.targetLang}｜Azure final｜LLM: ${row.llmStatus}</div>
+    <div class="source">原始 final：${escapeHtml(row.source || "(空)")}</div>
+    <div class="target">Azure 即時翻譯 final：${escapeHtml(row.azureTranslation || "(無)")}</div>
+    <div class="clean">LLM 整理後原文：${escapeHtml(row.cleanSource || "(等待 LLM 或未啟用)")}</div>
+    <div class="formal">LLM 正式翻譯：${escapeHtml(row.formalTranslation || "(等待 LLM 或未啟用)")}</div>
+    ${row.riskNote ? `<div class="error">注意：${escapeHtml(row.riskNote)}</div>` : ""}
+  `;
+  $("timeline").appendChild(item);
+  $("timeline").scrollTop=$("timeline").scrollHeight;
+}
+function updateTimeline(row){
+  const el=$(row.id);
+  if(!el) return;
+  el.innerHTML=`
+    <div class="meta">${row.time}｜${row.sourceLang} → ${row.targetLang}｜Azure final｜LLM: ${row.llmStatus}</div>
+    <div class="source">原始 final：${escapeHtml(row.source || "(空)")}</div>
+    <div class="target">Azure 即時翻譯 final：${escapeHtml(row.azureTranslation || "(無)")}</div>
+    <div class="clean">LLM 整理後原文：${escapeHtml(row.cleanSource || "(等待 LLM 或未啟用)")}</div>
+    <div class="formal">LLM 正式翻譯：${escapeHtml(row.formalTranslation || "(等待 LLM 或未啟用)")}</div>
+    ${row.riskNote ? `<div class="error">注意：${escapeHtml(row.riskNote)}</div>` : ""}
+  `;
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));
+}
+async function handleFinal(source, azureTranslation){
+  const row={
+    id:"row_"+Date.now()+"_"+Math.random().toString(16).slice(2),
+    time:now(),
+    sourceLang:$("sourceLang").value,
+    targetLang:$("targetLang").value,
+    source,
+    azureTranslation,
+    cleanSource:"",
+    formalTranslation:"",
+    riskNote:"",
+    llmStatus:$("enableLlm").checked ? "queued" : "disabled"
+  };
+  addTimeline(row);
+  $("sourceFinalLive").textContent=source || "(空)";
+  if(!$("enableLlm").checked){
+    $("llmLive").textContent="LLM 未啟用";
+    return;
+  }
+
+  try{
+    row.llmStatus="running";
+    updateTimeline(row);
+    $("llmLive").textContent="LLM 整理中...";
+    const result=await callAzureOpenAI(source, azureTranslation);
+    row.cleanSource=result.clean_source || "";
+    row.formalTranslation=result.formal_translation || "";
+    row.riskNote=result.risk_note || "";
+    row.llmStatus="done";
+    updateTimeline(row);
+    $("llmLive").textContent=row.cleanSource || "(LLM 沒有回傳 clean_source)";
+    setDot("llmDot","llmText","ok","LLM 已處理");
+  }catch(e){
+    row.llmStatus="error";
+    row.riskNote=e.message;
+    updateTimeline(row);
+    $("llmLive").textContent="LLM 失敗：" + e.message;
+    setDot("llmDot","llmText","bad","LLM 失敗");
+    log("LLM 處理失敗：" + e.message, "ERROR");
+  }
+}
+function start(){
+  try{
+    validateSpeech();
+    saveSettings();
+    if(recognizer){log("已在執行中","WARN"); return;}
+
+    recognizer=createRecognizer();
+    $("startBtn").disabled=true; $("stopBtn").disabled=false;
+    setDot("runDot","runText","warn","啟動中");
+    $("sourcePartial").textContent="啟動中，請說話...";
+    $("targetPartial").textContent="等待翻譯 partial...";
+
+    recognizer.recognizing=(s,e)=>{
+      const source=e.result.text || "";
+      const trans=getTranslation(e.result);
+      $("sourcePartial").textContent=source || "正在聽...";
+      $("targetPartial").textContent=trans || "翻譯 partial 尚未回傳，等待 final...";
+    };
+    recognizer.recognized=(s,e)=>{
+      const SDK=window.SpeechSDK;
+      if(e.result.reason===SDK.ResultReason.TranslatedSpeech || e.result.reason===SDK.ResultReason.RecognizedSpeech){
+        const source=e.result.text || "";
+        const trans=getTranslation(e.result);
+        $("sourcePartial").textContent="等待下一句...";
+        $("targetPartial").textContent=trans || "等待下一句翻譯...";
+        handleFinal(source, trans);
+      }else if(e.result.reason===SDK.ResultReason.NoMatch){
+        log("NoMatch：沒有辨識到可用語音","WARN");
+      }
+    };
+    recognizer.canceled=(s,e)=>{
+      setDot("runDot","runText","bad","錯誤 / 已取消");
+      log(`Canceled：reason=${e.reason}, error=${e.errorDetails || ""}`,"ERROR");
+      $("sourcePartial").textContent="Speech 錯誤";
+      $("targetPartial").textContent=e.errorDetails || String(e.reason || "Canceled");
+    };
+    recognizer.sessionStarted=()=>{ setDot("runDot","runText","ok","辨識 / 翻譯中"); log("Speech session started"); };
+    recognizer.sessionStopped=()=>{ setDot("runDot","runText","","已停止"); log("Speech session stopped"); };
+    recognizer.speechStartDetected=()=>log("speechStartDetected");
+    recognizer.speechEndDetected=()=>log("speechEndDetected");
+
+    recognizer.startContinuousRecognitionAsync(
+      ()=>{setDot("runDot","runText","ok","辨識 / 翻譯中"); log("startContinuousRecognitionAsync OK");},
+      err=>{setDot("runDot","runText","bad","啟動失敗"); log("啟動失敗："+err,"ERROR"); cleanup();}
+    );
+  }catch(e){
+    log(e.message,"ERROR");
+    $("sourcePartial").textContent="錯誤：" + e.message;
+    cleanup();
+  }
+}
+function stop(){
+  if(!recognizer) return;
+  $("stopBtn").disabled=true;
+  $("sourcePartial").textContent="停止中...";
+  $("targetPartial").textContent="停止中...";
+  recognizer.stopContinuousRecognitionAsync(
+    ()=>{log("停止成功"); cleanup(); $("sourcePartial").textContent="已停止"; $("targetPartial").textContent="已停止";},
+    err=>{log("停止失敗："+err,"ERROR"); cleanup();}
+  );
+}
+function cleanup(){
+  try{recognizer?.close();}catch{}
+  recognizer=null; phraseListRef=null;
+  $("startBtn").disabled=false; $("stopBtn").disabled=true;
+  if($("runText").textContent!=="錯誤 / 已取消") setDot("runDot","runText","","尚未開始");
+}
+function clearAll(){
+  $("sourcePartial").textContent="等待開始...";
+  $("targetPartial").textContent="等待開始...";
+  $("sourceFinalLive").textContent="等待 final...";
+  $("llmLive").textContent="等待 LLM...";
+  $("timeline").innerHTML="";
+  $("logs").textContent="";
+  rows=[];
+}
+function exportTxt(){
+  const lines=["Azure Speech Translation + LLM 測試結果", "ExportedAt: "+new Date().toISOString(), ""];
+  rows.forEach((r,i)=>{
+    lines.push(`#${i+1} ${r.time} ${r.sourceLang}->${r.targetLang} LLM=${r.llmStatus}`);
+    lines.push("原始 final："+r.source);
+    lines.push("Azure 即時翻譯："+r.azureTranslation);
+    lines.push("LLM 整理後原文："+r.cleanSource);
+    lines.push("LLM 正式翻譯："+r.formalTranslation);
+    if(r.riskNote) lines.push("注意："+r.riskNote);
+    lines.push("");
+  });
+  const blob=new Blob([lines.join("\n")],{type:"text/plain;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download="azure-speech-translation-llm-result.txt"; a.click();
+  URL.revokeObjectURL(url);
+}
+
+$("saveBtn").addEventListener("click",saveSettings);
+$("micBtn").addEventListener("click",testMic);
+$("testLlmBtn").addEventListener("click",testLlm);
+$("startBtn").addEventListener("click",start);
+$("stopBtn").addEventListener("click",stop);
+$("clearBtn").addEventListener("click",clearAll);
+$("exportBtn").addEventListener("click",exportTxt);
+
+loadSettings();
+
+const sdkTimer=setInterval(()=>{
+  if(window.SpeechSDK){
+    setDot("sdkDot","sdkText","ok","Speech SDK 已載入");
+    log("Azure Speech SDK loaded");
+    clearInterval(sdkTimer);
+  }
+},200);
+setTimeout(()=>{
+  if(!window.SpeechSDK){
+    setDot("sdkDot","sdkText","bad","Speech SDK 載入失敗");
+    log("Speech SDK 載入失敗，請確認可連 https://aka.ms/csspeech/jsbrowserpackageraw","ERROR");
+  }
+},7000);
+window.addEventListener("beforeunload",()=>{try{recognizer?.close();}catch{}});
+</script>
+</body>
+</html>
