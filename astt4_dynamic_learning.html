@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Azure Speech Translation + LLM 後處理 + 動態學習修正版</title>
+  <script src="https://aka.ms/csspeech/jsbrowserpackageraw"></script>
+  <style>
+    :root{
+      --bg:#06111f;--panel:rgba(15,23,42,.94);--panel2:#0b1220;--line:#334155;
+      --text:#e5e7eb;--muted:#94a3b8;--blue:#60a5fa;--green:#34d399;
+      --yellow:#fbbf24;--red:#f87171;--purple:#a78bfa;--orange:#fb923c;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;min-height:100vh;color:var(--text);
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;
+      background:
+        radial-gradient(circle at 15% 0%,rgba(96,165,250,.25),transparent 30%),
+        radial-gradient(circle at 90% 5%,rgba(167,139,250,.18),transparent 30%),
+        radial-gradient(circle at 75% 35%,rgba(52,211,153,.12),transparent 26%),
+        var(--bg);
+    }
+    .wrap{width:min(1440px,calc(100vw - 28px));margin:0 auto;padding:22px 0 46px}
+    h1{font-size:28px;margin:0 0 6px;letter-spacing:.02em}
+    .sub{color:var(--muted);margin:0 0 16px;line-height:1.65}
+    .grid{display:grid;grid-template-columns:430px 1fr;gap:16px;align-items:start}
+    @media(max-width:1040px){.grid{grid-template-columns:1fr}}
+    .card{background:var(--panel);border:1px solid rgba(148,163,184,.22);border-radius:20px;padding:16px;box-shadow:0 24px 70px rgba(0,0,0,.32);backdrop-filter:blur(12px)}
+    .card h2{font-size:17px;margin:0 0 12px}.card h3{font-size:14px;margin:18px 0 8px;color:#cbd5e1}
+    label{display:block;margin:10px 0 5px;color:var(--muted);font-size:13px}
+    input,select,textarea{width:100%;border:1px solid var(--line);border-radius:13px;background:#020617;color:var(--text);padding:10px 11px;font-size:14px;outline:none}
+    textarea{min-height:120px;resize:vertical;line-height:1.45;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 4px rgba(96,165,250,.12)}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+    .btns{display:flex;flex-wrap:wrap;gap:9px;margin-top:14px}
+    button{border:0;border-radius:13px;padding:10px 12px;font-weight:800;cursor:pointer;background:var(--blue);color:#061020}
+    button.green{background:var(--green);color:#052e1a}button.red{background:var(--red);color:white}button.gray{background:#334155;color:var(--text)}button.purple{background:var(--purple);color:#160b35}button.yellow{background:var(--yellow);color:#241600}button.orange{background:var(--orange);color:#241000}
+    button:disabled{opacity:.45;cursor:not-allowed}
+    .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.pill{display:inline-flex;gap:7px;align-items:center;color:var(--muted);border:1px solid rgba(148,163,184,.22);background:#020617;padding:7px 9px;border-radius:999px;font-size:12px}.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}.dot.ok{background:var(--green)}.dot.warn{background:var(--yellow)}.dot.bad{background:var(--red)}
+    .notice{margin-top:12px;padding:11px 12px;border-radius:14px;border:1px solid rgba(251,191,36,.42);color:#fde68a;background:rgba(251,191,36,.08);line-height:1.62;font-size:13px}.small{color:var(--muted);font-size:12px;line-height:1.62;margin-top:9px}code{background:rgba(148,163,184,.14);padding:2px 6px;border-radius:7px}.switch{display:flex;gap:8px;align-items:center;margin:10px 0 3px;color:var(--muted);font-size:13px}.switch input{width:auto}
+    .liveGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}@media(max-width:760px){.liveGrid{grid-template-columns:1fr}}
+    .box{min-height:160px;border-radius:18px;border:1px dashed rgba(148,163,184,.35);background:rgba(2,6,23,.7);padding:14px;position:relative;overflow:hidden}.box::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 100% 0%,rgba(96,165,250,.13),transparent 45%);pointer-events:none}.box.trans::before{background:radial-gradient(circle at 100% 0%,rgba(52,211,153,.13),transparent 45%)}.box.llm::before{background:radial-gradient(circle at 100% 0%,rgba(167,139,250,.14),transparent 45%)}.box.learn::before{background:radial-gradient(circle at 100% 0%,rgba(251,146,60,.14),transparent 45%)}
+    .boxTitle{color:var(--muted);font-size:13px;margin-bottom:10px;position:relative;z-index:1}.bigText{font-size:21px;line-height:1.55;font-weight:760;white-space:pre-wrap;position:relative;z-index:1}.origin .bigText{color:#bfdbfe}.trans .bigText{color:#bbf7d0}.llm .bigText{color:#ddd6fe}.learn .bigText{color:#fed7aa}
+    .mainSplit{display:grid;grid-template-columns:minmax(0,1.1fr) 420px;gap:14px}@media(max-width:1180px){.mainSplit{grid-template-columns:1fr}}
+    .timeline{min-height:360px;max-height:620px;overflow:auto;border:1px solid rgba(148,163,184,.22);background:#020617;border-radius:18px;padding:12px}.item{border-bottom:1px solid rgba(148,163,184,.18);padding:13px 4px}.item:last-child{border-bottom:0}.item.active{background:rgba(96,165,250,.08);border-radius:14px;padding:13px 9px}.meta{font-size:12px;color:var(--muted);margin-bottom:6px;display:flex;flex-wrap:wrap;gap:8px}.tag{display:inline-flex;align-items:center;border:1px solid rgba(148,163,184,.25);background:rgba(148,163,184,.08);padding:2px 7px;border-radius:999px;color:#cbd5e1}.tag.final{border-color:rgba(52,211,153,.45);color:#bbf7d0}.tag.llm{border-color:rgba(167,139,250,.45);color:#ddd6fe}.tag.learned{border-color:rgba(251,146,60,.55);color:#fed7aa}.line{line-height:1.55;margin:5px 0}.sourceLine{cursor:pointer;border-radius:10px;padding:6px 8px;margin-left:-8px}.sourceLine:hover{background:rgba(96,165,250,.12)}.translated{color:#bbf7d0}.clean{color:#ddd6fe}.risk{color:#fde68a;font-size:13px}.ops{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.miniBtn{font-size:12px;padding:7px 9px;border-radius:10px}.muted{color:var(--muted)}
+    .learnPanel{border:1px solid rgba(251,146,60,.35);background:rgba(2,6,23,.78);border-radius:18px;padding:14px}.learnPanel h2{display:flex;align-items:center;justify-content:space-between;gap:8px}.tokenBox{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px;min-height:54px}.token{border:1px solid rgba(251,146,60,.38);background:rgba(251,146,60,.08);color:#ffedd5;padding:7px 10px;border-radius:999px;cursor:pointer;font-weight:750}.token:hover,.token.selected{background:rgba(251,146,60,.22);border-color:rgba(251,146,60,.78)}.candidateBox{margin-top:14px;padding:12px;border-radius:16px;background:rgba(15,23,42,.85);border:1px solid rgba(148,163,184,.22)}.candidate{width:100%;display:flex;align-items:start;justify-content:space-between;gap:8px;text-align:left;background:#082f22;color:#d1fae5;margin:7px 0}.candidate small{display:block;color:#a7f3d0;font-weight:500;margin-top:4px}.manual{display:flex;gap:8px;margin-top:9px}.manual input{flex:1}.manual button{white-space:nowrap}.diff{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}@media(max-width:760px){.diff{grid-template-columns:1fr}}.diffBox{border:1px solid rgba(148,163,184,.22);border-radius:14px;padding:10px;background:rgba(2,6,23,.56);line-height:1.55}.diffBox b{display:block;color:var(--muted);font-size:12px;margin-bottom:4px}.highlight{color:#fde68a;font-weight:900}.history{max-height:260px;overflow:auto;border:1px solid rgba(148,163,184,.22);border-radius:14px;background:#020617;padding:10px}.historyItem{border-bottom:1px solid rgba(148,163,184,.14);padding:9px 2px;font-size:13px;line-height:1.55}.historyItem:last-child{border-bottom:0}.empty{color:var(--muted);font-size:13px;line-height:1.7}.kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:#020617;border:1px solid rgba(148,163,184,.32);padding:1px 6px;border-radius:7px}.toast{position:fixed;right:18px;bottom:18px;background:#020617;border:1px solid rgba(96,165,250,.42);color:#dbeafe;padding:12px 14px;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.38);max-width:360px;display:none;z-index:20}.toast.show{display:block}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Azure 即時語音翻譯 + LLM 後處理 + 動態學習修正版</h1>
+  <p class="sub">純前端 PoC：Azure Speech Translation 做低延遲語辨/翻譯，Azure OpenAI 處理 final 句子；新增「點句子 → LLM 切詞與候選修正 → 人工選字 → 記錄修改 → 後續自動修正參考」。</p>
+
+  <div class="grid">
+    <aside class="card">
+      <h2>1. Azure Speech Translation</h2>
+      <label>Azure Speech Key</label>
+      <input id="speechKey" type="password" autocomplete="off" placeholder="輸入 Speech Key" />
+      <div class="row">
+        <div>
+          <label>Region</label>
+          <input id="speechRegion" placeholder="eastus2" />
+        </div>
+        <div>
+          <label>Phrase List 權重</label>
+          <input id="phraseWeight" type="number" min="0" max="2" step="0.1" value="1.5" />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>輸入語言</label>
+          <select id="sourceLang">
+            <option value="zh-TW">zh-TW 繁體中文</option>
+            <option value="en-US">en-US 英文</option>
+            <option value="ja-JP">ja-JP 日文</option>
+            <option value="ko-KR">ko-KR 韓文</option>
+            <option value="zh-CN">zh-CN 簡體中文</option>
+            <option value="vi-VN">vi-VN 越南文</option>
+            <option value="th-TH">th-TH 泰文</option>
+            <option value="id-ID">id-ID 印尼文</option>
+          </select>
+        </div>
+        <div>
+          <label>翻譯目標語言</label>
+          <select id="targetLang">
+            <option value="en">en 英文</option>
+            <option value="zh-Hant">zh-Hant 繁中</option>
+            <option value="ja">ja 日文</option>
+            <option value="ko">ko 韓文</option>
+            <option value="vi">vi 越南文</option>
+            <option value="th">th 泰文</option>
+            <option value="id">id 印尼文</option>
+            <option value="fr">fr 法文</option>
+            <option value="de">de 德文</option>
+            <option value="es">es 西文</option>
+          </select>
+        </div>
+      </div>
+      <label>Phrase List 詞庫，每行一個詞或逗號分隔</label>
+      <textarea id="phraseList" placeholder="AI8D&#10;KAM10&#10;Problem Sheet&#10;SKU&#10;BOM"></textarea>
+      <div class="small">Phrase List 是 ASR 的辨識提示詞，不是翻譯詞典。適合公司名、人名、產品名、縮寫、同音易錯詞。</div>
+
+      <h2 style="margin-top:18px">2. Azure OpenAI 後處理</h2>
+      <label class="switch"><input id="enableAoai" type="checkbox" checked /> 啟用：final 句子送 Azure OpenAI 做合理化</label>
+      <label>Azure OpenAI Endpoint</label>
+      <input id="aoaiEndpoint" placeholder="https://xxx.openai.azure.com/" />
+      <label>Azure OpenAI API Key</label>
+      <input id="aoaiKey" type="password" autocomplete="off" placeholder="輸入 API Key" />
+      <div class="row3">
+        <div>
+          <label>Deployment Name</label>
+          <input id="aoaiDeployment" placeholder="gpt-4p 或你的部署名" />
+        </div>
+        <div>
+          <label>API Version</label>
+          <input id="aoaiApiVersion" value="2024-06-01" />
+        </div>
+        <div>
+          <label>Max tokens</label>
+          <input id="aoaiMaxTokens" type="number" value="900" min="200" max="4000" />
+        </div>
+      </div>
+      <label>Final 整理規則 / 系統提示</label>
+      <textarea id="systemPrompt"></textarea>
+
+      <h2 style="margin-top:18px">3. 動態學習設定</h2>
+      <label class="switch"><input id="enableLearning" type="checkbox" checked /> 啟用：後續 final 句子套用人工修正紀錄</label>
+      <label class="switch"><input id="enableLlmTokenize" type="checkbox" checked /> 點句子時，用 LLM 切詞與推測候選修正</label>
+      <label>動態修正分析提示</label>
+      <textarea id="correctionPrompt"></textarea>
+
+      <div class="btns">
+        <button class="green" id="saveBtn">儲存設定</button>
+        <button class="gray" id="micBtn">測試麥克風</button>
+        <button class="purple" id="llmBtn">測試 LLM</button>
+        <button id="startBtn">開始</button>
+        <button class="red" id="stopBtn" disabled>停止</button>
+        <button class="gray" id="clearBtn">清除</button>
+        <button class="gray" id="exportTxtBtn">匯出 TXT</button>
+        <button class="orange" id="exportLearningBtn">匯出修正 JSON</button>
+      </div>
+      <div class="pills">
+        <span class="pill"><span id="sdkDot" class="dot warn"></span><span id="sdkStatus">Speech SDK 載入中</span></span>
+        <span class="pill"><span id="micDot" class="dot"></span><span id="micStatus">麥克風未測</span></span>
+        <span class="pill"><span id="runDot" class="dot"></span><span id="runStatus">尚未開始</span></span>
+        <span class="pill"><span id="llmDot" class="dot"></span><span id="llmStatus">LLM 未測</span></span>
+        <span class="pill"><span id="learnDot" class="dot ok"></span><span id="learnStatus">修正紀錄 0 筆</span></span>
+      </div>
+      <div class="notice">純前端會暴露 Speech Key 與 Azure OpenAI Key，只適合本機 PoC。正式版請改成後端簽發短效 token / proxy。若 Azure OpenAI 被瀏覽器 CORS 擋住，也需要加一層後端 proxy。</div>
+      <div class="small">建議執行：<code>python3 -m http.server 8000</code>，開啟：<code>http://localhost:8000/astt4_dynamic_learning.html</code></div>
+    </aside>
+
+    <main>
+      <div class="liveGrid">
+        <section class="box origin">
+          <div class="boxTitle">A. 原始辨識 partial（Azure Speech recognizing）</div>
+          <div id="partialSource" class="bigText">等待開始...</div>
+        </section>
+        <section class="box trans">
+          <div class="boxTitle">B. 即時翻譯 partial（Azure Speech Translation）</div>
+          <div id="partialTranslation" class="bigText">等待開始...</div>
+        </section>
+        <section class="box origin">
+          <div class="boxTitle">C. 原始 final / 套用動態修正後</div>
+          <div id="finalSource" class="bigText">等待 final...</div>
+        </section>
+        <section class="box llm">
+          <div class="boxTitle">D. LLM 整理後（只處理 final，非即時 partial）</div>
+          <div id="llmResult" class="bigText">等待 LLM...</div>
+        </section>
+      </div>
+
+      <div class="mainSplit">
+        <section class="card">
+          <h2>Final 時間軸：點擊任一句「原始 final」可進入動態修正</h2>
+          <div id="timeline" class="timeline"></div>
+        </section>
+
+        <section class="learnPanel">
+          <h2>動態修正 / 學習回饋 <button id="clearLearningBtn" class="miniBtn gray">清空紀錄</button></h2>
+          <div class="small">流程：點時間軸的句子 → LLM 切詞 → 點詞 → 選候選字或手動輸入 → 紀錄到 localStorage → 後續句子先套用修正。</div>
+          <div id="selectedSentence" class="diffBox" style="margin-top:10px"><b>目前句子</b><span class="muted">尚未選擇句子</span></div>
+          <div id="tokenBox" class="tokenBox"><span class="empty">尚無切詞結果</span></div>
+          <div id="candidateBox" class="candidateBox" style="display:none"></div>
+          <div class="diff">
+            <div id="beforeBox" class="diffBox"><b>修改前</b><span class="muted">—</span></div>
+            <div id="afterBox" class="diffBox"><b>修改後</b><span class="muted">—</span></div>
+          </div>
+          <h3>修改紀錄</h3>
+          <div id="learningHistory" class="history"></div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+(() => {
+  const STORAGE_SETTINGS = "astt4_dynamic_learning_settings";
+  const STORAGE_LEARNING = "astt4_dynamic_learning_records";
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    speechKey: $("speechKey"), speechRegion: $("speechRegion"), phraseWeight: $("phraseWeight"), sourceLang: $("sourceLang"), targetLang: $("targetLang"), phraseList: $("phraseList"),
+    enableAoai: $("enableAoai"), aoaiEndpoint: $("aoaiEndpoint"), aoaiKey: $("aoaiKey"), aoaiDeployment: $("aoaiDeployment"), aoaiApiVersion: $("aoaiApiVersion"), aoaiMaxTokens: $("aoaiMaxTokens"), systemPrompt: $("systemPrompt"),
+    enableLearning: $("enableLearning"), enableLlmTokenize: $("enableLlmTokenize"), correctionPrompt: $("correctionPrompt"),
+    saveBtn: $("saveBtn"), micBtn: $("micBtn"), llmBtn: $("llmBtn"), startBtn: $("startBtn"), stopBtn: $("stopBtn"), clearBtn: $("clearBtn"), exportTxtBtn: $("exportTxtBtn"), exportLearningBtn: $("exportLearningBtn"), clearLearningBtn: $("clearLearningBtn"),
+    sdkDot: $("sdkDot"), sdkStatus: $("sdkStatus"), micDot: $("micDot"), micStatus: $("micStatus"), runDot: $("runDot"), runStatus: $("runStatus"), llmDot: $("llmDot"), llmStatus: $("llmStatus"), learnDot: $("learnDot"), learnStatus: $("learnStatus"),
+    partialSource: $("partialSource"), partialTranslation: $("partialTranslation"), finalSource: $("finalSource"), llmResult: $("llmResult"), timeline: $("timeline"), selectedSentence: $("selectedSentence"), tokenBox: $("tokenBox"), candidateBox: $("candidateBox"), beforeBox: $("beforeBox"), afterBox: $("afterBox"), learningHistory: $("learningHistory"), toast: $("toast")
+  };
+
+  let recognizer = null;
+  let timeline = [];
+  let learningRecords = [];
+  let selectedItemId = null;
+  let currentTokenData = [];
+  let selectedToken = null;
+
+  const defaultSystemPrompt = `你是會議逐字稿整理器與翻譯校對器。只能根據輸入文字整理，不可新增事實。
+任務：
+1. 修正標點、斷句、專有名詞大小寫與明顯 ASR 誤字。
+2. 保留原意，不要改變說話者意思。
+3. 若有 Azure 即時翻譯，根據整理後原文產生更自然但忠實的正式翻譯。
+4. 若原文資訊不足，不要腦補。
+請只輸出 JSON：
+{
+  "clean_source": "整理後原文",
+  "formal_translation": "正式翻譯",
+  "risk_note": "若有不確定處，簡短說明；沒有則空字串"
+}`;
+
+  const defaultCorrectionPrompt = `你是語音辨識 ASR 動態修正助理。請根據輸入句子、專有詞詞庫、既有修改紀錄，做字詞切割並提供可能修正選項。
+規則：
+1. 不要改寫整句，只針對可能被語音辨識錯的詞提出候選。
+2. 候選要依據上下文合理度、專有詞詞庫、常見同音誤辨推測。
+3. 每個 token 最多 5 個候選，若沒有必要可給空陣列。
+4. 請只輸出 JSON：
+{
+  "tokens": [
+    {
+      "text": "原字詞",
+      "candidates": [
+        {"text":"候選修正", "reason":"簡短原因", "confidence":0.86}
+      ]
+    }
+  ]
+}`;
+
+  function escapeHtml(s){return String(s ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[c]));}
+  function nowTime(){return new Date().toLocaleTimeString("zh-TW", {hour12:false});}
+  function uid(){return `${Date.now()}_${Math.random().toString(16).slice(2)}`;}
+  function setDot(dot, status, cls, text){dot.className = `dot ${cls || ""}`.trim(); status.textContent = text;}
+  function toast(msg){els.toast.textContent = msg; els.toast.classList.add("show"); setTimeout(()=>els.toast.classList.remove("show"), 2800);}
+  function parsePhrases(){return els.phraseList.value.split(/[\n,，]/).map(x=>x.trim()).filter(Boolean);}
+  function getSettings(){
+    return {
+      speechKey: els.speechKey.value.trim(), speechRegion: els.speechRegion.value.trim(), phraseWeight: Number(els.phraseWeight.value || 1.5), sourceLang: els.sourceLang.value, targetLang: els.targetLang.value, phraseList: els.phraseList.value,
+      enableAoai: els.enableAoai.checked, aoaiEndpoint: els.aoaiEndpoint.value.trim(), aoaiKey: els.aoaiKey.value.trim(), aoaiDeployment: els.aoaiDeployment.value.trim(), aoaiApiVersion: els.aoaiApiVersion.value.trim() || "2024-06-01", aoaiMaxTokens: Number(els.aoaiMaxTokens.value || 900), systemPrompt: els.systemPrompt.value.trim() || defaultSystemPrompt,
+      enableLearning: els.enableLearning.checked, enableLlmTokenize: els.enableLlmTokenize.checked, correctionPrompt: els.correctionPrompt.value.trim() || defaultCorrectionPrompt
+    };
+  }
+  function applySettings(s){
+    els.speechKey.value = s.speechKey || ""; els.speechRegion.value = s.speechRegion || "eastus2"; els.phraseWeight.value = s.phraseWeight ?? 1.5; els.sourceLang.value = s.sourceLang || "zh-TW"; els.targetLang.value = s.targetLang || "en"; els.phraseList.value = s.phraseList ?? "AI8D\nKAM10\nProblem Sheet\nSKU\nBOM\nPCP\nCAN\nCpk\nSharePoint";
+    els.enableAoai.checked = s.enableAoai ?? true; els.aoaiEndpoint.value = s.aoaiEndpoint || ""; els.aoaiKey.value = s.aoaiKey || ""; els.aoaiDeployment.value = s.aoaiDeployment || ""; els.aoaiApiVersion.value = s.aoaiApiVersion || "2024-06-01"; els.aoaiMaxTokens.value = s.aoaiMaxTokens || 900; els.systemPrompt.value = s.systemPrompt || defaultSystemPrompt;
+    els.enableLearning.checked = s.enableLearning ?? true; els.enableLlmTokenize.checked = s.enableLlmTokenize ?? true; els.correctionPrompt.value = s.correctionPrompt || defaultCorrectionPrompt;
+  }
+  function saveSettings(){localStorage.setItem(STORAGE_SETTINGS, JSON.stringify(getSettings())); toast("設定已儲存到 localStorage");}
+  function loadSettings(){try{applySettings(JSON.parse(localStorage.getItem(STORAGE_SETTINGS) || "{}"));}catch{applySettings({});}}
+  function saveLearning(){localStorage.setItem(STORAGE_LEARNING, JSON.stringify(learningRecords)); renderLearningHistory();}
+  function loadLearning(){try{learningRecords = JSON.parse(localStorage.getItem(STORAGE_LEARNING) || "[]"); if(!Array.isArray(learningRecords)) learningRecords = [];}catch{learningRecords = [];} renderLearningHistory();}
+
+  function extractJson(text){
+    if(!text) throw new Error("LLM 無回傳內容");
+    const direct = text.trim();
+    try{return JSON.parse(direct);}catch{}
+    const fenced = direct.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    if(fenced){try{return JSON.parse(fenced[1]);}catch{}}
+    const first = direct.indexOf("{"); const last = direct.lastIndexOf("}");
+    if(first >= 0 && last > first) return JSON.parse(direct.slice(first, last + 1));
+    throw new Error("無法解析 LLM JSON：" + direct.slice(0, 160));
+  }
+
+  async function callAzureOpenAI(messages, temperature=0.2, maxTokensOverride=null){
+    const s = getSettings();
+    if(!s.aoaiEndpoint || !s.aoaiKey || !s.aoaiDeployment) throw new Error("請先填 Azure OpenAI Endpoint / API Key / Deployment Name");
+    const endpoint = s.aoaiEndpoint.replace(/\/$/, "");
+    const url = `${endpoint}/openai/deployments/${encodeURIComponent(s.aoaiDeployment)}/chat/completions?api-version=${encodeURIComponent(s.aoaiApiVersion)}`;
+    const res = await fetch(url, {
+      method:"POST",
+      headers:{"Content-Type":"application/json","api-key":s.aoaiKey},
+      body:JSON.stringify({messages, temperature, max_tokens:maxTokensOverride || s.aoaiMaxTokens, response_format:{type:"json_object"}})
+    });
+    if(!res.ok){
+      const body = await res.text().catch(()=>"");
+      throw new Error(`Azure OpenAI 呼叫失敗 HTTP ${res.status}: ${body.slice(0, 260)}`);
+    }
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || "";
+  }
+
+  function bestLearningMap(){
+    const map = new Map();
+    for(const r of learningRecords){
+      if(!r.originalToken || !r.replacement || r.originalToken === r.replacement) continue;
+      map.set(r.originalToken, r.replacement);
+    }
+    return Array.from(map.entries()).sort((a,b)=>b[0].length-a[0].length);
+  }
+  function applyLearnedCorrections(text){
+    const s = getSettings();
+    if(!s.enableLearning || !text) return {text, applied:[]};
+    let output = text;
+    const applied = [];
+    for(const [from,to] of bestLearningMap()){
+      if(!from || from === to) continue;
+      if(output.includes(from)){
+        output = output.split(from).join(to);
+        applied.push({from,to});
+      }
+    }
+    return {text:output, applied};
+  }
+
+  async function improveFinal(sourceText, translationText, applied){
+    const s = getSettings();
+    if(!s.enableAoai) return null;
+    const phrases = parsePhrases();
+    const learnMap = bestLearningMap().slice(-60).map(([from,to])=>({from,to}));
+    const user = {
+      source_language:s.sourceLang,
+      target_language:s.targetLang,
+      raw_source:sourceText,
+      azure_live_translation:translationText || "",
+      phrase_list:phrases,
+      learned_corrections:learnMap,
+      applied_corrections:applied || []
+    };
+    const content = await callAzureOpenAI([
+      {role:"system", content:s.systemPrompt},
+      {role:"user", content:JSON.stringify(user, null, 2)}
+    ], 0.15);
+    const parsed = extractJson(content);
+    return {
+      clean_source: String(parsed.clean_source || sourceText),
+      formal_translation: String(parsed.formal_translation || translationText || ""),
+      risk_note: String(parsed.risk_note || "")
+    };
+  }
+
+  function renderTimeline(){
+    if(!timeline.length){els.timeline.innerHTML = `<div class="empty">尚無 final 結果。開始語辨後，句子會出現在這裡。</div>`; return;}
+    els.timeline.innerHTML = timeline.map(item => `
+      <div class="item ${item.id===selectedItemId ? "active" : ""}" data-id="${escapeHtml(item.id)}">
+        <div class="meta"><span>${escapeHtml(item.time)}</span><span class="tag final">Final</span>${item.applied?.length ? `<span class="tag learned">已套用 ${item.applied.length} 筆修正</span>` : ""}${item.llm ? `<span class="tag llm">LLM</span>` : ""}</div>
+        <div class="line sourceLine" title="點擊進行動態修正" data-action="analyze" data-id="${escapeHtml(item.id)}">原文：${formatApplied(item.sourceText, item.applied)}</div>
+        ${item.rawSource !== item.sourceText ? `<div class="line muted">原始辨識：${escapeHtml(item.rawSource)}</div>` : ""}
+        ${item.translation ? `<div class="line translated">即時翻譯：${escapeHtml(item.translation)}</div>` : ""}
+        ${item.llm ? `<div class="line clean">LLM 整理：${escapeHtml(item.llm.clean_source)}</div><div class="line translated">正式翻譯：${escapeHtml(item.llm.formal_translation)}</div>` : item.error ? `<div class="line risk">LLM 錯誤：${escapeHtml(item.error)}</div>` : `<div class="line muted">LLM 處理中...</div>`}
+        ${item.llm?.risk_note ? `<div class="risk">風險提示：${escapeHtml(item.llm.risk_note)}</div>` : ""}
+        <div class="ops"><button class="miniBtn orange" data-action="analyze" data-id="${escapeHtml(item.id)}">動態修正</button><button class="miniBtn gray" data-action="copy" data-id="${escapeHtml(item.id)}">複製句子</button></div>
+      </div>`).join("");
+  }
+  function formatApplied(text, applied){
+    let html = escapeHtml(text);
+    for(const a of (applied || [])) html = html.replaceAll(escapeHtml(a.to), `<span class="highlight">${escapeHtml(a.to)}</span>`);
+    return html;
+  }
+  function updateLiveBoxes(last){
+    if(!last) return;
+    els.finalSource.textContent = last.sourceText || "等待 final...";
+    if(last.llm){els.llmResult.textContent = `${last.llm.clean_source}\n→ ${last.llm.formal_translation}`;}
+    else if(last.error){els.llmResult.textContent = `LLM 錯誤：${last.error}`;}
+    else els.llmResult.textContent = "LLM 處理中...";
+  }
+
+  async function addFinal(rawSource, translation){
+    const learned = applyLearnedCorrections(rawSource);
+    const item = {id:uid(), time:nowTime(), rawSource, sourceText:learned.text, translation, applied:learned.applied, llm:null, error:""};
+    timeline.unshift(item);
+    renderTimeline(); updateLiveBoxes(item);
+    if(getSettings().enableAoai){
+      try{
+        item.llm = await improveFinal(item.sourceText, translation, item.applied);
+        setDot(els.llmDot, els.llmStatus, "ok", "LLM 正常");
+      }catch(err){
+        item.error = err.message || String(err);
+        setDot(els.llmDot, els.llmStatus, "bad", "LLM 錯誤");
+      }
+      renderTimeline(); updateLiveBoxes(item);
+    }
+  }
+
+  function fallbackTokenize(sentence){
+    const tokens = [];
+    if(!sentence) return tokens;
+    if("Segmenter" in Intl){
+      try{
+        const seg = new Intl.Segmenter("zh-Hant", {granularity:"word"});
+        for(const part of seg.segment(sentence)){
+          const text = part.segment;
+          if(!text.trim()) continue;
+          tokens.push({text, start:part.index, end:part.index+text.length, candidates:guessCandidates(text)});
+        }
+        if(tokens.length) return tokens;
+      }catch{}
+    }
+    const re = /[A-Za-z0-9_\-]+|[\u4e00-\u9fff]+|[^\s]/g;
+    let m; while((m = re.exec(sentence))){tokens.push({text:m[0], start:m.index, end:m.index+m[0].length, candidates:guessCandidates(m[0])});}
+    return tokens;
+  }
+  function guessCandidates(token){
+    const phrases = parsePhrases();
+    const out = [];
+    for(const p of phrases){
+      if(p && p !== token && (p.toLowerCase().includes(token.toLowerCase()) || token.toLowerCase().includes(p.toLowerCase()) || levenshtein(p.toLowerCase(), token.toLowerCase()) <= 2)){
+        out.push({text:p, reason:"與 Phrase List 專有詞相近", confidence:.7});
+      }
+    }
+    for(const [from,to] of bestLearningMap()){
+      if(from === token) out.unshift({text:to, reason:"來自過去人工修正紀錄", confidence:.95});
+    }
+    return uniqueCandidates(out).slice(0,5);
+  }
+  function uniqueCandidates(arr){
+    const seen = new Set(); const out=[];
+    for(const c of arr){const t=String(c.text||"").trim(); if(!t || seen.has(t)) continue; seen.add(t); out.push({text:t, reason:String(c.reason||""), confidence:Number(c.confidence||0)});} return out;
+  }
+  function levenshtein(a,b){
+    const dp = Array.from({length:a.length+1},()=>Array(b.length+1).fill(0));
+    for(let i=0;i<=a.length;i++) dp[i][0]=i; for(let j=0;j<=b.length;j++) dp[0][j]=j;
+    for(let i=1;i<=a.length;i++) for(let j=1;j<=b.length;j++) dp[i][j]=Math.min(dp[i-1][j]+1, dp[i][j-1]+1, dp[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+    return dp[a.length][b.length];
+  }
+  function normalizeTokens(sentence, rawTokens){
+    const fallback = fallbackTokenize(sentence);
+    const arr = Array.isArray(rawTokens) && rawTokens.length ? rawTokens : fallback;
+    let cursor = 0;
+    return arr.map((t, idx)=>{
+      const text = String(t.text ?? "").trim();
+      if(!text) return null;
+      let start = Number.isFinite(Number(t.start)) ? Number(t.start) : -1;
+      let end = Number.isFinite(Number(t.end)) ? Number(t.end) : -1;
+      if(start < 0 || end <= start){
+        const pos = sentence.indexOf(text, cursor);
+        if(pos >= 0){start = pos; end = pos + text.length; cursor = end;} else {start = fallback[idx]?.start ?? cursor; end = start + text.length; cursor = end;}
+      }
+      return {text, start, end, candidates:uniqueCandidates([...(t.candidates || []), ...guessCandidates(text)])};
+    }).filter(Boolean);
+  }
+
+  async function analyzeSentence(itemId){
+    const item = timeline.find(x=>x.id===itemId); if(!item) return;
+    selectedItemId = itemId; selectedToken = null; currentTokenData = [];
+    renderTimeline();
+    els.selectedSentence.innerHTML = `<b>目前句子</b>${escapeHtml(item.sourceText)}`;
+    els.beforeBox.innerHTML = `<b>修改前</b>${escapeHtml(item.sourceText)}`;
+    els.afterBox.innerHTML = `<b>修改後</b>${escapeHtml(item.sourceText)}`;
+    els.tokenBox.innerHTML = `<span class="empty">分析中...</span>`; els.candidateBox.style.display = "none"; els.candidateBox.innerHTML = "";
+    const s = getSettings();
+    let tokenData = null;
+    if(s.enableLlmTokenize && s.enableAoai){
+      try{
+        const content = await callAzureOpenAI([
+          {role:"system", content:s.correctionPrompt},
+          {role:"user", content:JSON.stringify({sentence:item.sourceText, raw_asr_sentence:item.rawSource, phrase_list:parsePhrases(), learned_corrections:bestLearningMap().map(([from,to])=>({from,to}))}, null, 2)}
+        ], 0.1, 1200);
+        tokenData = extractJson(content).tokens;
+        setDot(els.llmDot, els.llmStatus, "ok", "LLM 正常");
+      }catch(err){
+        setDot(els.llmDot, els.llmStatus, "warn", "LLM 分析失敗，改本機切詞");
+        toast("LLM 切詞失敗，已改用本機切詞：" + (err.message || err));
+      }
+    }
+    currentTokenData = normalizeTokens(item.sourceText, tokenData);
+    renderTokens();
+  }
+  function renderTokens(){
+    if(!currentTokenData.length){els.tokenBox.innerHTML = `<span class="empty">沒有可修正字詞</span>`; return;}
+    els.tokenBox.innerHTML = currentTokenData.map((t,i)=>`<span class="token ${selectedToken?.index===i ? "selected" : ""}" data-index="${i}">${escapeHtml(t.text)}</span>`).join("");
+  }
+  function showCandidates(index){
+    const item = timeline.find(x=>x.id===selectedItemId); if(!item) return;
+    const t = currentTokenData[index]; if(!t) return;
+    selectedToken = {...t, index}; renderTokens();
+    const candidates = uniqueCandidates(t.candidates || []);
+    els.candidateBox.style.display = "block";
+    els.candidateBox.innerHTML = `
+      <div><b>修正字詞：</b><span class="highlight">${escapeHtml(t.text)}</span></div>
+      ${candidates.length ? candidates.map(c=>`<button class="candidate" data-value="${escapeHtml(c.text)}"><span>${escapeHtml(c.text)}<small>${escapeHtml(c.reason || "候選修正")}｜信心 ${Number(c.confidence||0).toFixed(2)}</small></span><span>套用</span></button>`).join("") : `<div class="empty" style="margin-top:8px">LLM 未提供候選，可使用手動輸入。</div>`}
+      <div class="manual"><input id="manualReplacement" placeholder="手動輸入替換字詞" /><button id="manualApply" class="orange">套用</button></div>
+      <div class="small">套用後會寫入修改紀錄，下一次 final 句子若出現相同字詞，會先自動替換。</div>`;
+  }
+  function applyReplacement(replacement, source="manual"){
+    const item = timeline.find(x=>x.id===selectedItemId); if(!item || !selectedToken) return;
+    replacement = String(replacement || "").trim(); if(!replacement){toast("請輸入替換字詞"); return;}
+    const before = item.sourceText;
+    const token = selectedToken;
+    let after;
+    if(before.slice(token.start, token.end) === token.text){after = before.slice(0, token.start) + replacement + before.slice(token.end);} else {after = before.replace(token.text, replacement);}
+    item.sourceText = after;
+    item.applied = [...(item.applied || []), {from:token.text, to:replacement}];
+    const record = {id:uid(), timestamp:new Date().toISOString(), sentenceId:item.id, originalSentence:before, correctedSentence:after, originalToken:token.text, replacement, source, candidates:(token.candidates || []).map(c=>c.text)};
+    learningRecords.push(record);
+    saveLearning();
+    selectedToken = null;
+    currentTokenData = normalizeTokens(after, null);
+    els.selectedSentence.innerHTML = `<b>目前句子</b>${escapeHtml(after)}`;
+    els.afterBox.innerHTML = `<b>修改後</b>${escapeHtml(after)}`;
+    renderTokens(); renderTimeline(); updateLiveBoxes(item);
+    els.candidateBox.style.display = "none";
+    toast(`已記錄修正：${token.text} → ${replacement}`);
+  }
+  function renderLearningHistory(){
+    setDot(els.learnDot, els.learnStatus, learningRecords.length ? "ok" : "", `修正紀錄 ${learningRecords.length} 筆`);
+    if(!learningRecords.length){els.learningHistory.innerHTML = `<div class="empty">尚無修改紀錄。</div>`; return;}
+    els.learningHistory.innerHTML = learningRecords.slice().reverse().map(r=>`<div class="historyItem"><b>${escapeHtml(r.originalToken)}</b> → <b class="highlight">${escapeHtml(r.replacement)}</b><br><span class="muted">${escapeHtml(new Date(r.timestamp).toLocaleString("zh-TW"))}｜${escapeHtml(r.source)}</span></div>`).join("");
+  }
+
+  async function testMic(){
+    try{
+      const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+      stream.getTracks().forEach(t=>t.stop());
+      setDot(els.micDot, els.micStatus, "ok", "麥克風可用"); toast("麥克風權限 OK");
+    }catch(err){setDot(els.micDot, els.micStatus, "bad", "麥克風失敗"); toast("麥克風測試失敗：" + (err.message || err));}
+  }
+  async function testLlm(){
+    try{
+      const content = await callAzureOpenAI([{role:"system", content:"你只輸出 JSON。"},{role:"user", content:'請輸出 {"ok":true,"message":"LLM 測試成功"}'}], 0, 80);
+      const data = extractJson(content);
+      setDot(els.llmDot, els.llmStatus, "ok", "LLM 正常"); toast(data.message || "LLM 測試成功");
+    }catch(err){setDot(els.llmDot, els.llmStatus, "bad", "LLM 錯誤"); toast("LLM 測試失敗：" + (err.message || err));}
+  }
+  function checkSdk(){
+    if(window.SpeechSDK){setDot(els.sdkDot, els.sdkStatus, "ok", "Speech SDK 已載入"); return true;}
+    setDot(els.sdkDot, els.sdkStatus, "bad", "Speech SDK 未載入"); return false;
+  }
+  async function startRecognition(){
+    if(!checkSdk()) return;
+    const s = getSettings();
+    if(!s.speechKey || !s.speechRegion){toast("請先填 Azure Speech Key 與 Region"); return;}
+    if(recognizer) await stopRecognition();
+    try{
+      const speechConfig = SpeechSDK.SpeechTranslationConfig.fromSubscription(s.speechKey, s.speechRegion);
+      speechConfig.speechRecognitionLanguage = s.sourceLang;
+      speechConfig.addTargetLanguage(s.targetLang);
+      speechConfig.setProperty(SpeechSDK.PropertyId.SpeechServiceConnection_EndSilenceTimeoutMs, "1500");
+      const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+      recognizer = new SpeechSDK.TranslationRecognizer(speechConfig, audioConfig);
+      const phrases = parsePhrases();
+      if(phrases.length){
+        try{
+          const grammar = SpeechSDK.PhraseListGrammar.fromRecognizer(recognizer);
+          phrases.forEach(p=>grammar.addPhrase(p));
+          if(typeof grammar.setWeight === "function") grammar.setWeight(s.phraseWeight);
+        }catch(err){console.warn("Phrase List 設定失敗", err);}
+      }
+      recognizer.recognizing = (_, e) => {
+        const text = e.result?.text || "";
+        const trans = e.result?.translations?.get(s.targetLang) || "";
+        els.partialSource.textContent = text || "辨識中...";
+        els.partialTranslation.textContent = trans || "翻譯中...";
+      };
+      recognizer.recognized = async (_, e) => {
+        if(e.result?.reason === SpeechSDK.ResultReason.TranslatedSpeech){
+          const raw = e.result.text || "";
+          const trans = e.result.translations?.get(s.targetLang) || "";
+          if(raw.trim()) await addFinal(raw, trans);
+        }else if(e.result?.reason === SpeechSDK.ResultReason.NoMatch){
+          console.warn("NoMatch", e.result);
+        }
+      };
+      recognizer.canceled = (_, e) => {
+        console.error("Canceled", e);
+        setDot(els.runDot, els.runStatus, "bad", "已取消 / 錯誤");
+        toast(`辨識取消：${e.errorDetails || e.reason || "unknown"}`);
+      };
+      recognizer.sessionStarted = () => setDot(els.runDot, els.runStatus, "ok", "辨識中");
+      recognizer.sessionStopped = () => setDot(els.runDot, els.runStatus, "", "已停止");
+      await new Promise((resolve, reject)=>recognizer.startContinuousRecognitionAsync(resolve, reject));
+      els.startBtn.disabled = true; els.stopBtn.disabled = false;
+      setDot(els.runDot, els.runStatus, "ok", "辨識中"); toast("已開始即時語音翻譯");
+    }catch(err){setDot(els.runDot, els.runStatus, "bad", "啟動失敗"); toast("啟動失敗：" + (err.message || err));}
+  }
+  async function stopRecognition(){
+    if(!recognizer) return;
+    await new Promise(resolve => recognizer.stopContinuousRecognitionAsync(resolve, resolve));
+    try{recognizer.close();}catch{}
+    recognizer = null; els.startBtn.disabled = false; els.stopBtn.disabled = true;
+    setDot(els.runDot, els.runStatus, "", "已停止"); toast("已停止");
+  }
+  function clearAll(){
+    timeline = []; selectedItemId = null; currentTokenData = []; selectedToken = null;
+    els.partialSource.textContent = "等待開始..."; els.partialTranslation.textContent = "等待開始..."; els.finalSource.textContent = "等待 final..."; els.llmResult.textContent = "等待 LLM...";
+    els.selectedSentence.innerHTML = `<b>目前句子</b><span class="muted">尚未選擇句子</span>`; els.tokenBox.innerHTML = `<span class="empty">尚無切詞結果</span>`; els.candidateBox.style.display = "none"; els.beforeBox.innerHTML = `<b>修改前</b><span class="muted">—</span>`; els.afterBox.innerHTML = `<b>修改後</b><span class="muted">—</span>`;
+    renderTimeline(); toast("畫面已清除");
+  }
+  function download(name, mime, content){
+    const blob = new Blob([content], {type:mime}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 500);
+  }
+  function exportTxt(){
+    const lines = [];
+    for(const item of timeline.slice().reverse()){
+      lines.push(`[${item.time}]`); lines.push(`原始辨識：${item.rawSource}`); if(item.rawSource !== item.sourceText) lines.push(`套用修正：${item.sourceText}`); if(item.translation) lines.push(`即時翻譯：${item.translation}`); if(item.llm){lines.push(`LLM整理：${item.llm.clean_source}`); lines.push(`正式翻譯：${item.llm.formal_translation}`); if(item.llm.risk_note) lines.push(`風險提示：${item.llm.risk_note}`);} if(item.error) lines.push(`LLM錯誤：${item.error}`); lines.push("");
+    }
+    download(`astt4_transcript_${Date.now()}.txt`, "text/plain;charset=utf-8", lines.join("\n"));
+  }
+  function exportLearning(){download(`astt4_learning_records_${Date.now()}.json`, "application/json;charset=utf-8", JSON.stringify(learningRecords, null, 2));}
+
+  els.saveBtn.addEventListener("click", saveSettings);
+  els.micBtn.addEventListener("click", testMic);
+  els.llmBtn.addEventListener("click", testLlm);
+  els.startBtn.addEventListener("click", startRecognition);
+  els.stopBtn.addEventListener("click", stopRecognition);
+  els.clearBtn.addEventListener("click", clearAll);
+  els.exportTxtBtn.addEventListener("click", exportTxt);
+  els.exportLearningBtn.addEventListener("click", exportLearning);
+  els.clearLearningBtn.addEventListener("click", () => { if(confirm("確定清空所有動態修正紀錄？")){learningRecords=[]; saveLearning(); toast("修正紀錄已清空");} });
+  els.timeline.addEventListener("click", (e)=>{
+    const btn = e.target.closest("[data-action]"); if(!btn) return;
+    const id = btn.dataset.id; const action = btn.dataset.action;
+    if(action === "analyze") analyzeSentence(id);
+    if(action === "copy") {const item = timeline.find(x=>x.id===id); if(item) navigator.clipboard?.writeText(item.sourceText).then(()=>toast("已複製句子"));}
+  });
+  els.tokenBox.addEventListener("click", e=>{const tok = e.target.closest(".token"); if(tok) showCandidates(Number(tok.dataset.index));});
+  els.candidateBox.addEventListener("click", e=>{
+    const c = e.target.closest(".candidate"); if(c) applyReplacement(c.dataset.value, "llm_candidate");
+    if(e.target.id === "manualApply") applyReplacement(document.getElementById("manualReplacement")?.value || "", "manual");
+  });
+  els.candidateBox.addEventListener("keydown", e=>{if(e.key === "Enter" && e.target.id === "manualReplacement") applyReplacement(e.target.value, "manual");});
+
+  loadSettings(); loadLearning(); renderTimeline();
+  const timer = setInterval(()=>{if(checkSdk()) clearInterval(timer);}, 350);
+})();
+</script>
+</body>
+</html>
