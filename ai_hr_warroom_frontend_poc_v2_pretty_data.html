@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HR 智慧工作流戰情室 PoC｜上傳 → 洞見 → 建議報表</title>
+  <style>
+    :root{
+      --navy:#08245c; --navy2:#0e3a82; --blue:#1f6feb; --sky:#eaf3ff;
+      --green:#20834a; --green-bg:#eaf7ef; --orange:#e87518; --orange-bg:#fff2e8;
+      --purple:#6d40a7; --purple-bg:#f4edff; --red:#c43d3d; --red-bg:#fff0f0;
+      --ink:#182235; --muted:#687286; --line:#d7deea; --panel:#fff; --bg:#f5f7fb;
+      --shadow:0 16px 38px rgba(8,36,92,.09); --radius:18px;
+    }
+    *{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,#f7f9fd,#eef3fb);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","Microsoft JhengHei",Arial,sans-serif;color:var(--ink)}
+    button,input,textarea,select{font:inherit}.app{min-height:100vh;display:grid;grid-template-columns:292px 1fr}.side{background:linear-gradient(180deg,var(--navy),#06183d);color:#fff;padding:24px 18px;position:sticky;top:0;height:100vh;overflow:auto}.logo-row{display:flex;gap:12px;align-items:center;margin-bottom:18px}.logo{width:46px;height:46px;border-radius:15px;background:#fff;color:var(--navy);display:grid;place-items:center;font-weight:900;font-size:22px}.logo-row h1{font-size:18px;line-height:1.25;margin:0}.logo-row small{opacity:.72;font-size:12px}.step{display:flex;gap:10px;align-items:center;padding:12px;border:1px solid rgba(255,255,255,.16);border-radius:14px;background:rgba(255,255,255,.07);margin:9px 0;cursor:pointer}.step.active,.step:hover{background:rgba(255,255,255,.16)}.num{width:28px;height:28px;border-radius:10px;background:#fff;color:var(--navy);display:grid;place-items:center;font-weight:900}.step b{display:block}.step small{display:block;color:#cbd9ff;font-size:11px;margin-top:2px}.note{margin-top:18px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.08);border-radius:16px;padding:14px;color:#dce6ff;line-height:1.65;font-size:13px}main{padding:26px}.top{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:16px}.title h2{margin:0 0 6px;color:var(--navy);font-size:29px}.title p{margin:0;color:var(--muted);font-weight:700}.actions{display:flex;gap:10px;flex-wrap:wrap}.btn{border:0;border-radius:12px;padding:10px 14px;font-weight:900;cursor:pointer;background:#e9eef8;color:var(--navy);display:inline-flex;gap:8px;align-items:center;text-decoration:none;transition:.15s}.btn:hover{transform:translateY(-1px)}.btn.primary{background:var(--navy);color:#fff}.btn.blue{background:var(--blue);color:#fff}.btn.green{background:var(--green);color:#fff}.btn.orange{background:var(--orange);color:#fff}.btn.danger{background:var(--red);color:#fff}.btn.ghost{background:#fff;border:1px solid var(--line)}.grid{display:grid;gap:16px}.grid.two{grid-template-columns:1.05fr .95fr}.grid.three{grid-template-columns:repeat(3,1fr)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}.panel-h{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:15px 18px;border-bottom:1px solid var(--line)}.panel-h h3{margin:0;color:var(--navy);font-size:18px}.panel-h small{color:var(--muted);font-weight:800}.panel-b{padding:18px}.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:16px 0}.kpi{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:var(--shadow)}.kpi strong{display:block;color:var(--navy);font-size:24px}.kpi span{display:block;color:var(--muted);font-weight:800;font-size:12px;margin-top:3px}.drop{border:2px dashed #a9bad8;border-radius:18px;background:linear-gradient(180deg,#fff,#f7fbff);padding:25px;text-align:center;cursor:pointer}.drop.drag{border-color:var(--blue);background:#eaf3ff}.drop .icon{font-size:40px}.drop h3{margin:5px 0;color:var(--navy)}.drop p{margin:0;color:var(--muted);font-weight:700}.hidden{display:none!important}label{display:block;font-size:12px;color:var(--muted);font-weight:900;margin:0 0 7px}.field{margin-bottom:12px}input,select,textarea{width:100%;border:1px solid var(--line);border-radius:12px;padding:11px 12px;background:#fff;color:var(--ink);outline:none}textarea{min-height:175px;resize:vertical;line-height:1.6}.filemeta{display:none;margin-top:12px;background:var(--sky);border:1px solid #c9dcff;color:var(--navy);font-weight:800;border-radius:14px;padding:11px}.tag{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:900;margin:2px}.tag.blue{background:var(--sky);color:var(--blue)}.tag.green{background:var(--green-bg);color:var(--green)}.tag.orange{background:var(--orange-bg);color:var(--orange)}.tag.purple{background:var(--purple-bg);color:var(--purple)}.tag.red{background:var(--red-bg);color:var(--red)}.flow{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}.flow-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:13px;min-height:104px}.flow-card b{font-size:27px;color:var(--navy)}.flow-card h4{margin:4px 0;color:var(--navy)}.flow-card p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}.flow-card.done{border-color:#b8d8c3;background:#f3fbf6}.flow-card.active{border-color:#ffcc9a;background:#fff7ef}.empty{border:1px dashed var(--line);border-radius:16px;background:#fbfcff;color:var(--muted);padding:24px;text-align:center;font-weight:800}.divider{height:1px;background:var(--line);margin:16px 0}.brief{display:grid;grid-template-columns:1.1fr .9fr;gap:16px}.warroom{background:linear-gradient(180deg,#0b2a67,#06183d);color:#fff;border-radius:18px;padding:18px;min-height:260px}.warroom h3{margin:0 0 10px;font-size:22px}.warroom .big{font-size:30px;font-weight:900;color:#ffe06b}.warroom p{line-height:1.7;color:#dce6ff}.insight{border:1px solid var(--line);border-radius:16px;padding:14px;background:#fff;margin-bottom:10px}.insight h4{margin:0 0 8px;color:var(--navy);display:flex;gap:8px;align-items:center}.insight p{margin:0;color:var(--ink);line-height:1.7}.why{font-size:13px;color:var(--muted);background:#f6f8fc;border-radius:12px;padding:10px;margin-top:10px;line-height:1.6}.priority{width:26px;height:26px;border-radius:9px;background:var(--orange);color:#fff;display:inline-grid;place-items:center;font-weight:900;flex:0 0 auto}table{border-collapse:collapse;width:100%;background:#fff}th,td{border:1px solid var(--line);padding:9px;text-align:left;vertical-align:top}th{background:#eef4ff;color:var(--navy)}.report{line-height:1.75}.report h1,.report h2,.report h3{color:var(--navy)}.report ul{margin:7px 0 13px 22px}.chat{display:flex;flex-direction:column;gap:10px;max-height:360px;overflow:auto}.bubble{max-width:84%;padding:12px 14px;border:1px solid var(--line);border-radius:16px;line-height:1.6;white-space:pre-wrap}.bubble.ai{background:#fff;align-self:flex-start}.bubble.user{background:var(--navy);color:#fff;align-self:flex-end;border-color:var(--navy)}.chat-input{display:flex;gap:10px;margin-top:12px}.toast{position:fixed;right:22px;bottom:22px;background:var(--navy);color:#fff;padding:12px 16px;border-radius:14px;box-shadow:var(--shadow);display:none;font-weight:900}.toast.show{display:block}@media(max-width:1100px){.app{grid-template-columns:1fr}.side{position:relative;height:auto}.grid.two,.grid.three,.brief{grid-template-columns:1fr}.flow,.kpis{grid-template-columns:1fr 1fr}.top{flex-direction:column}}@media print{.side,.top,.actions,.chat-input,.btn{display:none!important}.app{display:block}main{padding:0}.panel{box-shadow:none;border:1px solid #ddd}.warroom{color:#111;background:#fff;border:1px solid #ddd}.warroom p{color:#333}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="logo-row"><div class="logo">HR</div><div><h1>人資 AI 戰情室</h1><small>上傳資料 → 洞見 → 建議報表</small></div></div>
+    <div class="step active" data-go="sec-upload"><div class="num">1</div><div><b>資料上傳</b><small>單份 / 批次人資資料</small></div></div>
+    <div class="step" data-go="sec-war"><div class="num">2</div><div><b>戰情摘要</b><small>KPI、異常、優先級</small></div></div>
+    <div class="step" data-go="sec-insights"><div class="num">3</div><div><b>洞見與理由</b><small>AI 建議＋證據依據</small></div></div>
+    <div class="step" data-go="sec-qa"><div class="num">4</div><div><b>主動式問答</b><small>追問缺口、補上下文</small></div></div>
+    <div class="step" data-go="sec-report"><div class="num">5</div><div><b>報表下載</b><small>Word / MD / JSON</small></div></div>
+    <div class="note"><b>Demo 核心</b><br>上傳後不要只看到摘要，而要直接看到「主管能判斷的戰情」：發生什麼、為什麼、建議怎麼做、依據是什麼。</div>
+  </aside>
+  <main>
+    <div class="top">
+      <div class="title"><h2>HR 智慧工作流戰情室 PoC</h2><p>適用：招募資料、離職訪談、教育訓練、員工意見、考勤/加班、績效盤點等人資資料</p></div>
+      <div class="actions"><button class="btn ghost" id="btnSample">載入人資範例</button><button class="btn ghost" id="btnSave">儲存案例</button><button class="btn danger" id="btnReset">清空</button></div>
+    </div>
+
+    <section class="flow">
+      <div class="flow-card active" id="flow1"><b>1</b><h4>上傳資料</h4><p>單份文件或批次 CSV / JSON / 文字資料。</p></div>
+      <div class="flow-card" id="flow2"><b>2</b><h4>AI 解析</h4><p>辨識資料類型、重點、異常與趨勢。</p></div>
+      <div class="flow-card" id="flow3"><b>3</b><h4>戰情解釋</h4><p>產出主管摘要、風險、理由與證據。</p></div>
+      <div class="flow-card" id="flow4"><b>4</b><h4>建議行動</h4><p>列出優先處理項與可追蹤待辦。</p></div>
+      <div class="flow-card" id="flow5"><b>5</b><h4>報表下載</h4><p>匯出報告與保留分析紀錄。</p></div>
+    </section>
+
+    <section class="grid two" style="margin-top:16px" id="sec-upload">
+      <div class="panel">
+        <div class="panel-h"><h3>1. 上傳人資資料</h3><small>支援單份或批次；第一版以文字/CSV 展示</small></div>
+        <div class="panel-b">
+          <div class="drop" id="drop"><div class="icon">☁️</div><h3>拖曳檔案，或點擊選擇</h3><p>建議 CSV / TXT / JSON / MD。PDF / Word 可先貼文字，正式版再接文件解析。</p><input class="hidden" type="file" id="file" accept=".csv,.txt,.json,.md,.html,.pdf,.doc,.docx" /></div>
+          <div class="filemeta" id="filemeta"></div><div class="divider"></div>
+          <div class="field"><label>資料類型</label><select id="dataType"><option value="auto">自動判斷</option><option value="recruiting">招募 / 履歷 / 面試資料</option><option value="training">教育訓練 / 課後回饋</option><option value="attendance">出勤 / 加班 / 請假</option><option value="turnover">離職 / 留任 / 員工意見</option><option value="performance">績效 / 人才盤點</option></select></div>
+          <div class="field"><label>貼上人資資料 / 批次資料</label><textarea id="raw" placeholder="可貼 CSV、表格文字、離職訪談紀錄、招募需求、員工意見、訓練回饋等……"></textarea></div>
+          <div class="actions"><button class="btn blue" id="btnAnalyze">產生建議報表與戰情解釋</button><button class="btn ghost" id="btnCopy">複製資料</button></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><h3>Azure / Mock 設定</h3><small>可先 Mock 展示，之後串 Azure</small></div>
+        <div class="panel-b">
+          <div class="field"><label>執行模式</label><select id="mode"><option value="mock">Mock 模式：展示用，不呼叫 API</option><option value="azure">Azure OpenAI：使用下方設定</option></select></div>
+          <div class="field"><label>Endpoint</label><input id="endpoint" placeholder="https://your-resource.openai.azure.com" /></div>
+          <div class="field"><label>Auth Key</label><input id="key" type="password" placeholder="正式版不應放在前端" /></div>
+          <div class="field"><label>Model / Deployment</label><input id="model" placeholder="例如 gpt-4o-mini 或 deployment name" /></div>
+          <div class="field"><label>API Version</label><input id="version" value="2024-10-21" /></div>
+          <div class="divider"></div>
+          <span class="tag red">個資需遮罩</span><span class="tag orange">理由要可追溯</span><span class="tag green">報表可下載</span><span class="tag blue">批次可彙整</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" style="margin-top:16px" id="sec-war">
+      <div class="panel-h"><h3>2. 上傳後第一眼要看到：HR 戰情摘要</h3><small>讓主管先知道狀態與優先處理方向</small></div>
+      <div class="panel-b">
+        <div class="kpis">
+          <div class="kpi"><strong id="kRecords">0</strong><span>資料筆數/片段</span></div>
+          <div class="kpi"><strong id="kRisk">0</strong><span>風險訊號</span></div>
+          <div class="kpi"><strong id="kOpp">0</strong><span>改善機會</span></div>
+          <div class="kpi"><strong id="kAction">0</strong><span>建議行動</span></div>
+          <div class="kpi"><strong id="kConf">--</strong><span>分析信心</span></div>
+        </div>
+        <div class="brief">
+          <div class="warroom" id="warroom"><h3>尚未產生戰情</h3><p>請先上傳或貼上人資資料，按下「產生建議報表與戰情解釋」。</p></div>
+          <div id="quickTable" class="empty">解析後會出現：優先處理議題、理由、建議動作、負責角色。</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid two" style="margin-top:16px" id="sec-insights">
+      <div class="panel">
+        <div class="panel-h"><h3>3. 洞見與理由</h3><small>每個洞見都要說明「為什麼」</small></div>
+        <div class="panel-b" id="insights"><div class="empty">尚未產生洞見。</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><h3>建議行動清單</h3><small>可轉為工作坊後續項目</small></div>
+        <div class="panel-b" id="actions"><div class="empty">尚未產生建議行動。</div></div>
+      </div>
+    </section>
+
+    <section class="grid two" style="margin-top:16px" id="sec-qa">
+      <div class="panel"><div class="panel-h"><h3>4. 主動式問答</h3><small>AI 追問缺口，使用者可補資料</small></div><div class="panel-b"><div id="chat" class="chat"><div class="bubble ai">上傳人資資料後，我會主動提出需要補充的資訊，例如：資料期間、部門、職級、是否含個資、希望優化的 KPI。</div></div><div class="chat-input"><input id="q" placeholder="例如：為什麼你判斷招募流程卡住？" /><button class="btn primary" id="btnAsk">送出</button></div></div></div>
+      <div class="panel"><div class="panel-h"><h3>AI 主動追問</h3><small>用來補齊戰情判斷</small></div><div class="panel-b" id="questions"><div class="empty">解析後會自動列出待確認問題。</div></div></div>
+    </section>
+
+    <section class="grid two" style="margin-top:16px" id="sec-report">
+      <div class="panel"><div class="panel-h"><h3>5. 建議報表</h3><small>主管版輸出</small></div><div class="panel-b"><div class="actions" style="margin-bottom:12px"><button class="btn green" id="btnReport">重新產生報表</button><button class="btn ghost" id="btnPrint">列印 / 存 PDF</button></div><div id="report" class="report"><div class="empty">尚未產生報表。</div></div></div></div>
+      <div class="panel"><div class="panel-h"><h3>下載與留存</h3><small>Storage 記憶 / 匯出</small></div><div class="panel-b"><div class="actions"><button class="btn blue" id="btnDoc">下載 Word .doc</button><button class="btn ghost" id="btnMd">下載 Markdown</button><button class="btn ghost" id="btnJson">下載 JSON</button></div><div class="divider"></div><p style="color:var(--muted);font-weight:700;line-height:1.7">此 PoC 使用瀏覽器 localStorage 保存案例。正式版應加入後端代理、Blob/Table/Cosmos DB、權限、Log、稽核與個資遮罩。</p><div id="history"></div></div></div>
+    </section>
+  </main>
+</div><div class="toast" id="toast"></div>
+<script>
+const $=id=>document.getElementById(id);
+const state={raw:'',fileName:'',type:'auto',analysis:null,qa:[],reportHtml:'',updatedAt:null};
+const SAMPLE=`部門,職缺/主題,狀態,天數,回饋/問題,人數,成本/影響
+業務部,海外業務開發專員,招募中,46,候選人常反映職缺說明不清楚，面試後放棄率偏高，主管對英文程度與產業經驗定義不一致,4,缺員造成新客開發延後，業務主管每週額外投入履歷篩選
+業務部,客戶成功專員,招募中,39,履歷量足夠但一面轉二面比例低，常見原因是薪資區間與工作內容不透明,2,影響既有客戶續約追蹤，客服與業務交接成本增加
+製造部,現場儲備幹部,招募中,58,主管需求變更多次，JD 版本不一致，白班夜班輪調條件沒有事先說清楚,3,現場加班增加，代理主管負荷提高
+研發部,AI 工程師,招募中,71,薪資條件與市場落差，候選人期待遠端彈性，但內部尚未定義可接受條件,1,AI 專案時程延後，外包評估成本上升
+資訊部,系統維運工程師,招募中,44,職缺同時要求維運、資安、資料庫與自動化，條件過廣造成候選人不敢投遞,1,系統變更窗口壓力增加，值班安排吃緊
+客服部,新人訓練,已完成,14,課後回饋提到 SOP 與實務情境落差大，資深人員口頭經驗沒有整理成知識庫,18,新人上線速度慢，回覆品質不穩
+製造部,安全教育訓練,已完成,7,簽到完成率高但測驗錯題集中在異常通報與停機流程，顯示理解不足,63,異常事件回報時間偏長，主管需要重複提醒
+人資部,主管面談訓練,規劃中,21,多位主管表示不知道如何給負面回饋，擔心面談造成員工反彈,12,績效面談品質不一，員工對公平性有疑慮
+行政部,員工意見彙整,待處理,30,跨部門表單流程重複填寫，資訊散落 Email 和 Excel，每週彙整耗時且容易漏資料,46,每週約花 8 小時彙整，月底報表常需重工
+人資部,離職訪談,已完成,90,多位同仁提到主管回饋不及時，職涯路徑不清楚，離職前一個月已出現消極訊號,7,留任風險升高，補人與交接成本增加
+研發部,員工聲音,待處理,45,工程師反映需求變更頻繁且優先序不清楚，跨部門會議結論沒有固定追蹤,11,專案延誤與返工，員工投入感下降
+財務部,加班與關帳,觀察中,6,月底關帳期間加班集中在 3 位同仁，部分資料仍由人工複製貼上,3,疲勞風險與錯帳風險增加
+生管部,排班溝通,待處理,20,臨時調班通知靠群組與電話，員工常反映資訊不一致,27,出勤異常增加，現場主管協調時間增加
+品保部,新人留任,觀察中,60,新人表示標準文件很多但不知道優先閱讀順序，遇到異常不確定問誰,9,試用期離職風險，品質判定一致性不足
+採購部,職能盤點,規劃中,35,主管希望建立供應商議價與風險辨識能力模型，但目前沒有統一評分表,8,人才培育方向不明確，接班風險不易量化
+總經理室,AI 導入需求,待評估,28,各部門都想用 AI，但需求多為單點工具，缺少流程輸入輸出與資料權限定義,6,容易形成影子 IT 與重複採購，導入成效難以追蹤
+人資部,招募報表,待處理,12,每週手動整理各職缺進度，資料來自 Excel、Email 與面試官口頭回覆,15,主管會議前需臨時補資料，決策延遲
+客服部,知識庫維護,待處理,25,客訴案例有紀錄但沒有分類標籤，常見問題無法快速轉成新人教材,32,重複回答問題，訓練內容更新慢`;
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
+function esc(s=''){return String(s).replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
+function download(name,content,type='text/plain;charset=utf-8'){const blob=new Blob([content],{type});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},100)}
+function parseCSV(text){const lines=text.trim().split(/\r?\n/).filter(Boolean);if(lines.length<2)return {headers:[],rows:[]};const headers=lines[0].split(',').map(x=>x.trim());const rows=lines.slice(1).map(line=>{const cols=line.split(',').map(x=>x.trim());const o={};headers.forEach((h,i)=>o[h]=cols[i]||'');return o});return {headers,rows}}
+function chunks(text){return text.split(/\r?\n|。|；|;/).map(x=>x.trim()).filter(x=>x.length>8)}
+function inferType(text,selected){if(selected&&selected!=='auto')return selected;if(/履歷|招募|面試|職缺|候選人|JD/.test(text))return 'recruiting';if(/離職|留任|員工意見|滿意|敬業/.test(text))return 'turnover';if(/訓練|課程|學習|回饋/.test(text))return 'training';if(/加班|出勤|請假|工時/.test(text))return 'attendance';if(/績效|人才|職能|考核/.test(text))return 'performance';return 'general'}
+function labelType(t){return {recruiting:'招募戰情',training:'教育訓練戰情',attendance:'出勤/加班戰情',turnover:'留任與員工聲音戰情',performance:'績效與人才盤點戰情',general:'人資資料綜合戰情'}[t]||'人資資料綜合戰情'}
+function mockAnalyze(text,typeSel){const {headers,rows}=parseCSV(text);const type=inferType(text,typeSel);const parts=rows.length?rows:chunks(text).map((x,i)=>({片段:i+1,內容:x}));const recordCount=parts.length||1;const joined=text;let risks=[],opps=[],actions=[],insights=[],questions=[];let confidence=rows.length?86:72;
+  const longDays=(rows||[]).filter(r=>Number(r['天數']||r.days||0)>=45); if(longDays.length){risks.push(`有 ${longDays.length} 個項目超過 45 天未完成，可能形成招募或流程延宕風險。`);insights.push({title:'流程延宕集中在招募與跨部門確認',level:'高',text:`資料中出現 ${longDays.length} 筆超過 45 天的項目，代表等待、需求變更或決策卡點可能已影響用人速度。`,why:'理由：以「天數」欄位判斷，超過 45 天通常已不是單一作業慢，而可能涉及 JD 不清、核准等待、薪資條件或主管決策延遲。'});} 
+  if(/JD|職缺說明|需求變更|版本不一致|不清楚/.test(joined)){risks.push('職缺需求與說明不穩定，會拉低履歷品質、面試效率與到職率。');insights.push({title:'招募問題不只在履歷量，而在需求定義品質',level:'高',text:'資料提到 JD 不清、主管需求變更、版本不一致，表示前端需求尚未標準化。',why:'理由：當職缺條件頻繁變動，AI 或招募平台再強也只會加速錯誤篩選；應先固定職缺模板與審核節點。'});actions.push('建立職缺需求模板：職責、必要條件、加分條件、薪資範圍、面試題庫一次定版。')}
+  if(/薪資|市場落差|履歷量不足/.test(joined)){risks.push('關鍵職缺可能存在市場條件落差，需重新檢視薪資、職務吸引力與招募渠道。');insights.push({title:'關鍵人才招募需同時檢查市場條件',level:'中',text:'資料提到薪資條件與市場落差、履歷量不足，代表問題未必能靠文案或篩選改善。',why:'理由：若市場供給不足或薪資偏離市場，流程自動化只能提升處理效率，無法根治候選人不足。'});actions.push('針對關鍵職缺建立市場薪資與競品職缺比較表，調整條件或分層招募策略。')}
+  if(/SOP|訓練|新人|上線|課後回饋/.test(joined)){opps.push('教育訓練可透過 AI 萃取回饋、整理常見問題與產生情境題庫。');insights.push({title:'新人訓練落差可轉成知識庫與情境題庫',level:'中',text:'回饋提到 SOP 與實務情境落差，適合用 AI 把案例轉成 FAQ、測驗與上線檢核表。',why:'理由：訓練回饋屬於半結構文字，AI 可快速分類痛點，並把高頻問題轉為教材改善依據。'});actions.push('將課後回饋自動分類成：教材問題、流程問題、主管帶教問題、系統問題，並每月輸出改善清單。')}
+  if(/離職|留任|職涯|主管回饋|員工意見/.test(joined)){risks.push('離職與留任風險訊號出現，需拆分為主管管理、職涯發展、工作負荷與制度流程。');insights.push({title:'留任風險可能來自管理回饋與職涯不明',level:'高',text:'資料提到主管回饋不及時、職涯路徑不清楚，這類訊號通常會比薪資抱怨更早出現。',why:'理由：離職訪談與員工意見是高價值文字資料，可透過 AI 做主題聚類與風險分級，找出需要主管介入的群組。'});actions.push('建立留任風險雷達：主管回饋、職涯、負荷、薪酬、流程摩擦五類主題，每月追蹤。')}
+  if(/Email|Excel|重複填寫|表單|彙整耗時|散落/.test(joined)){opps.push('跨部門表單與 Email/Excel 彙整是高 ROI 自動化候選場景。');insights.push({title:'高 ROI 機會在跨部門彙整與重複填寫',level:'高',text:'資料提到資訊散落 Email 與 Excel、重複填寫與每週彙整耗時，這是自動化工具最容易先落地的區塊。',why:'理由：此類任務規則固定、資料格式可標準化、人工時間可量化，適合先做表單整合、通知、彙整與報表輸出。'});actions.push('優先選一個每週重複的人資彙整流程，做成表單輸入＋AI 摘要＋主管報表。')}
+  if(!risks.length)risks.push('目前資料尚未顯示明確高風險，但仍需確認資料期間、樣本量與欄位完整性。');
+  if(!opps.length)opps.push('可先從資料格式標準化、固定報表輸出與問答紀錄留存開始。');
+  if(!actions.length)actions.push('先建立一份人資資料盤點表，列出資料來源、欄位、更新頻率、使用者與決策場景。');
+  questions=['這批資料的期間是單月、單季還是全年？','是否可依部門、職級、年資或地點切分分析？','資料內是否包含個資？是否需要遮罩姓名、電話、Email、薪資？','主管最想改善的 KPI 是招募天數、留任率、訓練成效，還是行政工時？'];
+  const top=insights[0]?.title||'人資資料可先做結構化與風險分級';
+  return {type,label:labelType(type),headers,rows,recordCount,risks,opps,actions,insights,questions,confidence,top,summary:`本次資料判斷為「${labelType(type)}」。AI 初步辨識 ${recordCount} 筆/段資料，發現 ${risks.length} 個風險訊號、${opps.length} 個改善機會，建議先處理「${top}」。`,raw:text};}
+async function callAzure(prompt,text){const ep=$('endpoint').value.replace(/\/$/,'');const key=$('key').value;const model=$('model').value;const ver=$('version').value||'2024-10-21';if(!ep||!key||!model)throw new Error('請填 endpoint、auth key、model/deployment。');const url=`${ep}/openai/deployments/${encodeURIComponent(model)}/chat/completions?api-version=${encodeURIComponent(ver)}`;const body={messages:[{role:'system',content:'你是企業人資智慧工作流顧問。請用繁體中文輸出 HR 戰情摘要、洞見、理由、建議行動、待確認問題。每個洞見都要有依據。'},{role:'user',content:prompt+'\n\n資料：\n'+text}],temperature:.2,max_tokens:2200};const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','api-key':key},body:JSON.stringify(body)});if(!res.ok)throw new Error('Azure 呼叫失敗：'+res.status);const data=await res.json();return data.choices?.[0]?.message?.content||'';}
+function azureToAnalysis(text,raw){return {type:'azure',label:'Azure AI 分析',recordCount:chunks(raw).length||1,risks:['請人工複核 AI 對人資資料的判斷，避免偏誤或錯誤建議。'],opps:['可將 Azure 輸出結構化後接報表與任務追蹤。'],actions:['將此報告轉為主管摘要與後續工作坊問題清單。'],insights:[{title:'Azure AI 已產生分析結果',level:'待複核',text,why:'理由：此段為模型依據上傳內容產生的分析，正式版需要保留來源片段與人工覆核紀錄。'}],questions:['是否需要遮罩個資？','是否需要依部門切分？'],confidence:70,top:'請人工複核 Azure AI 分析',summary:text,raw};}
+function render(){const a=state.analysis;document.querySelectorAll('.flow-card').forEach(x=>x.classList.remove('done','active'));$('flow1').classList.add(state.raw?'done':'active');if(a){$('flow2').classList.add('done');$('flow3').classList.add('done');$('flow4').classList.add('active')}if(state.reportHtml){$('flow4').classList.add('done');$('flow5').classList.add('active')}
+  $('kRecords').textContent=a?.recordCount||0;$('kRisk').textContent=a?.risks?.length||0;$('kOpp').textContent=a?.opps?.length||0;$('kAction').textContent=a?.actions?.length||0;$('kConf').textContent=a?`${a.confidence}%`:'--';
+  if(!a){$('warroom').innerHTML='<h3>尚未產生戰情</h3><p>請先上傳或貼上人資資料，按下「產生建議報表與戰情解釋」。</p>';$('quickTable').innerHTML='<div class="empty">解析後會出現：優先處理議題、理由、建議動作、負責角色。</div>';$('insights').innerHTML='<div class="empty">尚未產生洞見。</div>';$('actions').innerHTML='<div class="empty">尚未產生建議行動。</div>';$('questions').innerHTML='<div class="empty">解析後會自動列出待確認問題。</div>';return;}
+  $('warroom').innerHTML=`<h3>${esc(a.label)}</h3><div class="big">優先處理：${esc(a.top)}</div><p>${esc(a.summary)}</p><span class="tag orange">風險 ${a.risks.length}</span><span class="tag green">機會 ${a.opps.length}</span><span class="tag blue">信心 ${a.confidence}%</span>`;
+  $('quickTable').innerHTML=`<table><thead><tr><th>優先</th><th>議題</th><th>理由</th><th>建議動作</th></tr></thead><tbody>${(a.insights||[]).slice(0,4).map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.title)}</td><td>${esc(x.why)}</td><td>${esc(a.actions[i]||a.actions[0]||'補齊資料後再決策')}</td></tr>`).join('')}</tbody></table>`;
+  $('insights').innerHTML=(a.insights||[]).map((x,i)=>`<div class="insight"><h4><span class="priority">${i+1}</span>${esc(x.title)} <span class="tag ${x.level==='高'?'red':x.level==='中'?'orange':'blue'}">${esc(x.level)}</span></h4><p>${esc(x.text)}</p><div class="why"><b>理由 / 依據：</b>${esc(x.why)}</div></div>`).join('');
+  $('actions').innerHTML=`<ul class="report">${(a.actions||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul><div class="divider"></div><h3 style="color:var(--navy)">風險提醒</h3><ul class="report">${(a.risks||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`;
+  $('questions').innerHTML=`<ul class="report">${(a.questions||[]).map(q=>`<li><button class="btn ghost qbtn" style="text-align:left;margin:3px 0">${esc(q)}</button></li>`).join('')}</ul>`;document.querySelectorAll('.qbtn').forEach(b=>b.onclick=()=>{$('q').value=b.textContent;$('q').focus()});
+}
+function buildReport(){const a=state.analysis;if(!a)return '<div class="empty">尚未產生報表。</div>';const qa=(state.qa||[]).map((m,i)=>`<tr><td>${i+1}</td><td>${m.role==='user'?'使用者':'AI'}</td><td>${esc(m.text)}</td></tr>`).join('');return `<h1>HR 智慧工作流建議報表</h1><p><b>產出時間：</b>${new Date().toLocaleString('zh-TW')}</p><h2>一、戰情摘要</h2><p>${esc(a.summary)}</p><h2>二、核心洞見與理由</h2>${(a.insights||[]).map((x,i)=>`<h3>${i+1}. ${esc(x.title)}（${esc(x.level)}）</h3><p>${esc(x.text)}</p><p><b>理由 / 依據：</b>${esc(x.why)}</p>`).join('')}<h2>三、風險訊號</h2><ul>${(a.risks||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul><h2>四、改善機會</h2><ul>${(a.opps||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul><h2>五、建議行動</h2><ul>${(a.actions||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul><h2>六、待確認問題</h2><ul>${(a.questions||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul><h2>七、問答紀錄</h2><table><thead><tr><th>#</th><th>角色</th><th>內容</th></tr></thead><tbody>${qa||'<tr><td colspan="3">尚無問答紀錄</td></tr>'}</tbody></table><h2>八、下一步建議</h2><p>建議將本報表作為 1 小時企業診斷或半日工作坊的輸入，進一步確認資料欄位、個資遮罩、流程負責人、ROI 估算與正式導入範圍。</p>`}
+function renderReport(){if(!state.reportHtml)state.reportHtml=buildReport();$('report').innerHTML=state.reportHtml;localStorage.setItem('hr-warroom-active',JSON.stringify(state));renderHistory();}
+function renderChat(){const base='<div class="bubble ai">上傳人資資料後，我會主動提出需要補充的資訊，例如：資料期間、部門、職級、是否含個資、希望優化的 KPI。</div>';$('chat').innerHTML=base+(state.qa||[]).map(m=>`<div class="bubble ${m.role==='user'?'user':'ai'}">${esc(m.text)}</div>`).join('');$('chat').scrollTop=$('chat').scrollHeight;}
+async function analyze(){const text=$('raw').value.trim();if(!text){toast('請先貼上或上傳人資資料');return;}state.raw=text;state.type=$('dataType').value;$('btnAnalyze').disabled=true;$('btnAnalyze').textContent='產生中……';try{if($('mode').value==='azure'){const out=await callAzure('請輸出 HR 戰情摘要、洞見與理由、風險、改善機會、建議行動、待確認問題。',text);state.analysis=azureToAnalysis(out,text)}else{await new Promise(r=>setTimeout(r,450));state.analysis=mockAnalyze(text,state.type)}state.updatedAt=new Date().toLocaleString('zh-TW');state.reportHtml=buildReport();state.qa.push({role:'ai',text:'我已完成初步戰情判斷。建議先確認：\n- 資料期間與樣本範圍\n- 是否可依部門切分\n- 是否含個資需遮罩\n- 主管最想改善的 KPI'});localStorage.setItem('hr-warroom-active',JSON.stringify(state));render();renderChat();renderReport();toast('已產生 HR 戰情與建議報表')}catch(e){toast(e.message||'分析失敗')}finally{$('btnAnalyze').disabled=false;$('btnAnalyze').textContent='產生建議報表與戰情解釋'}}
+function answer(q){const a=state.analysis;if(!a)return '請先上傳資料並產生戰情。';if(/為什麼|理由|判斷/.test(q))return `主要判斷依據是：\n1. ${a.insights?.[0]?.why||'資料中出現可辨識的風險訊號。'}\n2. 風險訊號包含：${a.risks.join('；')}\n3. 建議先用資料期間、部門切分與 KPI 重新驗證。`;if(/建議|下一步|怎麼做/.test(q))return '下一步建議：\n- 先確認資料期間與欄位完整性。\n- 將個資欄位遮罩。\n- 選一個高 ROI 流程做 PoC。\n- 把建議行動轉成待辦與負責人。';return `依目前戰情，優先處理「${a.top}」。我建議把這個議題放進正式講座 Demo，讓企業看到 AI 不只摘要資料，也能提出可追溯理由與行動建議。`}
+function saveActive(){state.raw=$('raw').value;localStorage.setItem('hr-warroom-active',JSON.stringify(state));}
+function renderHistory(){const keys=Object.keys(localStorage).filter(k=>k.startsWith('hr-warroom-case-')).sort().reverse();$('history').innerHTML=keys.length?keys.slice(0,6).map(k=>{const c=JSON.parse(localStorage.getItem(k));return `<div class="insight"><h4>${esc(c.fileName||'HR案例')}</h4><p>${esc(c.updatedAt||'')}</p><button class="btn ghost loadcase" data-k="${k}">載入</button></div>`}).join(''):'<div class="empty">尚無儲存案例。</div>';document.querySelectorAll('.loadcase').forEach(b=>b.onclick=()=>{Object.assign(state,JSON.parse(localStorage.getItem(b.dataset.k)));$('raw').value=state.raw||'';render();renderChat();renderReport();toast('已載入案例')})}
+function loadActive(){try{const raw=localStorage.getItem('hr-warroom-active');if(raw){Object.assign(state,JSON.parse(raw));$('raw').value=state.raw||'';$('dataType').value=state.type||'auto';render();renderChat();if(state.reportHtml)$('report').innerHTML=state.reportHtml;}}catch(e){}renderHistory()}
+$('btnAnalyze').onclick=analyze;$('btnSample').onclick=()=>{$('raw').value=SAMPLE;state.raw=SAMPLE;state.fileName='HR範例批次資料.csv';saveActive();toast('已載入人資範例')};$('btnReport').onclick=()=>{state.reportHtml=buildReport();renderReport();toast('已重新產生報表')};$('btnPrint').onclick=()=>window.print();$('btnDoc').onclick=()=>download('HR智慧工作流建議報表.doc',`<!doctype html><html><head><meta charset="utf-8"></head><body>${state.reportHtml||buildReport()}</body></html>`,'application/msword;charset=utf-8');$('btnMd').onclick=()=>{const a=state.analysis||{};download('HR智慧工作流建議報表.md',`# HR 智慧工作流建議報表\n\n## 戰情摘要\n${a.summary||''}\n\n## 洞見與理由\n${(a.insights||[]).map((x,i)=>`${i+1}. ${x.title}\n- ${x.text}\n- 理由：${x.why}`).join('\n\n')}\n\n## 建議行動\n${(a.actions||[]).map(x=>'- '+x).join('\n')}`)};$('btnJson').onclick=()=>download('HR智慧工作流案例資料.json',JSON.stringify(state,null,2),'application/json;charset=utf-8');$('btnSave').onclick=()=>{state.updatedAt=new Date().toLocaleString('zh-TW');localStorage.setItem('hr-warroom-case-'+Date.now(),JSON.stringify(state));renderHistory();toast('已儲存案例')};$('btnReset').onclick=()=>{if(!confirm('確定清空目前資料？'))return;Object.assign(state,{raw:'',fileName:'',type:'auto',analysis:null,qa:[],reportHtml:'',updatedAt:null});$('raw').value='';$('filemeta').style.display='none';saveActive();render();renderChat();$('report').innerHTML='<div class="empty">尚未產生報表。</div>';toast('已清空')};$('btnAsk').onclick=()=>{const q=$('q').value.trim();if(!q)return;state.qa.push({role:'user',text:q});$('q').value='';state.qa.push({role:'ai',text:answer(q)});saveActive();renderChat()};$('q').addEventListener('keydown',e=>{if(e.key==='Enter')$('btnAsk').click()});$('btnCopy').onclick=async()=>{await navigator.clipboard.writeText($('raw').value||'');toast('已複製')};$('raw').addEventListener('input',saveActive);
+$('drop').onclick=()=>$('file').click();$('drop').ondragover=e=>{e.preventDefault();$('drop').classList.add('drag')};$('drop').ondragleave=()=>$('drop').classList.remove('drag');$('drop').ondrop=e=>{e.preventDefault();$('drop').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)readFile(f)};$('file').onchange=e=>{const f=e.target.files[0];if(f)readFile(f)};function readFile(f){state.fileName=f.name;$('filemeta').style.display='block';$('filemeta').textContent=`已選擇：${f.name}｜${Math.round(f.size/1024)} KB`;if(/\.pdf$|\.docx?$/.test(f.name.toLowerCase())){toast('PDF/Word 第一版請先貼文字；正式版可接文件解析');return;}const r=new FileReader();r.onload=()=>{$('raw').value=r.result;state.raw=r.result;saveActive();toast('檔案內容已載入')};r.readAsText(f,'utf-8')}
+document.querySelectorAll('.step').forEach(s=>s.onclick=()=>{document.querySelectorAll('.step').forEach(x=>x.classList.remove('active'));s.classList.add('active');$(s.dataset.go).scrollIntoView({behavior:'smooth',block:'start'})});
+loadActive();
+</script>
+</body>
+</html>
